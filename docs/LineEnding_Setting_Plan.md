@@ -33,22 +33,26 @@ adding a field.
 
 ## 2. Serialization — flip older files to CRLF
 
-The slot is read on every load, so there's no misalignment — but it holds the
-**stale `_mfcSerialize` value**, which is arbitrary per old project (could be
-`false`→LF for CB's own model). Every old project actually emitted CRLF, so flip
-them:
+`DataModel`'s serial version is **already 3** (bumped earlier; **no new bump** —
+past bumps were touchy). The slot is read on every load (so nothing misaligns),
+but it holds the **stale `_mfcSerialize` value**. Override by version:
 
-- Bump `DataModel`'s serial version **1 → 2**.
 - **Read:**
   ```cpp
   archive >> _crlf;
-  if (_objectVersion < 2) _crlf = true;   // older cbz: discard stale value, force CRLF
+  if (_objectVersion < 3) _crlf = true;   // pre-v3: discard stale value, force CRLF
   ```
-- **Store:** `archive << _crlf;` (new saves stamp v2 and keep the real choice).
+- **Store:** `archive << _crlf;` (saves stamp v3, keep the real choice).
 
-Pre-v2 files load as CRLF regardless of the stale byte; v2 files use their stored
-choice. No new bytes, no gated read, no misalignment — just a value override keyed
-on the version. (Same family as the `_delete` v3 / Matrix v2 fixes; see
+Older files — the static `cbd`→`cbz` conversions, **v1/v2 at most** — load as CRLF
+automatically.
+
+**Caveat — files already at v3** (the limited set currently being worked on,
+*including ClassBuilder's own `ClassBuilder.CBZ`*) carry the stale byte as `_crlf`,
+because nothing distinguishes "v3 before this feature" from "v3 after." Worst case
+you just **flip that one value**: open the project, set the CRLF radio, save.
+**Do this for `ClassBuilder.CBZ` before the first regen** — if its `_crlf` reads
+back `false`, a regen would emit CB's own source as LF. (See the
 [serialize-field trap](../../.claude/projects/c--Users-jimmy-Projects-ClassBuilder/memory/project_classbuilder_serialize_field_add_breaks_old_cbz.md).)
 
 ## 3. The initial guess — first-set only, then fixed
@@ -135,7 +139,9 @@ prevents the flip-flop.
 ## 9. Order of work
 
 1. Rename `__notUsed_mfcSerialize` → `_crlf` in CB (self-host), default `true`,
-   keep serialize slot position; bump `DataModel` version to 2 + the read override.
+   keep serialize slot position; add the `if (_objectVersion < 3) _crlf = true;`
+   read override (version is already 3 — no new bump). Flip `ClassBuilder.CBZ` to
+   CRLF + save before regenerating.
 2. `Cb_WriteGeneratedFile` helper; route the write sites through it.
 3. Normalize the read path to canonical CRLF.
 4. Dialog radios + binding.
