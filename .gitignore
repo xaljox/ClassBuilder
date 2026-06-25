@@ -36,3 +36,6 @@ Desktop.ini
 
 # Local-only CMake presets (personal Qt prefix etc.)
 CMakeUserPresets.json
+
+# Per-machine Claude Code permissions (keep out of the cross-platform sync)
+.claude/settings.local.json
