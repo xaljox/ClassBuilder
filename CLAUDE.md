@@ -16,6 +16,7 @@ The **CMake build** produces a **single `ClassBuilder.exe`**. The source is orga
 - [src/platform/](src/platform/) — `CbPlatformCompat` (the single `#ifdef` seam = the multi-platform pivot) + `CbMessageBox` / `CbShellHooks`
 - [third_party/](third_party/) — `zstd` (CBZ compression) + `json` (command-server)
 - [res/](res/) [models/](models/) [tools/](tools/) [docs/](docs/)
+- [crossplatform/](crossplatform/) — Windows↔macOS/Linux port coordination: getting-started report, port punch-list, and required Qt patches (see [crossplatform/README.md](crossplatform/README.md))
 
 (Historical: the EXE was once an MFC-extension-DLL + thin-EXE split that existed only for the parked add-in mechanism. The build collapsed to one EXE, MFC itself was then removed, and the folders were restructured into the tiers above. A full 2026-05-14 source snapshot is preserved at the sibling dir `..\ClassBuilderXX`, and the pre-restructure tree at `..\ClassBuilder_old`, if legacy files are ever needed. The old MSBuild solution — `ClassBuilderEXE.sln` + `.vcxproj`/`.dsp`/`.dsw` — was removed 2026-06-06; CMake is the only build.)
 

@@ -258,6 +258,16 @@ in `Read.l.cpp`/`Read.y.cpp` and their `.l`/`.y` prologues. If clang makes it a
 **hard error** (`-pedantic-errors`), the real fix is regenerating with a modern
 flex/bison that don't emit `register`.
 
+### K. Qt float-group tear-off crash — needs a Qt patch on macOS too
+Qt **6.11.1** crashes when a floating tabbed dock group dissolves to its last
+member (the "2→1 tear-off"). It's a bug in Qt's own `qmainwindowlayout.cpp`, not
+in CB, and it is **platform-independent** — confirmed on Windows, and it bites on
+macOS as well. The Windows static Qt already carries the fix; the Mac build needs
+it too. **Use Qt ≥ 6.11.2/6.12 (upstream-fixed) and verify the tear**, or apply
+the committed patch when building Qt from source. Full write-up + the verbatim
+diff: **[docs/QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md)** /
+[docs/qt-patches/qtbase-6.11.1-dockgroup-dissolution.patch](qt-patches/qtbase-6.11.1-dockgroup-dissolution.patch).
+
 ---
 
 ## 5. Suggested first-build sequence on the Mac

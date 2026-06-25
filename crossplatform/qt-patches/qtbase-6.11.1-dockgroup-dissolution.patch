@@ -1,0 +1,42 @@
+Qt 6.11.1 (qtbase) — fix crash tearing the 2nd-to-last dock out of a floating
+tabbed group (QDockWidgetGroupWindow 2->1 dissolution) on Windows.
+
+This is a local backport of the UPSTREAM fix that is on the qt/qtbase 6.11 branch
+(heading to 6.11.2; also in 6.12) — verbatim. We independently root-caused + fixed it
+the same way, then aligned to Qt's exact form. DROP this local patch once building
+against Qt >= 6.11.2.
+
+WHY (matches the upstream comment): QDockWidgetGroupWindow::reparentToMainWindow()
+reparents the dock and mutates mwLayout->layoutState; the drag's savedState snapshot
+SHARES QLayoutItem* with layoutState, so it goes stale. The nested setFloating() ->
+QDockWidgetPrivate::endDrag() -> QMainWindowLayout::restore() then does
+"layoutState = savedState" + applyState()/QDockAreaLayoutInfo::reparentWidgets(),
+dereferencing a freed widgetItem -> access violation (qdockarealayout.cpp ~2210).
+Clearing savedState up front (it only resets structure, does not delete the shared
+items) makes restore() early-return. JV-confirmed on Windows 11 / Qt 6.11.1 / MSVC x64:
+2->1 tear no longer crashes; create/move/3->2 unaffected. (A one-time repaint flash on
+tear is inherent Qt reparent behaviour, present with or without this patch.)
+Reported: https://forum.qt.io/topic/164810 (QTBUG-118579 family).
+Re-apply after any qtbase source refresh (< 6.11.2), then rebuild+install.
+
+--- a/src/widgets/widgets/qmainwindowlayout.cpp
++++ b/src/widgets/widgets/qmainwindowlayout.cpp
+@@ void QDockWidgetGroupWindow::reparentToMainWindow(QDockWidget *dockWidget)
+     mwLayout->widgetAnimator.abort(dockWidget);
++
++    // The saved state is now invalid because it contains
++    // a reference to the dock widget inside the group window.
++    // - the dock widget has been reparented.
++    // - if it was the last dock widget, the group window will be deleted
++    // => clear saved state.
++    mwLayout->savedState.clear();
+     QDockAreaLayoutInfo &parentInfo = mwLayout->layoutState.dockAreaLayout.docks[layoutInfo()->dockPos];
+     dockWidget->removeEventFilter(this);
+     parentInfo.add(dockWidget);
+     layoutInfo()->remove(dockWidget);
+     const bool wasFloating = dockWidget->isFloating();
+     const bool wasVisible = dockWidget->isVisible();
+     dockWidget->setParent(mainWindow);
+     dockWidget->setFloating(wasFloating);
+     dockWidget->setVisible(wasVisible);
+ }
