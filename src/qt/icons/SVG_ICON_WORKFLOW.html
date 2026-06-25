@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClassBuilder &mdash; Redrawing the tree icons as SVG</title>
+<style>
+  body { font: 16px/1.55 "Segoe UI", Arial, sans-serif; max-width: 820px;
+         margin: 2rem auto; padding: 0 1.2rem; color: #1d1d1f; }
+  h1 { font-size: 1.7rem; border-bottom: 3px solid #4a78b5; padding-bottom: .3rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; color: #2a4d7a;
+       border-bottom: 1px solid #d4d4d4; padding-bottom: .2rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.4rem; color: #2a4d7a; }
+  code { background: #f0f1f3; padding: .1rem .35rem; border-radius: 3px;
+         font: 13.5px Consolas, "Courier New", monospace; }
+  pre  { background: #f0f1f3; padding: .8rem 1rem; border-radius: 5px;
+         overflow-x: auto; border-left: 3px solid #4a78b5; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #d0d0d0; padding: .45rem .6rem; text-align: left;
+           vertical-align: top; }
+  th { background: #eef2f7; }
+  .note { background: #fff8e1; border-left: 4px solid #e0a800;
+          padding: .7rem 1rem; border-radius: 4px; margin: 1rem 0; }
+  .key  { background: #e8f3ea; border-left: 4px solid #3a9d4e;
+          padding: .7rem 1rem; border-radius: 4px; margin: 1rem 0; }
+  .pri1 { background: #3a9d4e; color: #fff; font-weight: bold;
+          padding: 0 .4rem; border-radius: 3px; font-size: .8rem; }
+  .pri2 { background: #e0a800; color: #fff; font-weight: bold;
+          padding: 0 .4rem; border-radius: 3px; font-size: .8rem; }
+  .pri3 { background: #888; color: #fff; font-weight: bold;
+          padding: 0 .4rem; border-radius: 3px; font-size: .8rem; }
+  ol li, ul li { margin: .35rem 0; }
+  footer { margin-top: 3rem; font-size: .85rem; color: #777;
+           border-top: 1px solid #d4d4d4; padding-top: .6rem; }
+</style>
+</head>
+<body>
+
+<h1>Redrawing the ClassBuilder tree icons as SVG</h1>
+
+<p>The class-tree icons date from ~2002 &mdash; small <code>.ico</code> raster
+files (16&times;16 / 32&times;32). They look soft on modern high-DPI monitors.
+This document is the workflow for replacing them with crisp vector
+(<code>.svg</code>) artwork.</p>
+
+<div class="key">
+<strong>The build already supports SVG.</strong> <code>QtModelIcons</code> loads
+<code>qt/icons/&lt;name&gt;.svg</code> in preference to the legacy
+<code>res/&lt;name&gt;.ico</code> &mdash; per icon. So you can modernise the set
+<em>one glyph at a time</em>: add a single <code>.svg</code>, rebuild, and only
+that icon becomes vector. Nothing else changes.
+</div>
+
+<h2>1. Where things are</h2>
+
+<table>
+<tr><th>What</th><th>Path</th></tr>
+<tr><td>Legacy raster icons (69 files)</td>
+    <td><code>ClassBuilder/res/*.ico</code></td></tr>
+<tr><td>New SVG icons go here</td>
+    <td><code>qt/icons/&lt;name&gt;.svg</code></td></tr>
+<tr><td>Index &rarr; icon mapping (what each icon means)</td>
+    <td><code>qt/QtModelIcons.cpp</code> &mdash; the <code>kIconFiles[]</code> table</td></tr>
+<tr><td>Loader (svg-preferred, ico-fallback)</td>
+    <td><code>qt/QtModelIcons.cpp</code> &mdash; <code>loadModelIcon()</code></td></tr>
+</table>
+
+<p>A new SVG <strong>must use the same base name</strong> as the
+<code>.ico</code> it replaces &mdash; e.g. <code>public_member.ico</code>
+&rarr; <code>qt/icons/public_member.svg</code>.</p>
+
+<h2>2. Icon inventory &mdash; what to prioritise</h2>
+
+<p>The 69 <code>.ico</code> files in <code>res/</code> split into three groups.
+Verified against <code>CClassBuilderView::InitImageList</code> and the
+<code>.rc</code>.</p>
+
+<table>
+<tr><th>Group</th><th>Count</th><th>Used as</th><th>Priority</th></tr>
+<tr><td><strong>A. Tree node icons</strong></td><td>61</td>
+    <td>The main tree-view image list &mdash; one per class / member / method /
+        relation node. This is exactly the <code>QtModelIcons</code> set.</td>
+    <td><span class="pri1">HIGH</span></td></tr>
+<tr><td><strong>B. Phase / state icons</strong></td><td>6</td>
+    <td>A separate <em>state</em> image list, shown <em>in front of</em> a tree
+        node to mark its development phase.</td>
+    <td><span class="pri2">MEDIUM</span></td></tr>
+<tr><td><strong>C. Application icons</strong></td><td>2</td>
+    <td>The <code>.exe</code> icon and the <code>.cbz</code> document icon.
+        Never appear in any tree.</td>
+    <td><span class="pri3">LOW</span></td></tr>
+</table>
+
+<div class="note">
+<strong>Not <code>.ico</code> &mdash; out of scope here.</strong> The toolbar
+(<code>Toolbar.bmp</code>), the tree checkboxes
+(<code>CheckTreeCtrlImages.bmp</code>) and the print page-layout pictures
+(<code>printportrait.bmp</code> / <code>printlandscape.bmp</code>, the
+&ldquo;number of pages&rdquo; illustrations in the Sequence- and Class-Diagram
+dialogs) are <strong>bitmaps</strong>, not icons. They are a different job and
+not part of this SVG workflow.
+</div>
+
+<h3>Group A &mdash; Tree node icons (61) <span class="pri1">HIGH</span></h3>
+
+<p>These are what every tree and every ported tree dialog shows. They are
+<em>systematic</em> &mdash; redraw a few base glyphs and compose the variants.
+Sub-groups, by how much drawing each really needs:</p>
+
+<table>
+<tr><th>Sub-group</th><th>Files</th><th>Base glyphs to draw</th></tr>
+<tr><td>Document</td><td>2 &mdash; <code>file</code>, <code>fileselected</code></td>
+    <td>1 glyph (+ a selected tint)</td></tr>
+<tr><td>Class &amp; type</td>
+    <td>5 &mdash; <code>class</code>, <code>externclass</code>,
+        <code>inherit</code>, <code>type</code>, <code>argument</code></td>
+    <td>~5 glyphs</td></tr>
+<tr><td>Members</td>
+    <td>3 &mdash; <code>public/protected/private_member</code></td>
+    <td>1 glyph &times; 3 access colours</td></tr>
+<tr><td>Methods, constructors, destructors</td>
+    <td>21 &mdash; <code>{public,protected,private}</code> &times;
+        <code>{method, constructor, destructor, inline_method,
+        inline_constructor, inline_destructor, empty_method}</code></td>
+    <td>7 glyphs &times; 3 access colours</td></tr>
+<tr><td>Groups</td>
+    <td>3 &mdash; <code>methodgroup</code>, <code>membergroup</code>,
+        <code>membermethodgroup</code></td>
+    <td>~3 glyphs</td></tr>
+<tr><td>Relations</td>
+    <td>24 &mdash; <code>single</code>/<code>multi</code> &times;
+        <code>act</code>/<code>pas</code> &times; plain /
+        <code>owned</code> / <code>static</code>, plain / <code>cr</code></td>
+    <td>2 base arrows + composable badges</td></tr>
+<tr><td>Diagrams</td>
+    <td>3 &mdash; <code>classdiagram</code>, <code>sequencediagram</code>,
+        <code>actor</code></td>
+    <td>~3 glyphs</td></tr>
+</table>
+
+<p>So 61 files &asymp; <strong>~22 base glyphs</strong> once colour and badge
+variants are factored out. The relations sub-group is the biggest count but
+the least unique drawing &mdash; it is one or two arrows with
+owned/static/collection badges layered on.</p>
+
+<h3>Group B &mdash; Phase / state icons (6) <span class="pri2">MEDIUM</span></h3>
+
+<p><code>Empty</code>, <code>Analysis</code>, <code>Design</code>,
+<code>Implementation</code>, <code>Test</code>, <code>Complete</code>. These
+live in a second image list (<code>stateImageList</code> in
+<code>InitImageList</code>) and are drawn as a small marker in front of a tree
+node to show its development phase. They are not yet in
+<code>QtModelIcons</code> (it covers Group A only) &mdash; add a state-icon
+provider when a Qt tree needs phase display. Worth redrawing alongside Group A
+for a consistent tree, but lower priority than the node icons themselves.</p>
+
+<h3>Group C &mdash; Application icons (2) <span class="pri3">LOW</span></h3>
+
+<p><code>ClassBuilder.ico</code> (<code>IDR_MAINFRAME</code> &mdash; the
+application/window icon) and <code>ClassBuilderDoc.ico</code>
+(<code>IDR_DESIGNTYPE</code> / <code>IDR_DESIGNTYPE_CBZ</code> &mdash; the
+<code>.cbz</code> document icon, also what Explorer shows for a project file).
+These are not tree icons. They <em>do</em> want crisp high-res versions for
+the taskbar and Explorer, but that is a separate, low-urgency task &mdash; and
+a Windows app/document icon stays a multi-size <code>.ico</code> regardless of
+the Qt port, so it is not part of the SVG pipeline.</p>
+
+<div class="key">
+<strong>Suggested order:</strong> Group&nbsp;A first &mdash; and within it, the
+member / method / class glyphs (most visible, most reused), then relations
+(high count, low unique effort), then diagrams. Group&nbsp;B next for a
+consistent tree. Group&nbsp;C last, and as <code>.ico</code> not SVG.
+</div>
+
+<h2>3. Build prerequisite &mdash; the qtsvg module</h2>
+
+<div class="note">
+<strong>SVG icons need Qt's Svg module.</strong> The static Qt at
+<code>C:/Qt-static</code> is currently <em>qtbase-only</em> &mdash; it has no
+Svg module, so SVG icons are inert until that Qt is rebuilt.
+</div>
+
+<p>One-time step: rebuild the static Qt <strong>with the <code>qtsvg</code>
+module</strong> (see <code>Projects/qt-static/build-static-qt.bat</code>).
+After that, just reconfigure:</p>
+<pre><code>cmake --preset x64</code></pre>
+<p>CMake auto-detects <code>Qt6Svg</code> and prints
+<code>Qt: Svg module found &mdash; SVG model icons enabled</code>. No source
+change is needed. Until then it prints
+<code>Qt: no Svg module &mdash; model icons use the legacy .ico set</code> and
+the build stays green on the <code>.ico</code> artwork.</p>
+
+<h2>4. The honest part: there is no .ico &rarr; .svg conversion</h2>
+
+<p><code>.ico</code> is raster (pixels); <code>.svg</code> is vector (shapes).
+You cannot convert &mdash; you <strong>redraw</strong>, using the old icon as a
+tracing reference underneath. Auto-trace (Inkscape's &ldquo;Trace
+Bitmap&rdquo; / potrace) on a 16&ndash;32&nbsp;px source produces blobby,
+inaccurate paths &mdash; not worth it. Treat the <code>.ico</code> as a
+<em>reference image</em>, not a source.</p>
+
+<div class="key">
+<strong>The big shortcut &mdash; the icons are systematic.</strong> As the
+Group&nbsp;A table shows, the 61 node icons collapse to ~22 base glyphs with
+colour and badge variants. Draw the base glyphs once, then compose. An
+afternoon, not a marathon.
+</div>
+
+<h2>5. Tools</h2>
+
+<table>
+<tr><th>Tool</th><th>Cost</th><th>Use for</th></tr>
+<tr><td><strong>Inkscape</strong></td><td>Free</td>
+    <td>The recommended SVG editor. Redraw glyphs, export Optimized SVG.</td></tr>
+<tr><td><strong>Greenfish Icon Editor Pro</strong></td><td>Free</td>
+    <td>Dedicated multi-resolution icon editor &mdash; handy if you also want to
+        refresh the <code>.ico</code> set for the MFC build or Group&nbsp;C.</td></tr>
+<tr><td><strong>GIMP</strong></td><td>Free</td>
+    <td>Full raster editor; opens/exports multi-size <code>.ico</code>.
+        Useful for extracting reference frames.</td></tr>
+<tr><td><strong>ImageMagick</strong> / <strong>icoutils</strong></td><td>Free</td>
+    <td>Command-line: extract frames from <code>.ico</code>, batch-convert.</td></tr>
+</table>
+
+<h2>6. Workflow (Inkscape)</h2>
+
+<ol>
+<li><strong>Install</strong> Inkscape. Optionally ImageMagick for batch frame
+    extraction.</li>
+<li><strong>Extract a reference PNG</strong> from the <code>.ico</code> &mdash;
+    the largest frame (usually 32&times;32):
+    <pre><code>magick "ClassBuilder/res/public_member.ico[0]" ref_public_member.png</code></pre>
+    <code>[0]</code> selects the first/largest frame.</li>
+<li><strong>New Inkscape document</strong>, e.g. 48&times;48 or 64&times;64.</li>
+<li><strong>Place the PNG</strong> as a faint, <em>locked</em> reference layer.</li>
+<li><strong>Redraw</strong> the glyph above it with clean vector shapes
+    (rectangles, circles, paths). Snap to a grid.</li>
+<li><strong>Save As &rarr; Optimized SVG</strong> (strips editor metadata,
+    smaller files).</li>
+<li><strong>Name it</strong> exactly like the <code>.ico</code> base name and
+    save into <code>qt/icons/</code>.</li>
+</ol>
+
+<h3>Drawing tips that matter at small sizes</h3>
+<ul>
+<li>Design <em>on</em> a pixel grid &mdash; an icon crisp at 16&nbsp;px needs
+    deliberate alignment, not just a shrunk 48&nbsp;px drawing.</li>
+<li>Keep shapes axis-aligned; avoid strokes thinner than 1&nbsp;px.</li>
+<li>Do the base glyphs first, then derive the colour/badge variants.</li>
+</ul>
+
+<h2>7. Which sizes &mdash; if you also refresh the .ico set</h2>
+
+<p>SVG is resolution-independent, so for the Qt side there is no size question.
+If you <em>also</em> rebuild the <code>.ico</code> files (for the MFC build, or
+Group&nbsp;C), bake in <strong>16, 20, 24, 32, 48</strong> &mdash; that covers
+100&ndash;300% display scaling for a tree row. Skip 128/256: a tree never
+renders that big and they only bloat the file. (Group&nbsp;C app/document
+icons may justify 256 for Explorer thumbnails.)</p>
+
+<h2>8. Adding an icon &mdash; the loop</h2>
+
+<ol>
+<li>Redraw a glyph, save <code>qt/icons/&lt;name&gt;.svg</code>.</li>
+<li><code>cmake --preset x64</code> &nbsp;(picks up the new file)</li>
+<li><code>cmake --build --preset x64-release</code></li>
+<li>That icon is now vector; the rest stay <code>.ico</code>. Repeat.</li>
+</ol>
+
+<div class="note">
+If CMake still reports <em>no Svg module</em>, the SVG will not render &mdash;
+finish the qtsvg rebuild in section&nbsp;3 first.
+</div>
+
+<h2>9. Going further: SVG for the main class tree</h2>
+
+<p>The same <code>QtModelIcons</code> provider is intended for every Qt tree
+dialog and, eventually, the main class tree once it is ported from MFC. So a
+redrawn Group&nbsp;A set benefits the whole application, not just
+FindMethodDialog.</p>
+
+<footer>
+ClassBuilder &mdash; MFC&rarr;Qt port. See <code>qt/icons/README.md</code> and
+<code>qt/QtModelIcons.cpp</code>. Document written 2026-05-18.
+</footer>
+
+</body>
+</html>

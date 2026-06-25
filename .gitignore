@@ -1,0 +1,33 @@
+# Build output (CMake / Ninja / VS) -- regenerable
+/out/
+build/
+[Dd]ebug/
+[Rr]elease/
+
+# Visual Studio / VS Code local state
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+# Compiler / linker intermediates (sources & prebuilt zstd libs ARE tracked)
+*.obj
+*.ilk
+*.pdb
+*.tlog
+*.idb
+*.exp
+*.aps
+
+# OS cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor backups / model autosave backups
+*~
+*.bak
+~*.CBZ
+~*.cbz

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>UserSectionsDialog</class>
+ <widget class="QDialog" name="UserSectionsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>720</width>
+    <height>560</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>User sections of class:</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="filesRow">
+     <item>
+      <widget class="QGroupBox" name="groupHFile">
+       <property name="title">
+        <string>H File:</string>
+       </property>
+       <layout class="QVBoxLayout" name="hFileLayout">
+        <item>
+         <widget class="CodeEditor" name="plainTextHUser1"/>
+        </item>
+        <item>
+         <widget class="CodeEditor" name="plainTextHUser2"/>
+        </item>
+        <item>
+         <widget class="CodeEditor" name="plainTextHUser3"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupCppFile">
+       <property name="title">
+        <string>CPP File:</string>
+       </property>
+       <layout class="QVBoxLayout" name="cppFileLayout">
+        <item>
+         <widget class="CodeEditor" name="plainTextCppUser1"/>
+        </item>
+        <item>
+         <widget class="CodeEditor" name="plainTextCppUser2"/>
+        </item>
+        <item>
+         <widget class="CodeEditor" name="plainTextCppUser3"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupSupport">
+     <property name="title">
+      <string>Visual Studio ClassWizard Support</string>
+     </property>
+     <layout class="QHBoxLayout" name="supportLayout">
+      <item>
+       <widget class="QRadioButton" name="radioNone">
+        <property name="text">
+         <string>None</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioGeneral">
+        <property name="text">
+         <string>Generic CWnd</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioDocView">
+        <property name="text">
+         <string>Doc/View</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="supportSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CodeEditor</class>
+   <extends>QPlainTextEdit</extends>
+   <header>CodeEditor.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

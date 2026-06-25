@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DataModelDialog</class>
+ <widget class="QDialog" name="DataModelDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>520</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>DataModel</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QGridLayout" name="topForm">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labelName">
+       <property name="text">
+        <string>DataModel &amp;Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="lineEditName"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelFile">
+       <property name="text">
+        <string>Master &amp;Include File:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditFile</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="lineEditFile"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labelNamespace">
+       <property name="text">
+        <string>Nam&amp;espace:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditNamespace</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="lineEditNamespace"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="labelClassName">
+       <property name="text">
+        <string>&amp;Document Class Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditClassName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="lineEditClassName"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="groupsRow">
+     <item>
+      <widget class="QGroupBox" name="groupProperties">
+       <property name="title">
+        <string>Properties</string>
+       </property>
+       <layout class="QGridLayout" name="propertiesLayout">
+        <item row="0" column="0" colspan="2">
+         <widget class="QCheckBox" name="checkPhaseSupport">
+          <property name="text">
+           <string>Phase Suppo&amp;rt</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0" colspan="2">
+         <widget class="QCheckBox" name="checkShowDllExport">
+          <property name="text">
+           <string>Show D&amp;LL Export</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="labelIndentSize">
+          <property name="text">
+           <string>Indent si&amp;ze:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spinIndentSize</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QSpinBox" name="spinIndentSize">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>8</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="labelVersion">
+          <property name="text">
+           <string>&amp;Version:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spinVersion</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QSpinBox" name="spinVersion">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999999</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupPrefixes">
+       <property name="title">
+        <string>Prefixes</string>
+       </property>
+       <layout class="QGridLayout" name="prefixesLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="labelClassPrefix">
+          <property name="text">
+           <string>&amp;Class:</string>
+          </property>
+          <property name="buddy">
+           <cstring>lineEditClassPrefix</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEditClassPrefix">
+          <property name="maxLength">
+           <number>6</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="labelMemberPrefix">
+          <property name="text">
+           <string>&amp;Member:</string>
+          </property>
+          <property name="buddy">
+           <cstring>lineEditMemberPrefix</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="lineEditMemberPrefix">
+          <property name="maxLength">
+           <number>3</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupCommentHeader">
+       <property name="title">
+        <string>Comment Header</string>
+       </property>
+       <layout class="QVBoxLayout" name="commentHeaderLayout">
+        <item>
+         <widget class="QPushButton" name="buttonHHeader">
+          <property name="text">
+           <string>*.&amp;h</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="buttonCppHeader">
+          <property name="text">
+           <string>*.c&amp;pp</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupCodeGen">
+     <property name="title">
+      <string>Code Generation</string>
+     </property>
+     <layout class="QGridLayout" name="codeGenLayout">
+      <item row="0" column="0">
+       <widget class="QCheckBox" name="checkStdAfx">
+        <property name="text">
+         <string>StdA&amp;fx.h</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QCheckBox" name="checkSerialize">
+        <property name="text">
+         <string>&amp;Serialize</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QCheckBox" name="checkUndoRedo">
+        <property name="text">
+         <string>&amp;Undo/Redo</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QCheckBox" name="checkModifiers">
+        <property name="text">
+         <string>Modifiers &amp;at Implementation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QCheckBox" name="checkTemplateHeaderOnly">
+        <property name="text">
+         <string>Implement &amp;Template class in Header file</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelNote">
+     <property name="text">
+      <string>N&amp;ote:</string>
+     </property>
+     <property name="buddy">
+      <cstring>plainTextNote</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="plainTextNote"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="bottomRow">
+     <item>
+      <widget class="QPushButton" name="buttonCompactVersion">
+       <property name="text">
+        <string>Compact &amp;Version</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="bottomSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

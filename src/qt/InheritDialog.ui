@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>InheritDialog</class>
+ <widget class="QDialog" name="InheritDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>500</width>
+    <height>340</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Inherit</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="upperLayout">
+     <item>
+      <layout class="QGridLayout" name="topGrid">
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelInherit">
+         <property name="text">
+          <string>&amp;Inherits From:</string>
+         </property>
+         <property name="buddy">
+          <cstring>comboInherit</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="comboInherit"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="labelTemplate">
+         <property name="text">
+          <string>Template Re&amp;ference:</string>
+         </property>
+         <property name="buddy">
+          <cstring>editTemplate</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="editTemplate"/>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <spacer name="topSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupAccess">
+       <property name="title">
+        <string>&amp;Access</string>
+       </property>
+       <layout class="QVBoxLayout" name="accessLayout">
+        <item>
+         <widget class="QRadioButton" name="radioPublic">
+          <property name="text">
+           <string>Public</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioProtected">
+          <property name="text">
+           <string>Protected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioPrivate">
+          <property name="text">
+           <string>Private</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkVirtual">
+          <property name="text">
+           <string>&amp;Virtual</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelNote">
+     <property name="text">
+      <string>N&amp;ote:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editNote</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="editNote"/>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,45 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "x64",
+      "displayName": "VS 2026 - x64",
+      "description": "Primary target. Multi-config: build Debug or Release from this one tree.",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "C:/Qt-static/6.11.1"
+      }
+    },
+    {
+      "name": "win32",
+      "displayName": "VS 2026 - Win32 (legacy)",
+      "description": "Legacy 32-bit build. Not maintained; kept for coverage only.",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/out/build/${presetName}"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "x64-debug",
+      "displayName": "x64 Debug",
+      "configurePreset": "x64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x64-release",
+      "displayName": "x64 Release",
+      "configurePreset": "x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "win32-release",
+      "displayName": "Win32 Release (legacy)",
+      "configurePreset": "win32",
+      "configuration": "Release"
+    }
+  ]
+}

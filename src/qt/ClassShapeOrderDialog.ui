@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ClassShapeOrderDialog</class>
+ <widget class="QDialog" name="ClassShapeOrderDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>620</width>
+    <height>360</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Order Members / Methods</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="listsLayout">
+     <item>
+      <widget class="QGroupBox" name="membersGroup">
+       <property name="title">
+        <string>Members</string>
+       </property>
+       <layout class="QVBoxLayout" name="membersGroupLayout">
+        <item>
+         <widget class="QListWidget" name="listMembers">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="membersMoveLayout">
+          <item>
+           <widget class="QPushButton" name="buttonMembersUp">
+            <property name="text">
+             <string>Move &amp;Up</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="buttonMembersDown">
+            <property name="text">
+             <string>Move &amp;Down</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="membersMoveSpacer">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="methodsGroup">
+       <property name="title">
+        <string>Methods</string>
+       </property>
+       <layout class="QVBoxLayout" name="methodsGroupLayout">
+        <item>
+         <widget class="QListWidget" name="listMethods">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="methodsMoveLayout">
+          <item>
+           <widget class="QPushButton" name="buttonMethodsUp">
+            <property name="text">
+             <string>Move U&amp;p</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="buttonMethodsDown">
+            <property name="text">
+             <string>Move Do&amp;wn</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="methodsMoveSpacer">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

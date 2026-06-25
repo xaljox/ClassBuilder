@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RelationDialog</class>
+ <widget class="QDialog" name="RelationDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>540</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Relation</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <widget class="QGroupBox" name="groupFrom">
+     <property name="title">
+      <string>&amp;From</string>
+     </property>
+     <layout class="QGridLayout" name="fromGrid">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelFromClass">
+        <property name="text">
+         <string>Class:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboFromClass"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelFromName">
+        <property name="text">
+         <string>Name:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="editFromName">
+        <property name="maxLength">
+         <number>64</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="midLayout">
+     <item>
+      <widget class="QGroupBox" name="groupAssocType">
+       <property name="title">
+        <string>Association Type</string>
+       </property>
+       <layout class="QVBoxLayout" name="assocTypeLayout">
+        <item>
+         <widget class="QRadioButton" name="radioSingle">
+          <property name="text">
+           <string>&amp;Single</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioMulti">
+          <property name="text">
+           <string>&amp;Multi</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioStaticMulti">
+          <property name="text">
+           <string>Static M&amp;ulti</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupAssocProps">
+       <property name="title">
+        <string>Association Properties</string>
+       </property>
+       <layout class="QVBoxLayout" name="assocPropsLayout">
+        <item>
+         <widget class="QCheckBox" name="checkOwned">
+          <property name="text">
+           <string>&amp;Aggregation</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkCritical">
+          <property name="text">
+           <string>&amp;Critical</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkFilter">
+          <property name="text">
+           <string>Fi&amp;lter</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupImplementation">
+       <property name="title">
+        <string>Implementation</string>
+       </property>
+       <layout class="QGridLayout" name="implementationGrid">
+        <item row="0" column="0">
+         <widget class="QRadioButton" name="radioStandard">
+          <property name="text">
+           <string>Stan&amp;dard</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QRadioButton" name="radioValueTree">
+          <property name="text">
+           <string>&amp;Value Tree</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QRadioButton" name="radioAvlTree">
+          <property name="text">
+           <string>AV&amp;L Tree</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="checkUniqueValueTree">
+          <property name="text">
+           <string>Uni&amp;que</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupTo">
+     <property name="title">
+      <string>&amp;To</string>
+     </property>
+     <layout class="QGridLayout" name="toGrid">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelToClass">
+        <property name="text">
+         <string>Class:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboToClass"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelToName">
+        <property name="text">
+         <string>Name:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="editToName">
+        <property name="maxLength">
+         <number>64</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelMember">
+        <property name="text">
+         <string>M&amp;ember:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QComboBox" name="comboMember"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelNote">
+     <property name="text">
+      <string>N&amp;ote:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editNote</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="editNote"/>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

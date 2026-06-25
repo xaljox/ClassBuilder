@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MemberDialog</class>
+ <widget class="QDialog" name="MemberDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>560</width>
+    <height>560</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Member</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QGridLayout" name="topGrid">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labelType">
+       <property name="text">
+        <string>Member &amp;Type:</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboType</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="comboType"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelName">
+       <property name="text">
+        <string>Member &amp;Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>editName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="editName"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labelTemplate">
+       <property name="text">
+        <string>Template Re&amp;ference:</string>
+       </property>
+       <property name="buddy">
+        <cstring>editTemplate</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="editTemplate"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupTypeProps">
+     <property name="title">
+      <string>Type properties</string>
+     </property>
+     <layout class="QGridLayout" name="typePropsGrid">
+      <item row="0" column="0">
+       <widget class="QCheckBox" name="checkConst">
+        <property name="text">
+         <string>&amp;Const</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QCheckBox" name="checkMutable">
+        <property name="text">
+         <string>M&amp;utable</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QCheckBox" name="checkReference">
+        <property name="text">
+         <string>&amp;Reference</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QCheckBox" name="checkPointer">
+        <property name="text">
+         <string>&amp;Pointer</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QCheckBox" name="checkPointerPointer">
+        <property name="text">
+         <string>Point&amp;er/Pointer</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QCheckBox" name="checkConstPointer">
+        <property name="text">
+         <string>Const Pointer</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QCheckBox" name="checkArray">
+        <property name="text">
+         <string>Arra&amp;y</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <widget class="QLineEdit" name="editArraySize"/>
+      </item>
+      <item row="1" column="3">
+       <widget class="QCheckBox" name="checkBitField">
+        <property name="text">
+         <string>&amp;Bit Field</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
+       <widget class="QSpinBox" name="spinBitFieldSize">
+        <property name="maximum">
+         <number>32</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="groupsLayout">
+     <item>
+      <widget class="QGroupBox" name="groupProperties">
+       <property name="title">
+        <string>Properties</string>
+       </property>
+       <layout class="QVBoxLayout" name="propertiesLayout">
+        <item>
+         <widget class="QCheckBox" name="checkDelete">
+          <property name="text">
+           <string>&amp;Delete</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkSerialize">
+          <property name="text">
+           <string>&amp;Serialize</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupAccess">
+       <property name="title">
+        <string>&amp;Access</string>
+       </property>
+       <layout class="QVBoxLayout" name="accessLayout">
+        <item>
+         <widget class="QCheckBox" name="checkStatic">
+          <property name="text">
+           <string>Static</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioAccessPublic">
+          <property name="text">
+           <string>Public</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioAccessProtected">
+          <property name="text">
+           <string>Protected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioAccessPrivate">
+          <property name="text">
+           <string>Private</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupGet">
+       <property name="title">
+        <string>&amp;Get method</string>
+       </property>
+       <layout class="QVBoxLayout" name="getLayout">
+        <item>
+         <widget class="QRadioButton" name="radioGetNone">
+          <property name="text">
+           <string>None</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioGetPublic">
+          <property name="text">
+           <string>Public</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioGetProtected">
+          <property name="text">
+           <string>Protected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioGetPrivate">
+          <property name="text">
+           <string>Private</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupSet">
+       <property name="title">
+        <string>Set &amp;method</string>
+       </property>
+       <layout class="QVBoxLayout" name="setLayout">
+        <item>
+         <widget class="QRadioButton" name="radioSetNone">
+          <property name="text">
+           <string>None</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioSetPublic">
+          <property name="text">
+           <string>Public</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioSetProtected">
+          <property name="text">
+           <string>Protected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioSetPrivate">
+          <property name="text">
+           <string>Private</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelInitialization">
+     <property name="text">
+      <string>Initial &amp;Value:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editInitialization</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="editInitialization">
+     <property name="maximumHeight">
+      <number>70</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelNote">
+     <property name="text">
+      <string>N&amp;ote:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editNote</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="editNote"/>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

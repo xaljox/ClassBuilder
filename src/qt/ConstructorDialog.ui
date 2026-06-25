@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ConstructorDialog</class>
+ <widget class="QDialog" name="ConstructorDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>470</width>
+    <height>340</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Constructor</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="topRow">
+     <item>
+      <widget class="QGroupBox" name="groupAccess">
+       <property name="title">
+        <string>&amp;Access</string>
+       </property>
+       <layout class="QVBoxLayout" name="accessLayout">
+        <item>
+         <widget class="QRadioButton" name="radioPublic">
+          <property name="text">
+           <string>Public</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioProtected">
+          <property name="text">
+           <string>Protected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioPrivate">
+          <property name="text">
+           <string>Private</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupProperties">
+       <property name="title">
+        <string>Properties</string>
+       </property>
+       <layout class="QGridLayout" name="propertiesLayout">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="checkInline">
+          <property name="text">
+           <string>&amp;Inline</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="checkExplicit">
+          <property name="text">
+           <string>&amp;Explicit</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="checkDllExport">
+          <property name="text">
+           <string>Dll E&amp;xport</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="checkDeclare">
+          <property name="text">
+           <string>&amp;Declare</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QCheckBox" name="checkImplement">
+          <property name="text">
+           <string>I&amp;mplement</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="checkDelete">
+          <property name="toolTip">
+           <string>Emit the declaration as '= delete' and suppress the implementation</string>
+          </property>
+          <property name="text">
+           <string>= de&amp;lete</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="labelCallingConvention">
+          <property name="text">
+           <string>&amp;Calling Convention:</string>
+          </property>
+          <property name="buddy">
+           <cstring>comboCallingConvention</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QComboBox" name="comboCallingConvention">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+          <item>
+           <property name="text">
+            <string/>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>__cdecl</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>__stdcall</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>__fastcall</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>STDMETHODCALLTYPE</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelNote">
+     <property name="text">
+      <string>N&amp;ote:</string>
+     </property>
+     <property name="buddy">
+      <cstring>plainTextNote</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="plainTextNote"/>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

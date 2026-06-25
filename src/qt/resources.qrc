@@ -1,0 +1,95 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>classbuilder.png</file>
+        <file alias="printportrait.bmp">../../res/printportrait.bmp</file>
+        <file alias="printlandscape.bmp">../../res/printlandscape.bmp</file>
+        <file alias="Toolbar.bmp">../../res/Toolbar.bmp</file>
+    </qresource>
+    <qresource prefix="/tree">
+        <file alias="vline.svg">tree/vline.svg</file>
+        <file alias="branch_more.svg">tree/branch_more.svg</file>
+        <file alias="branch_end.svg">tree/branch_end.svg</file>
+        <file alias="branch_top.svg">tree/branch_top.svg</file>
+        <file alias="branch_first.svg">tree/branch_first.svg</file>
+        <file alias="branch_closed.svg">tree/branch_closed.svg</file>
+        <file alias="branch_open.svg">tree/branch_open.svg</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file alias="file.ico">../../res/file.ico</file>
+        <file alias="fileselected.ico">../../res/fileselected.ico</file>
+        <file alias="class.ico">../../res/class.ico</file>
+        <file alias="inherit.ico">../../res/inherit.ico</file>
+        <file alias="public_member.ico">../../res/public_member.ico</file>
+        <file alias="protected_member.ico">../../res/protected_member.ico</file>
+        <file alias="private_member.ico">../../res/private_member.ico</file>
+        <file alias="public_constructor.ico">../../res/public_constructor.ico</file>
+        <file alias="protected_constructor.ico">../../res/protected_constructor.ico</file>
+        <file alias="private_constructor.ico">../../res/private_constructor.ico</file>
+        <file alias="public_destructor.ico">../../res/public_destructor.ico</file>
+        <file alias="protected_destructor.ico">../../res/protected_destructor.ico</file>
+        <file alias="private_destructor.ico">../../res/private_destructor.ico</file>
+        <file alias="public_method.ico">../../res/public_method.ico</file>
+        <file alias="protected_method.ico">../../res/protected_method.ico</file>
+        <file alias="private_method.ico">../../res/private_method.ico</file>
+        <file alias="single_act.ico">../../res/single_act.ico</file>
+        <file alias="single_pas.ico">../../res/single_pas.ico</file>
+        <file alias="owned_single_act.ico">../../res/owned_single_act.ico</file>
+        <file alias="owned_single_pas.ico">../../res/owned_single_pas.ico</file>
+        <file alias="multi_act.ico">../../res/multi_act.ico</file>
+        <file alias="multi_pas.ico">../../res/multi_pas.ico</file>
+        <file alias="owned_multi_act.ico">../../res/owned_multi_act.ico</file>
+        <file alias="owned_multi_pas.ico">../../res/owned_multi_pas.ico</file>
+        <file alias="static_multi_act.ico">../../res/static_multi_act.ico</file>
+        <file alias="static_multi_pas.ico">../../res/static_multi_pas.ico</file>
+        <file alias="static_owned_multi_act.ico">../../res/static_owned_multi_act.ico</file>
+        <file alias="static_owned_multi_pas.ico">../../res/static_owned_multi_pas.ico</file>
+        <file alias="cr_single_act.ico">../../res/cr_single_act.ico</file>
+        <file alias="cr_single_pas.ico">../../res/cr_single_pas.ico</file>
+        <file alias="cr_owned_single_act.ico">../../res/cr_owned_single_act.ico</file>
+        <file alias="cr_owned_single_pas.ico">../../res/cr_owned_single_pas.ico</file>
+        <file alias="cr_multi_act.ico">../../res/cr_multi_act.ico</file>
+        <file alias="cr_multi_pas.ico">../../res/cr_multi_pas.ico</file>
+        <file alias="cr_owned_multi_act.ico">../../res/cr_owned_multi_act.ico</file>
+        <file alias="cr_owned_multi.ico">../../res/cr_owned_multi.ico</file>
+        <file alias="cr_static_multi_act.ico">../../res/cr_static_multi_act.ico</file>
+        <file alias="cr_static_multi_pas.ico">../../res/cr_static_multi_pas.ico</file>
+        <file alias="cr_static_owned_multi_act.ico">../../res/cr_static_owned_multi_act.ico</file>
+        <file alias="cr_static_owned_multi_pas.ico">../../res/cr_static_owned_multi_pas.ico</file>
+        <file alias="type.ico">../../res/type.ico</file>
+        <file alias="argument.ico">../../res/argument.ico</file>
+        <file alias="methodgroup.ico">../../res/methodgroup.ico</file>
+        <file alias="membergroup.ico">../../res/membergroup.ico</file>
+        <file alias="membermethodgroup.ico">../../res/membermethodgroup.ico</file>
+        <file alias="classdiagram.ico">../../res/classdiagram.ico</file>
+        <file alias="public_inline_constructor.ico">../../res/public_inline_constructor.ico</file>
+        <file alias="protected_inline_constructor.ico">../../res/protected_inline_constructor.ico</file>
+        <file alias="private_inline_constructor.ico">../../res/private_inline_constructor.ico</file>
+        <file alias="public_inline_destructor.ico">../../res/public_inline_destructor.ico</file>
+        <file alias="protected_inline_destructor.ico">../../res/protected_inline_destructor.ico</file>
+        <file alias="private_inline_destructor.ico">../../res/private_inline_destructor.ico</file>
+        <file alias="public_inline_method.ico">../../res/public_inline_method.ico</file>
+        <file alias="protected_inline_method.ico">../../res/protected_inline_method.ico</file>
+        <file alias="private_inline_method.ico">../../res/private_inline_method.ico</file>
+        <file alias="externclass.ico">../../res/externclass.ico</file>
+        <file alias="public_empty_method.ico">../../res/public_empty_method.ico</file>
+        <file alias="protected_empty_method.ico">../../res/protected_empty_method.ico</file>
+        <file alias="private_empty_method.ico">../../res/private_empty_method.ico</file>
+        <file alias="sequencediagram.ico">../../res/sequencediagram.ico</file>
+        <file alias="actor.ico">../../res/actor.ico</file>
+        <file alias="analysis_phase.ico">../../res/Analysis.ico</file>
+        <file alias="design_phase.ico">../../res/Design.ico</file>
+        <file alias="implementation_phase.ico">../../res/Implementation.ico</file>
+        <file alias="test_phase.ico">../../res/Test.ico</file>
+        <file alias="complete_phase.ico">../../res/Complete.ico</file>
+        <!-- CD align-dropdown icons (Material Symbols), fill #00c000. Edit the
+             res/*.svg then rebuild; if a colour edit doesn't take, touch this
+             .qrc to force AUTORCC to re-embed (it misses listed-file changes). -->
+        <file alias="align_horizontal_left.svg">../../res/align_horizontal_left.svg</file>
+        <file alias="align_horizontal_center.svg">../../res/align_horizontal_center.svg</file>
+        <file alias="align_horizontal_right.svg">../../res/align_horizontal_right.svg</file>
+        <file alias="align_vertical_top.svg">../../res/align_vertical_top.svg</file>
+        <file alias="align_vertical_center.svg">../../res/align_vertical_center.svg</file>
+        <file alias="align_vertical_bottom.svg">../../res/align_vertical_bottom.svg</file>
+    </qresource>
+</RCC>

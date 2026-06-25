@@ -1,0 +1,22 @@
+// ClassBuilder_app.rc -- minimal Win32 icon resource for the all-Qt build.
+//
+// The full MFC ClassBuilder.rc (menus, dialogs, toolbars, the model-icon set)
+// is retired under mfc_retired/ -- Qt owns all of that now: menus/dialogs are
+// QWidgets and the model/tree icons come from the Qt resource system
+// (qt/resources.qrc). The ONLY thing that still must live in the EXE's native
+// Win32 resources is the application + document icons, because those are
+// consumed by the Windows shell (Explorer, the taskbar), not by Qt:
+//
+//   * IDI_APPICON sorts FIRST (lowest ID) so Explorer and the taskbar pick
+//     ClassBuilder.ico as the EXE's own icon  (was MFC IDR_MAINFRAME).
+//   * IDI_DOCICON is the document icon the .cbz file association points at
+//     (DefaultIcon = "...\ClassBuilder.exe,-2", -2 == resource id 2), so .cbz
+//     files are recognizable as ClassBuilder models  (was IDR_DESIGNTYPE_CBZ).
+//
+// Icon paths are relative to this .rc file's directory (res\).
+
+#define IDI_APPICON  1
+#define IDI_DOCICON  2
+
+IDI_APPICON  ICON  "ClassBuilder.ico"
+IDI_DOCICON  ICON  "ClassBuilderDoc.ico"

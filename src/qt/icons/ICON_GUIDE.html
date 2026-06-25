@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ClassBuilder — Icon Guide</title>
+<style>
+  :root { --fg:#1c2330; --muted:#5b6677; --line:#d7dde6; --accent:#2d6cdf;
+          --code-bg:#f4f6fa; --warn-bg:#fff8e1; --warn-line:#e8c14a;
+          --ok-bg:#eef7ee; --ok-line:#79b779; }
+  * { box-sizing:border-box; }
+  body { font-family:"Segoe UI",system-ui,Arial,sans-serif; color:var(--fg);
+         line-height:1.55; max-width:880px; margin:32px auto; padding:0 22px; }
+  h1 { font-size:1.7rem; margin:0 0 4px; }
+  h2 { font-size:1.2rem; margin:30px 0 8px; padding-bottom:5px;
+       border-bottom:2px solid var(--line); }
+  h3 { font-size:1.02rem; margin:20px 0 6px; }
+  .sub { color:var(--muted); margin:0 0 22px; }
+  code, kbd { font-family:"Cascadia Code",Consolas,monospace; font-size:.92em;
+              background:var(--code-bg); padding:1px 5px; border-radius:4px; }
+  pre { background:var(--code-bg); border:1px solid var(--line); border-radius:8px;
+        padding:12px 14px; overflow:auto; font-family:"Cascadia Code",Consolas,monospace;
+        font-size:.86rem; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:.93rem; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left;
+           vertical-align:top; }
+  th { background:var(--code-bg); }
+  .pill { display:inline-block; background:var(--accent); color:#fff;
+          font-size:.72rem; font-weight:600; padding:1px 8px; border-radius:10px;
+          vertical-align:middle; }
+  .note { border-radius:8px; padding:11px 14px; margin:14px 0; }
+  .warn { background:var(--warn-bg); border:1px solid var(--warn-line); }
+  .ok   { background:var(--ok-bg);   border:1px solid var(--ok-line); }
+  ul { margin:6px 0 6px; padding-left:22px; }
+  li { margin:3px 0; }
+  .path { color:var(--accent); font-family:"Cascadia Code",Consolas,monospace; }
+  footer { color:var(--muted); font-size:.82rem; margin-top:34px;
+           border-top:1px solid var(--line); padding-top:10px; }
+</style>
+</head>
+<body>
+
+<h1>ClassBuilder — Icon Guide</h1>
+<p class="sub">Where the icons live, how to modernise them to SVG one glyph at a
+time, and the gotchas. Everything icon-related sits under
+<span class="path">qt/icons/</span>.</p>
+
+<h2>The two icon sets</h2>
+<p>Both loaders prefer a redrawn <code>.svg</code> from <span class="path">qt/icons/</span>
+over the legacy raster, so the set can be modernised incrementally — add a single
+<code>.svg</code>, rebuild, and only that icon goes vector.</p>
+
+<table>
+  <tr>
+    <th>Set</th><th>Used for</th><th>Legacy source</th>
+    <th>SVG override (drop&nbsp;in&nbsp;<span class="path">qt/icons/</span>)</th><th>Code</th>
+  </tr>
+  <tr>
+    <td><b>Model / tree icons</b></td>
+    <td>tree node rows; the tree's Add buttons reuse a few</td>
+    <td><span class="path">ClassBuilder/res/&lt;name&gt;.ico</span><br>(one file per glyph)</td>
+    <td><code>&lt;name&gt;.svg</code> (same base name)</td>
+    <td><code>qt/QtModelIcons.cpp</code></td>
+  </tr>
+  <tr>
+    <td><b>Toolbar glyphs</b></td>
+    <td>the main / diagram / tree <b>toolbars</b> (Add&nbsp;Class, Add&nbsp;Note,
+        Add&nbsp;Lifeline, Delete, zoom, …)</td>
+    <td><span class="path">ClassBuilder/res/Toolbar.bmp</span><br>a 34-tile 16×16 <b>strip</b></td>
+    <td><code>tb_&lt;name&gt;.svg</code></td>
+    <td><code>qt/QtToolBarIcons.cpp</code></td>
+  </tr>
+</table>
+
+<h2>Toolbar glyphs — the "new" toolbar buttons</h2>
+<p>The toolbar icons were never individual files — they live as tiles inside the
+one bitmap strip <span class="path">res/Toolbar.bmp</span>. To give you something
+to trace, the strip is sliced into individual <b>transparent PNGs</b> in
+<span class="path">qt/icons/toolbar_src/</span>, named by glyph:</p>
+<pre>toolbar_src/00_file_new.png   05_read_source.png   06_save_source.png
+            10_edit_delete.png 21_add_note.png      22_add_lifeline.png
+            24_add_class.png   30_add_argument.png  31_add_virtuals.png
+            32_add_isclass.png 33_add_type.png      ...  (34 tiles)</pre>
+<p>Re-generate them any time the strip changes:</p>
+<pre>pwsh tools/slice_toolbar_bmp.ps1</pre>
+
+<h3>To replace a toolbar glyph</h3>
+<p>Draw <code>tb_&lt;name&gt;.svg</code> <b>in <span class="path">qt/icons/</span></b>
+— e.g. <code>tb_add_note.svg</code>, <code>tb_add_lifeline.svg</code>,
+<code>tb_edit_delete.svg</code>. <code>QtToolBarIcons.cpp</code> lists every
+<code>&lt;name&gt;</code> and the order; <code>Qt_ToolBarIcon(TG_*)</code> then
+prefers your SVG over the strip tile. The strip's mask colour is
+<code>RGB(192,192,192)</code> (made transparent on load) — your SVG just needs a
+transparent background.</p>
+
+<h2>Model / tree glyphs</h2>
+<p>Drop <code>&lt;name&gt;.svg</code> in <span class="path">qt/icons/</span> using
+the <b>same base name</b> as <span class="path">res/&lt;name&gt;.ico</span> (e.g.
+<code>public_member.svg</code>, <code>class.svg</code>).
+<code>QtModelIcons.cpp</code> lists all 67 base names. The <code>.ico</code> files
+are already individual, so open them in <span class="path">ClassBuilder/res/</span>
+directly as references — no slicing needed.</p>
+
+<h2>Size</h2>
+<p>The toolbars currently render at <b>16&nbsp;px</b> — the native size of the
+legacy glyphs (scaling that raster up looks muddy). Once crisp SVGs exist, bump
+the size: it's one line per toolbar, <code>setIconSize(QSize(20,&nbsp;20))</code>,
+in <code>QtShellWindow.cpp</code>, <code>ClassDiagramQtView.cpp</code>,
+<code>SequenceDiagramQtView.cpp</code> and <code>MainTreeQtView.cpp</code>
+(or hook them to one shared constant).</p>
+
+<div class="note warn">
+  <b>⚠ SVG module required.</b> The overrides only take effect once this Qt build
+  has the <b>Svg module</b> (<code>CB_HAVE_SVG</code>). The static Qt at
+  <span class="path">C:/Qt-static</span> is currently <i>qtbase-only</i>, so until
+  <code>qtsvg</code> is added (<span class="path">Projects/qt-static/build-static-qt.bat</span>),
+  the <code>.ico</code> / strip tiles are used and any <code>tb_*.svg</code> /
+  <code>&lt;name&gt;.svg</code> you add sit dormant — <i>no harm, no code change</i>.
+  When qtsvg arrives, just reconfigure CMake. SVGs here are bundled by the
+  <code>qt/icons/*.svg</code> glob in <code>CMakeLists.txt</code>.
+</div>
+
+<div class="note ok">
+  <b>✓ Incremental.</b> Both loaders fall back to the legacy raster per glyph, so
+  you can convert the set one icon at a time and never break the build.
+</div>
+
+<h2>Drawing tips</h2>
+<ul>
+  <li>Design on a pixel grid; keep shapes axis-aligned so the 16&nbsp;px render is crisp.</li>
+  <li>Many model icons are systematic variants (public/protected/private = one
+      glyph in three colours; relation icons = single/multi × act/pas ×
+      owned/static/cr). Draw the few base glyphs, then compose — not 60+ unique drawings.</li>
+  <li>The toolbar "Add&nbsp;X" glyphs are typically the node glyph + a small green
+      <code>+</code> badge; keep that family consistent.</li>
+  <li>Save as Optimized / Plain SVG.</li>
+</ul>
+
+<footer>
+  ClassBuilder icon guide · companion to <span class="path">qt/icons/README.md</span>
+  · loaders: <code>QtModelIcons.cpp</code> / <code>QtToolBarIcons.cpp</code>.
+</footer>
+
+</body>
+</html>

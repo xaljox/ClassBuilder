@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ClassDiagramDialog</class>
+ <widget class="QDialog" name="ClassDiagramDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>560</width>
+    <height>420</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Class Diagram</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="nameRow">
+     <item>
+      <widget class="QLabel" name="labelName">
+       <property name="text">
+        <string>&amp;Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEditName"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="pageRow">
+     <item>
+      <widget class="QLabel" name="labelPageSize">
+       <property name="text">
+        <string>Pa&amp;ge size:</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboPageSize</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboPageSize"/>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioPortrait">
+       <property name="text">
+        <string>&amp;Portrait</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioLandscape">
+       <property name="text">
+        <string>&amp;Landscape</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="pageRowSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="labelScale">
+       <property name="text">
+        <string>&amp;Scale:</string>
+       </property>
+       <property name="buddy">
+        <cstring>spinScale</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="spinScale">
+       <property name="suffix">
+        <string> %</string>
+       </property>
+       <property name="minimum">
+        <number>10</number>
+       </property>
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupAuto">
+     <property name="title">
+      <string>Automatically add to a class when it is placed on the diagram</string>
+     </property>
+     <layout class="QHBoxLayout" name="autoLayout">
+      <item>
+       <widget class="QGroupBox" name="groupMethods">
+        <property name="title">
+         <string>&amp;Methods</string>
+        </property>
+        <layout class="QHBoxLayout" name="methodsLayout">
+         <item>
+          <widget class="QCheckBox" name="checkPrivateMethods">
+           <property name="text">
+            <string>Private</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkProtectedMethods">
+           <property name="text">
+            <string>Protected</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkPublicMethods">
+           <property name="text">
+            <string>Public</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkGetSetMethods">
+           <property name="text">
+            <string>Get/Set</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupMembers">
+        <property name="title">
+         <string>Mem&amp;bers</string>
+        </property>
+        <layout class="QHBoxLayout" name="membersLayout">
+         <item>
+          <widget class="QCheckBox" name="checkPrivateMembers">
+           <property name="text">
+            <string>Private</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkProtectedMembers">
+           <property name="text">
+            <string>Protected</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkPublicMembers">
+           <property name="text">
+            <string>Public</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="captionRow">
+     <item>
+      <widget class="QLabel" name="labelCaption">
+       <property name="text">
+        <string>&amp;Caption:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditCaption</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEditCaption"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="noteRow">
+     <item>
+      <layout class="QVBoxLayout" name="noteCol">
+       <item>
+        <widget class="QLabel" name="labelNote">
+         <property name="text">
+          <string>N&amp;ote:</string>
+         </property>
+         <property name="buddy">
+          <cstring>plainTextNote</cstring>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPlainTextEdit" name="plainTextNote"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupMultiPage">
+       <property name="title">
+        <string>Multiple page support</string>
+       </property>
+       <layout class="QHBoxLayout" name="multiPageLayout">
+        <item>
+         <widget class="QLabel" name="labelPageIllustration">
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="multiPageRadios">
+          <item>
+           <widget class="QRadioButton" name="radioPage1">
+            <property name="text">
+             <string>&amp;1 page</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage2">
+            <property name="text">
+             <string>&amp;2 pages</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage4">
+            <property name="text">
+             <string>&amp;4 pages</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage8">
+            <property name="text">
+             <string>&amp;8 pages</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage16">
+            <property name="text">
+             <string>1&amp;6 pages</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

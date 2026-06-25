@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RelationDiagramOnlyDialog</class>
+ <widget class="QDialog" name="RelationDiagramOnlyDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>380</width>
+    <height>340</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Relation ClassDiagram Only</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <widget class="QGroupBox" name="groupFrom">
+     <property name="title">
+      <string>&amp;From</string>
+     </property>
+     <layout class="QFormLayout" name="fromLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelFromClass">
+        <property name="text">
+         <string>Class:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboFromClass"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelFromName">
+        <property name="text">
+         <string>Name:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineEditFromName">
+        <property name="maxLength">
+         <number>64</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelFromMultiplicity">
+        <property name="text">
+         <string>Multiplicity:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="lineEditFromMultiplicity"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="groupsRow">
+     <item>
+      <widget class="QGroupBox" name="groupType">
+       <property name="title">
+        <string>Association Type</string>
+       </property>
+       <layout class="QVBoxLayout" name="typeLayout">
+        <item>
+         <widget class="QRadioButton" name="radioSingle">
+          <property name="text">
+           <string>&amp;Single</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioMulti">
+          <property name="text">
+           <string>&amp;Multi</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioStaticMulti">
+          <property name="text">
+           <string>Static M&amp;ulti</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupProperties">
+       <property name="title">
+        <string>Association Properties</string>
+       </property>
+       <layout class="QVBoxLayout" name="propertiesLayout">
+        <item>
+         <widget class="QRadioButton" name="radioAssociation">
+          <property name="text">
+           <string>&amp;Association</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioAggregation">
+          <property name="text">
+           <string>A&amp;ggregation</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioComposition">
+          <property name="text">
+           <string>&amp;Composition</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupTo">
+     <property name="title">
+      <string>&amp;To</string>
+     </property>
+     <layout class="QFormLayout" name="toLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelToClass">
+        <property name="text">
+         <string>Class:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboToClass"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelToName">
+        <property name="text">
+         <string>Name:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineEditToName">
+        <property name="maxLength">
+         <number>64</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelToMultiplicity">
+        <property name="text">
+         <string>Multiplicity:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="lineEditToMultiplicity"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>NoteShapeDialog</class>
+ <widget class="QDialog" name="NoteShapeDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>460</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Note</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <widget class="QPlainTextEdit" name="plainTextNote"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="fontRow">
+     <item>
+      <widget class="QLabel" name="labelFontSize">
+       <property name="text">
+        <string>Font &amp;Size:</string>
+       </property>
+       <property name="buddy">
+        <cstring>spinFontHeight</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="spinFontHeight">
+       <property name="minimum">
+        <number>12</number>
+       </property>
+       <property name="maximum">
+        <number>96</number>
+       </property>
+       <property name="singleStep">
+        <number>4</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkForceFontSize">
+       <property name="text">
+        <string>&amp;Force Font Size to other notes</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="fontRowSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

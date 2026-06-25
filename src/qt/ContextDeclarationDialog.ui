@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ContextDeclarationDialog</class>
+ <widget class="QDialog" name="ContextDeclarationDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>700</width>
+    <height>440</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Context Declarations</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="bodyRow">
+     <item>
+      <widget class="QGroupBox" name="contextsGroup">
+       <property name="title">
+        <string>Contexts</string>
+       </property>
+       <layout class="QVBoxLayout" name="contextsLayout">
+        <item>
+         <widget class="QListWidget" name="listContexts">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="contextsButtons">
+          <item>
+           <widget class="QPushButton" name="buttonAdd">
+            <property name="text">
+             <string>&amp;Add</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="buttonRemove">
+            <property name="text">
+             <string>&amp;Remove</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="panelGroup">
+       <property name="title">
+        <string>Selected context</string>
+       </property>
+       <layout class="QVBoxLayout" name="panelLayout">
+        <item>
+         <layout class="QGridLayout" name="panelGrid">
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelName">
+            <property name="text">
+             <string>Context &amp;name:</string>
+            </property>
+            <property name="buddy">
+             <cstring>editName</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="editName"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="checkEnableDefine">
+            <property name="text">
+             <string>&amp;Define Declaration:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="editDefine"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="contextEditsRow">
+          <item>
+           <layout class="QVBoxLayout" name="declCol">
+            <item>
+             <widget class="QLabel" name="labelStartDecl">
+              <property name="text">
+               <string>Context prologue for declaration</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPlainTextEdit" name="editStartDecl"/>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelEndDecl">
+              <property name="text">
+               <string>Context epilogue for declaration</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPlainTextEdit" name="editEndDecl"/>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="implCol">
+            <item>
+             <widget class="QLabel" name="labelStartImpl">
+              <property name="text">
+               <string>Context prologue for implementation</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPlainTextEdit" name="editStartImpl"/>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelEndImpl">
+              <property name="text">
+               <string>Context epilogue for implementation</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPlainTextEdit" name="editEndImpl"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelNote">
+          <property name="text">
+           <string>N&amp;ote:</string>
+          </property>
+          <property name="buddy">
+           <cstring>editNote</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="editNote">
+          <property name="maximumHeight">
+           <number>90</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

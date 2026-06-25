@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SimilarLinesDialog</class>
+ <widget class="QDialog" name="SimilarLinesDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>620</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Insert similar lines</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QGridLayout" name="topGrid">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labelClass">
+       <property name="text">
+        <string>&amp;Class:</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboClass</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="comboClass"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelLine">
+       <property name="text">
+        <string>&amp;Line Template:</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboLine</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="comboLine">
+       <property name="editable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="midRow">
+     <item>
+      <widget class="QGroupBox" name="membersGroup">
+       <property name="title">
+        <string>&amp;Members</string>
+       </property>
+       <layout class="QVBoxLayout" name="membersLayout">
+        <item>
+         <widget class="QListWidget" name="listMembers">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="codeGroup">
+       <property name="title">
+        <string>Inserted Code</string>
+       </property>
+       <layout class="QVBoxLayout" name="codeLayout">
+        <item>
+         <widget class="QPlainTextEdit" name="editCode">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="optionsRow">
+     <item>
+      <widget class="QCheckBox" name="checkStatic">
+       <property name="text">
+        <string>&amp;Static Members</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkChrono">
+       <property name="text">
+        <string>&amp;Chronological Order</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkReverse">
+       <property name="text">
+        <string>&amp;Reverse</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="optionsSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

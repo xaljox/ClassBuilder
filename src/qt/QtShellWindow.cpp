@@ -1,0 +1,1218 @@
+// qt/QtShellWindow.cpp -- the Qt application shell. See QtShellWindow.h.
+
+#include "QtShellWindow.h"
+
+#include "QtShell.h"
+#include "QtApp.h"            // Qt_EnsureApplication
+#include "QtModelText.h"      // toQ
+#include "MainTreeQtView.h"
+#include "QtDiagramZoom.h"
+#include "QtAbout.h"          // Qt_ShowAboutDialog
+#include "QtCommandServer.h"  // QTcpServer-based command transport
+
+#include <QApplication>
+#include <QCloseEvent>
+#include <QDockWidget>
+#include <QMetaObject>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QCursor>
+#include <QElapsedTimer>
+#include <QHoverEvent>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QProxyStyle>
+#include <QSettings>
+#include <QStyleFactory>
+#include <QStyleOption>
+#include <QStatusBar>
+#include <QTabBar>
+#include <QToolBar>
+#include <QWindow>
+
+#include <functional>
+#include <string>
+
+// windows.h before the model headers (LONG_PTR / LONG / DWORD still used by model headers), matching the
+// other Qt views. Also WM_CB_COMMAND / MSG for the pipe marshal.
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+
+#define FORWARD_ONLY
+#include "ClassBuilderInclude.h"
+
+#include "ClassBuilderDoc.h"
+#include "CbShellHooks.h"
+#include "CbPlatformCompat.h"      // Cb_SetMainHwnd
+#include "CbCommandServer.h"
+#include "MainFrm.h"          // the MFC-free facade: s_loadInProgress + status hook
+
+namespace {
+
+QtShellWindow* g_shell = nullptr;   // the one shell window (set in ctor)
+
+// CMainFrame::s_statusTextFn target -- forwards the model-side status-bar
+// coordinate calls onto the shell's QLabel panes.
+void statusTextThunk(int pane, const char* text);
+
+// The dock tab hosting one model's tree. Clicking its close button must run
+// the model's save-prompt-and-close flow instead of just hiding the dock.
+class ModelDockWidget : public QDockWidget
+{
+public:
+    using QDockWidget::QDockWidget;
+    std::function<void()> onCloseRequested;   // runs closeEntry (deletes us)
+protected:
+    void closeEvent(QCloseEvent* e) override
+    {
+        // Never let Qt hide-on-close: closeEntry tears the dock down (or the
+        // user cancelled and it stays). Either way the event itself is moot.
+        e->ignore();
+        if (onCloseRequested)
+            onCloseRequested();
+    }
+};
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// Shell hooks (the CbShellHooks.h seam used by the pipe server)
+// ---------------------------------------------------------------------------
+
+namespace {
+CClassBuilderDoc* g_activeDoc = nullptr;
+}
+
+CClassBuilderDoc* Cb_ActiveDoc()                      { return g_activeDoc; }
+void              Cb_SetActiveDoc(CClassBuilderDoc* p){ g_activeDoc = p; }
+
+CClassBuilderDoc* Cb_ShellNewDocument()
+{
+    return g_shell ? g_shell->newDocument() : nullptr;
+}
+
+CClassBuilderDoc* Cb_ShellOpenDocument(const char* path)
+{
+    return g_shell ? g_shell->openDocument(QString::fromLocal8Bit(path)) : nullptr;
+}
+
+// Open-document enumeration + headless close (pipe document-selection seam).
+int               Cb_DocumentCount()                          { return g_shell ? g_shell->documentCount() : 0; }
+CClassBuilderDoc* Cb_DocumentAt(int index)                    { return g_shell ? g_shell->documentAt(index) : nullptr; }
+bool              Cb_IsDocumentOpen(CClassBuilderDoc* pDoc)   { return g_shell && g_shell->isDocumentOpen(pDoc); }
+bool              Cb_CloseDocument(CClassBuilderDoc* pDoc, bool save)
+{
+    return g_shell && g_shell->closeDocumentHeadless(pDoc, save);
+}
+
+// Host a diagram window in a dockable QDockWidget on the shell -- floating by
+// default, dockable/tabbable with the model trees (drag), floatable back. The
+// dock owns `view` and is WA_DeleteOnClose, so closing it (X) deletes the view,
+// which tears down its ViewModel (the model then knows the diagram is closed) --
+// the same net effect as closing the old standalone window. See QtApp.h.
+bool Qt_HostDiagramDock(QWidget* view)
+{
+    if (!g_shell || !view)
+        return false;
+    g_shell->hostDiagramDock(view);
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Dock separators
+// ---------------------------------------------------------------------------
+
+// True when `r` is the immovable separator between a dock area and the
+// zero-size central placeholder (the phantom "split bar" at the window edge).
+// A REAL split separator has dock content on BOTH sides; the phantom has it
+// on one side only (the other side is the central placeholder -- whose own
+// geometry is useless as a reference: QMainWindowLayout parks the zero-size
+// widget off-screen at (-500,-500)).
+static bool isPhantomSeparatorRect(const QMainWindow* mw, const QRect& r)
+{
+    bool before = false, after = false;            // along the thickness axis
+    const bool vertical = r.height() >= r.width(); // vertical bar: docks left/right
+    const QList<QDockWidget*> docks = mw->findChildren<QDockWidget*>();
+    for (const QDockWidget* d : docks)
+    {
+        if (!d->isVisible() || d->isFloating())
+            continue;
+        const QRect g = d->geometry();
+        if (vertical)
+        {
+            if (g.top() > r.bottom() || g.bottom() < r.top())
+                continue;                                       // no overlap
+            if (qAbs(g.right() - r.left()) <= 2)  before = true;
+            if (qAbs(g.left() - r.right()) <= 2)  after  = true;
+        }
+        else
+        {
+            if (g.left() > r.right() || g.right() < r.left())
+                continue;
+            if (qAbs(g.bottom() - r.top()) <= 2)  before = true;
+            if (qAbs(g.top() - r.bottom()) <= 2)  after  = true;
+        }
+    }
+    return !(before && after);
+}
+
+// Paints the QMainWindow dock separators: real ones in an explicit visible
+// colour (the platform default is a near-invisible hairline), the one being
+// DRAGGED in the app selection accent (consistent with the diagrams'
+// selection colour), and the phantom area/central boundary not at all. Set
+// per-widget on the shell only, so no other widget's painting is affected.
+class ShellSeparatorStyle : public QProxyStyle
+{
+public:
+    ShellSeparatorStyle(QtShellWindow* shell, QStyle* base)
+        : QProxyStyle(base)   // takes ownership of base
+        , _shell(shell)
+    {
+    }
+
+    void drawPrimitive(PrimitiveElement pe, const QStyleOption* opt,
+                       QPainter* p, const QWidget* w) const override
+    {
+        if (pe == PE_IndicatorDockWidgetResizeHandle && w == _shell)
+        {
+            if (!isPhantomSeparatorRect(_shell, opt->rect))
+            {
+                // During a separator drag the moving separator is the hovered
+                // one (State_MouseOver follows the layout's hover position).
+                // Accent from the APPLICATION palette -- a styled widget's
+                // own palette() resolves QSS defaults, not the theme accent.
+                const bool dragged = _shell->separatorDragging()
+ && (opt->state & QStyle::State_MouseOver);
+                p->fillRect(opt->rect,
+                            dragged ? QApplication::palette().color(
+                                          QPalette::Active, QPalette::Highlight)
+                                    : QColor(0x8a, 0x8a, 0x8a));
+            }
+            return;
+        }
+        QProxyStyle::drawPrimitive(pe, opt, p, w);
+    }
+
+    int pixelMetric(PixelMetric m, const QStyleOption* opt,
+                    const QWidget* w) const override
+    {
+        if (m == PM_DockWidgetSeparatorExtent)
+            return 4;   // the old QSS separator width
+        return QProxyStyle::pixelMetric(m, opt, w);
+    }
+
+private:
+    QtShellWindow* _shell;
+};
+
+// ---------------------------------------------------------------------------
+// QtShellWindow
+// ---------------------------------------------------------------------------
+
+// Bridge for the QtApp.cpp GUI-crash handler: rescue every open model when Qt
+// faults. Guards on g_shell so it stays safe even after the shell is gone.
+static void cbEmergencySaveAllDocs()
+{
+    if (g_shell)
+        g_shell->emergencySaveAll();
+}
+
+QtShellWindow::QtShellWindow()
+{
+    g_shell = this;
+    Cb_SetEmergencySaveHandler(&cbEmergencySaveAllDocs);
+
+    setWindowTitle("ClassBuilder");
+    resize(480, 720);
+
+    // Model trees + diagrams live in dock tabs (close cross per tab); per-dock
+    // title bars are hidden while TABBED (refreshDockChrome), shown when a pane
+    // is alone/split/floating.
+    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks
+                 | QMainWindow::AllowNestedDocks | QMainWindow::GroupedDragging);
+    setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
+
+    // Make the split separator clearly visible: the default is a hairline that's
+    // lost where two side-by-side docks meet, so a left/right split reads as one
+    // joined pane. Painted by ShellSeparatorStyle (was QSS QMainWindow::separator,
+    // but a stylesheet can't address INDIVIDUAL separators): the proxy style
+    // paints real separators in the explicit colour and SKIPS the phantom one
+    // QMainWindow always reserves between a dock area and the central widget --
+    // this shell is dock-only (zero-size central placeholder), so that boundary
+    // can never move, yet Qt still painted a dead "split bar" at the window edge.
+    auto* sepStyle = new ShellSeparatorStyle(
+        this, QStyleFactory::create(QApplication::style()->name()));
+    sepStyle->setParent(this);   // setStyle() does not take ownership
+    setStyle(sepStyle);
+
+    // Dock-only QMainWindow: a zero-size central placeholder, so the dock
+    // area (the model trees) takes the whole client space instead of leaving
+    // a dead central region the docks collapse around.
+    QWidget* placeholder = new QWidget(this);
+    placeholder->setMaximumSize(0, 0);
+    setCentralWidget(placeholder);
+
+    // Restore the saved geometry (the MFC frame persisted its placement too).
+    // restoreGeometry() returns false (or lands a degenerate rect) when the saved
+    // state predates a screen-layout change -- common on multi-monitor -- which left
+    // the window opening unusably tiny (0x0 central widget + not-yet-populated docks).
+    // Guard it: fall back to a sane default if the restore failed or came up too small.
+    QSettings settings("ClassBuilder", "ClassBuilder");
+    const QByteArray geo = settings.value("shell/geometry").toByteArray();
+    bool restored = !geo.isEmpty() && restoreGeometry(geo);
+    if (!restored || width() < 700 || height() < 500)
+        resize(1100, 750);
+
+    buildMenus();
+    buildToolBar();
+    buildStatusBar();
+    refreshDocIndicators();
+
+    CMainFrame::s_statusTextFn = statusTextThunk;
+
+    // The open-document source-freshness check the MFC frame ran on app
+    // activation (prompts to re-read changed sources into the model).
+    connect(qApp, &QApplication::applicationStateChanged,
+            this, &QtShellWindow::onAppStateChanged);
+
+    // Clicking into a floating tree (no tab raise involved) activates its
+    // model -- the menus, toolbar, and pipe follow the focused tree.
+    connect(qApp, &QApplication::focusChanged,
+            this, [this](QWidget*, QWidget* now) {
+        if (!now)
+            return;
+        for (DocEntry* entry : _entries)
+        {
+            if (entry->tree &&
+                (now == entry->tree || entry->tree->isAncestorOf(now)))
+            {
+                setActiveEntry(entry);
+                return;
+            }
+        }
+    });
+}
+
+QtShellWindow::~QtShellWindow()
+{
+    CMainFrame::s_statusTextFn = nullptr;
+    while (!_entries.isEmpty())
+        destroyEntry(_entries.last());
+    if (g_shell == this)
+        g_shell = nullptr;
+}
+
+void QtShellWindow::emergencySaveAll()
+{
+    // Last-resort save from the GUI-crash handler (QtApp.cpp). Touch ONLY the
+    // MODEL (CbArchive .cbz write) -- never Qt's widget layout, which is corrupt
+    // past the access violation. Each modified model -> "<path>.recovered.cbz"
+    // (or "<title>.recovered.cbz" when untitled), beside the original.
+    for (DocEntry* e : _entries)
+    {
+        if (!e || !e->doc)
+            continue;   // snapshot ALL open models (non-destructive, beside originals)
+        CbString path = e->doc->GetPathName();
+        CbString rec  = (path.IsEmpty() ? e->doc->GetTitle() : path) + ".recovered.cbz";
+        e->doc->WriteRecoveryCbz(rec);
+    }
+}
+
+void QtShellWindow::buildMenus()
+{
+    // --- File ---------------------------------------------------------------
+    QMenu* file = menuBar()->addMenu("&File");
+    file->addAction("&New...", QKeySequence::New, this, [this] {
+        newDocument();
+    });
+    file->addAction("&Open...", QKeySequence::Open, this, [this] {
+        const QString path = QFileDialog::getOpenFileName(
+            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)");
+        if (!path.isEmpty())
+            openDocument(path);
+    });
+    _actClose = file->addAction("&Close Model", QKeySequence("Ctrl+W"), this, [this] {
+        if (_active)
+            closeEntry(_active);
+    });
+    _actSave = file->addAction("&Save", QKeySequence::Save, this, [this] {
+        saveDocument();
+    });
+    _actSaveAs = file->addAction("Save &As...", this, [this] {
+        saveDocumentAs();
+    });
+    file->addSeparator();
+    _actSaveSource = file->addAction("Save Sou&rce...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->FileSaveSource();
+    });
+    _actReadSource = file->addAction("Read Sour&ce...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->FileReadSource();
+    });
+    _actDeleteSource = file->addAction("De&lete Source", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->FileDeleteSource();
+    });
+    file->addSeparator();
+    file->addAction("E&xit", QKeySequence("Alt+F4"), this, [this] {
+        close();
+    });
+
+    // --- Edit (Undo / Redo; the per-node commands live on the tree) ---------
+    QMenu* edit = menuBar()->addMenu("&Edit");
+    _actUndo = edit->addAction("&Undo", QKeySequence::Undo, this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->Undo();
+    });
+    _actRedo = edit->addAction("&Redo", QKeySequence::Redo, this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->Redo();
+    });
+    connect(edit, &QMenu::aboutToShow, this, [this] {
+        CClassBuilderDoc* doc = activeDoc();
+        _actUndo->setEnabled(doc && doc->CanUndo());
+        _actRedo->setEnabled(doc && doc->CanRedo());
+    });
+
+    // --- Project -------------------------------------------------------------
+    QMenu* project = menuBar()->addMenu("&Project");
+    _actSettings = project->addAction("&Settings...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectSettings();
+    });
+    _actAddSerialize = project->addAction("Add Seriali&ze...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectAddSerialize();
+    });
+    _actRefreshIds = project->addAction("&Refresh Object IDs", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectRefreshObjectIds();
+    });
+    connect(project, &QMenu::aboutToShow, this, [this] {
+        CClassBuilderDoc* doc = activeDoc();
+        _actSettings->setEnabled(doc != nullptr);
+        _actAddSerialize->setEnabled(doc && doc->CanAddSerialize());
+        _actRefreshIds->setEnabled(doc != nullptr);
+    });
+
+    // --- View (zoom routes to the active diagram window) --------------------
+    QMenu* view = menuBar()->addMenu("&View");
+
+    // New Window: open another FULL-tree view of the active model in its own window
+    // (the MFC "Window -> New Window"; "New Sub Window" -- a node-scoped view -- lives
+    // in the tree's context menu). A peer mirror: its own TreeViewModel registers with
+    // the doc, so it live-refreshes and closes with the document.
+    QAction* actNewWindow = view->addAction("&New Window", [this] {
+        if (CClassBuilderDoc* doc = activeDoc())
+        {
+            // A second FULL-tree view, hosted as a DOCKABLE shell dock (the same path
+            // the diagram windows use) so it can dock / tab / split with the others and
+            // receive docks -- unlike the standalone "New Sub Window" peer. hostDiagram-
+            // Dock tracks it, manages its title-bar chrome, and WA_DeleteOnClose-deletes
+            // it on close (the MainTreeQtView dtor unregisters its TreeViewModel).
+            auto* tree = new MainTreeQtView(&doc->GetDataModelDoc(), (void*)winId());
+            if (_active && _active->dock)
+                tree->setWindowTitle(_active->dock->windowTitle());   // model name as the dock title
+            hostDiagramDock(tree);
+        }
+    });
+    view->addSeparator();
+
+    _actZoomIn   = view->addAction("Zoom &In",   QKeySequence("Ctrl++"), [] { Qt_DiagramZoom(+1); });
+    _actZoomOut  = view->addAction("Zoom &Out",  QKeySequence("Ctrl+-"), [] { Qt_DiagramZoom(-1); });
+    _actZoomFull = view->addAction("Zoom &Full", [] { Qt_DiagramZoom(0); });
+    connect(view, &QMenu::aboutToShow, this, [this, actNewWindow] {
+        actNewWindow->setEnabled(activeDoc() != nullptr);
+        const bool on = Qt_DiagramZoomAvailable();
+        _actZoomIn->setEnabled(on);
+        _actZoomOut->setEnabled(on);
+        _actZoomFull->setEnabled(on);
+    });
+
+    // --- Help ----------------------------------------------------------------
+    QMenu* help = menuBar()->addMenu("&Help");
+    help->addAction("&About ClassBuilder...", this, [this] {
+        Qt_ShowAboutDialog((void*)winId());
+    });
+
+    // File-menu enabled state follows the active doc.
+    connect(file, &QMenu::aboutToShow, this, [this] {
+        CClassBuilderDoc* doc = activeDoc();
+        const bool hasDoc  = doc != nullptr;
+        const bool hasPath = hasDoc && !doc->GetPathName().IsEmpty();
+        _actClose->setEnabled(hasDoc);
+        _actSave->setEnabled(hasDoc && doc->IsModified());
+        _actSaveAs->setEnabled(hasDoc);
+        _actSaveSource->setEnabled(hasPath);
+        _actReadSource->setEnabled(hasPath);
+        _actDeleteSource->setEnabled(hasPath);
+    });
+}
+
+void QtShellWindow::buildToolBar()
+{
+    // App-level buttons (doc lifecycle, source round-trip). The view-specific
+    // buttons live on each view's own toolbar (tree: Add*/Filters/Find + Undo/
+    // Redo; diagrams: zoom) -- per-view bars instead of the old MFC single bar
+    // with per-view enabling. Undo/Redo deliberately live ONLY on the tree
+    // bar: with several models open it must be unambiguous WHICH model an undo
+    // hits (a stray Save is recoverable, an undo on the wrong model is not).
+    // Theme icons (Qt's built-in fallback theme) for the standard operations;
+    // text for the CB-specific ones until dedicated SVGs are drawn.
+    QToolBar* tb = addToolBar("Main");
+    tb->setObjectName("mainToolBar");
+    tb->setMovable(false);
+
+    _tbNew = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew),
+                           "New", this, [this] {
+        newDocument();
+    });
+    _tbOpen = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen),
+                            "Open", this, [this] {
+        const QString path = QFileDialog::getOpenFileName(
+            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)");
+        if (!path.isEmpty())
+            openDocument(path);
+    });
+    _tbSave = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSave),
+                            "Save", this, [this] {
+        saveDocument();
+        updateToolBarEnables();
+    });
+    tb->addSeparator();
+    _tbReadSource = tb->addAction("Read Source", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->FileReadSource();
+    });
+    _tbWriteSource = tb->addAction("Write Source", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->FileSaveSource();
+    });
+
+    _tbNew->setToolTip("New model (Ctrl+N)");
+    _tbOpen->setToolTip("Open model (Ctrl+O)");
+    _tbSave->setToolTip("Save model (Ctrl+S)");
+    _tbReadSource->setToolTip("Read source files back into the model");
+    _tbWriteSource->setToolTip("Generate source files from the model");
+
+    updateToolBarEnables();
+}
+
+void QtShellWindow::updateToolBarEnables()
+{
+    CClassBuilderDoc* doc = activeDoc();
+    const bool hasDoc  = doc != nullptr;
+    const bool hasPath = hasDoc && !doc->GetPathName().IsEmpty();
+    _tbSave->setEnabled(hasDoc && doc->IsModified());
+    _tbReadSource->setEnabled(hasPath);
+    _tbWriteSource->setEnabled(hasPath);
+}
+
+void QtShellWindow::buildStatusBar()
+{
+    // Four permanent panes: Width / Height / X / Y (the old MFC status bar's
+    // coordinate fields, fed by the CMainFrame facade hook).
+    for (int i = 0; i < 4; ++i)
+    {
+        _statusPane[i] = new QLabel(this);
+        _statusPane[i]->setMinimumWidth(70);
+        statusBar()->addPermanentWidget(_statusPane[i]);
+    }
+}
+
+namespace {
+void statusTextThunk(int pane, const char* text)
+{
+    if (g_shell)
+        QMetaObject::invokeMethod(g_shell, [pane, t = QString::fromLocal8Bit(text)] {
+            g_shell->setStatusPane(pane, t);
+        }, Qt::QueuedConnection);
+}
+} // namespace
+
+void QtShellWindow::setStatusPane(int pane, const QString& text)
+{
+    if (pane >= 0 && pane < 4 && _statusPane[pane])
+        _statusPane[pane]->setText(text);
+}
+
+// ---------------------------------------------------------------------------
+// Document lifecycle
+// ---------------------------------------------------------------------------
+
+CClassBuilderDoc* QtShellWindow::activeDoc() const
+{
+    return _active ? _active->doc : nullptr;
+}
+
+QtShellWindow::DocEntry* QtShellWindow::addDocument(CClassBuilderDoc* doc)
+{
+    DocEntry* entry = new DocEntry;
+    entry->doc  = doc;
+    entry->tree = new MainTreeQtView(&doc->GetDataModelDoc(), (void*)winId());
+
+    ModelDockWidget* dock = new ModelDockWidget(QString(), this);
+    dock->setWidget(entry->tree);
+    dock->onCloseRequested = [this, entry] { closeEntry(entry); };
+    entry->dock = dock;
+
+    // Chrome is managed centrally by refreshDockChrome: hidden per-dock title
+    // bar when TABBED (the tab is the handle), default draggable title bar when
+    // ALONE in a split or FLOATING. NO force-tabify any more -- a tree dropped
+    // on a left/right edge is ALLOWED to split side-by-side (two views next to
+    // each other, to drag model items between them), and a lone/split pane keeps
+    // a title-bar handle so it stays movable/closable. Deferred so the swap runs
+    // after the layout transition (a synchronous swap mid-signal raced it bald).
+    auto deferChrome = [this] {
+        QMetaObject::invokeMethod(this, [this] {
+            refreshDockChrome();
+            wireDockTabBars();
+        }, Qt::QueuedConnection);
+    };
+    connect(dock, &QDockWidget::topLevelChanged, this, [this, dock, deferChrome](bool floating) {
+        if (auto* tree = qobject_cast<MainTreeQtView*>(dock->widget()))
+            tree->setFloating(floating);   // refresh the tree bar's Undo/Redo enables
+        deferChrome();
+    });
+    connect(dock, &QDockWidget::dockLocationChanged, this,
+            [deferChrome](Qt::DockWidgetArea){ deferChrome(); });
+
+    addDockWidget(Qt::LeftDockWidgetArea, dock);
+    // Tab onto the newest IN-WINDOW model; tabifying onto a floating dock
+    // would add the new model to that floating window instead of the shell.
+    for (int i = _entries.size() - 1; i >= 0; --i)
+    {
+        if (!_entries[i]->dock->isFloating())
+        {
+            tabifyDockWidget(_entries[i]->dock, dock);
+            break;
+        }
+    }
+    dock->setFloating(false);
+    dock->show();
+    dock->raise();
+    wireDockTabBars();
+    refreshDockChrome();   // single model -> title-bar handle; tabbed -> hidden
+
+    // Raising a tab activates its model (for floating trees, focusChanged
+    // in the ctor covers activation). Move keyboard focus along: if it stayed
+    // in the now-hidden tree, the focus tracker would flip activation right
+    // back to the hidden model (window title vs raised tab mismatch).
+    connect(dock, &QDockWidget::visibilityChanged, this, [this, entry](bool vis) {
+        if (vis)
+        {
+            setActiveEntry(entry);
+            if (entry->tree)
+                entry->tree->setFocus();
+        }
+    });
+
+    _entries.append(entry);
+    setActiveEntry(entry);
+    refreshDocIndicators();
+    return entry;
+}
+
+void QtShellWindow::wireDockTabBars()
+{
+    // QMainWindow creates internal QTabBars for tabified docks lazily; give
+    // every new one close crosses and route the cross to the model-close
+    // flow. tabData() holds the QDockWidget* (long-standing Qt behaviour;
+    // unmatched data just means an unrelated tab bar -- ignored).
+    // Main-window dock tab bars only. NB: extending this to also wire the tab bars
+    // inside floating QDockWidgetGroupWindows (to give float-group tabs close crosses)
+    // introduced an UNCAUGHT crash in the multi-tab float-group teardown (2026-06-19)
+    // -- reverted. Revisit float-group tab chrome only as a carefully-tested pass.
+    const QList<QTabBar*> bars =
+        findChildren<QTabBar*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QTabBar* bar : bars)
+    {
+        if (bar->property("cbDocTabsWired").toBool())
+            continue;
+        bar->setProperty("cbDocTabsWired", true);
+        bar->setTabsClosable(true);
+        bar->setElideMode(Qt::ElideRight);
+        // The stock Win11 style barely distinguishes the selected tab (text
+        // dim only) -- accent top edge + bold + grey block for the selected
+        // tab; unselected tabs stay white so they recede into the empty
+        // stretch of the tab row. Explicit colours from the APP palette:
+        // palette(...) refs inside QSS resolve against QSS defaults instead
+        // (same trap as the theme-colour memory note).
+        const QPalette appPal = QApplication::palette();
+        const QString selBg   = appPal.color(QPalette::Active, QPalette::Window)
+                                    .darker(112).name();
+        const QString unselBg = appPal.color(QPalette::Active, QPalette::Base).name();
+        const QString accent  = appPal.color(QPalette::Active, QPalette::Highlight).name();
+        const QString mid     = appPal.color(QPalette::Active, QPalette::Mid).name();
+        bar->setStyleSheet(QString(
+            "QTabBar::tab { padding: 5px 12px; border: 1px solid %1;"
+            "  border-bottom: none; background: %2; }"
+            "QTabBar::tab:selected { background: %3;"
+            "  border-top: 3px solid %4; font-weight: bold; }"
+            "QTabBar::tab:!selected { margin-top: 3px; }")
+            .arg(mid, unselBg, selBg, accent));
+        connect(bar, &QTabBar::tabCloseRequested, this, [this, bar](int index) {
+            const auto dockPtr =
+                reinterpret_cast<QDockWidget*>(bar->tabData(index).toULongLong());
+            for (DocEntry* entry : _entries)
+            {
+                if (entry->dock == dockPtr)
+                {
+                    closeEntry(entry);
+                    return;
+                }
+            }
+            // Diagram dock (not a model tree): close it. WA_DeleteOnClose deletes
+            // the dock + view, which tears down the diagram's ViewModel.
+            if (dockPtr && _diagramDocks.contains(dockPtr))
+                dockPtr->close();
+        });
+        // No event filter: tab tear-off is Qt-native via GroupedDragging --
+        // dragging a tab off the row floats that dock and continues the drag
+        // (drop zones, one-step re-dock).
+    }
+}
+
+void QtShellWindow::hostDiagramDock(QWidget* view)
+{
+    // The diagram view sets its own size in its ctor (e.g. 900x700); use that.
+    // (The QDialog's sizeHint collapses to a thin bar -- the earlier "opens as
+    // a bar".) Floor it so a stray tiny size still gives a usable window.
+    const QSize wantSize = view->size().expandedTo(QSize(820, 620));
+
+    QDockWidget* dock = new QDockWidget(view->windowTitle(), this);
+    dock->setWidget(view);
+    dock->setAttribute(Qt::WA_DeleteOnClose, true);   // close -> delete dock+view (tears down the ViewModel)
+    dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    _diagramDocks.append(dock);
+
+    // Keep diagram chrome consistent with the trees as the layout changes:
+    // hidden title bar when tabbed (the tab is the handle), default bar when
+    // alone or floating (so there's always something to grab -- splits stay
+    // usable). Deferred so the title-bar swap runs AFTER the layout transition
+    // (a synchronous swap mid-signal can leave a floating dock bald). wireDock-
+    // TabBars styles + close-wires the (possibly new) tab to match the trees.
+    auto onLayout = [this] {
+        QMetaObject::invokeMethod(this, [this] {
+            refreshDockChrome();
+            wireDockTabBars();
+            // refreshDockChrome deleteLater's the swapped-out title-bar widgets.
+            // FLUSH them now (same fix as the model-close relayout below): a dock
+            // chrome widget left pending-delete lingers in Qt's dock layout state
+            // and becomes the garbage widget the GroupedDragging tear-off / exit
+            // reparentWidgets dereferences (AV @ 0xFFFF...). Keep the state clean
+            // at every layout transition so a later save/restore can't trip on it.
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        }, Qt::QueuedConnection);
+    };
+    connect(dock, &QDockWidget::topLevelChanged,    this, [onLayout](bool){ onLayout(); });
+    connect(dock, &QDockWidget::dockLocationChanged, this, [onLayout](Qt::DockWidgetArea){ onLayout(); });
+    // Closing one of two tabbed docks leaves the OTHER alone with no signal of
+    // its own -> re-run the chrome so the survivor regains its title bar.
+    connect(dock, &QObject::destroyed, this, [onLayout](QObject*){ onLayout(); });
+
+    // Open floating with the default (draggable) title bar at a real size; the
+    // user docks/tabs it by dragging, exactly like a tree window.
+    addDockWidget(Qt::RightDockWidgetArea, dock);
+    dock->setFloating(true);
+
+    // Place it explicitly. Qt's default float position derives from the dock's
+    // in-shell spot; after a monitor change, or when the content-sized view is
+    // taller than the display, that can land the title bar above the screen
+    // edge -- an unmovable, unclosable window. Center over the shell, cap the
+    // size to the screen's available area (40px slack for the window frame),
+    // and clamp so the title bar always stays reachable.
+    const QRect avail = screen()->availableGeometry();
+    const QSize sz = wantSize.boundedTo(
+        QSize(avail.width() - 16, avail.height() - 40));
+    dock->resize(sz);
+    QRect place(QPoint(), sz);
+    place.moveCenter(frameGeometry().center());
+    place.moveLeft(qBound(avail.left(), place.left(),
+                          avail.left() + avail.width() - sz.width()));
+    place.moveTop (qBound(avail.top(),  place.top(),
+                          avail.top() + avail.height() - sz.height()));
+    dock->move(place.topLeft());
+
+    dock->show();
+    dock->raise();
+    dock->activateWindow();
+
+    // Open floating with a normal draggable title bar; the user docks/tabs it by
+    // dragging. onLayout() runs refreshDockChrome for the tabbed/alone chrome.
+    onLayout();
+}
+
+void QtShellWindow::refreshDockChrome()
+{
+    // Every managed dock -- model trees AND diagram windows -- follows the same
+    // rule: hidden per-dock title bar when TABBED (the tab is the handle), the
+    // default draggable title bar when ALONE in a split or FLOATING (so a lone
+    // pane is still movable/closable). This is what lets trees and diagrams be
+    // dropped left/right side-by-side: a split pane keeps a grab handle.
+    _diagramDocks.removeAll(QPointer<QDockWidget>(nullptr));   // drop closed docks
+    QList<QDockWidget*> all;
+    for (DocEntry* e : _entries)
+        if (e->dock) all.append(e->dock);
+    for (const QPointer<QDockWidget>& p : _diagramDocks)
+        if (p) all.append(p.data());
+
+    for (QDockWidget* d : all)
+    {
+        // Never hide the title bar, and never call setTitleBarWidget() AT ALL. We used to
+        // hide it for main-shell tabs (swap in an empty placeholder, restore with
+        // setTitleBarWidget(nullptr) on tear-off); that swap could not survive a dock<->float
+        // reparent -- the torn-off dock came back HEADLESS and a drop onto it AV'd in Qt's
+        // reparentWidgets (JV-confirmed 2026-06-19). ANY setTitleBarWidget() call -- even
+        // nullptr on an already-default bar -- can trigger that, so we make none; each dock
+        // simply keeps its default (closable, draggable) title bar.
+        //
+        // We also do NOT try to force float-group member close buttons here: setTitleBarWidget
+        // VANISHES the bar, and a setFeatures(Closable) toggle either does nothing (this
+        // refresh isn't even triggered when an initial split forms) or renders STRAY,
+        // non-functional buttons on tabbed groups (JV screenshots 2026-06-19). So float-group
+        // member close-button layout AND the group window's own title-bar PRESENCE are left
+        // entirely to Qt -- which is inconsistent (esp. the initial 2-window split until a tab
+        // appears). True consistency needs the paused deeper work: a QDockWidgetGroupWindow
+        // source patch or a custom group title bar. (Tear-crash stays fixed by the patched
+        // reparentToMainWindow -- savedState.clear().)
+        const QDockWidget::DockWidgetFeatures f = d->features();
+        d->setFeatures(f | QDockWidget::DockWidgetFloatable);
+    }
+}
+
+void QtShellWindow::setActiveEntry(DocEntry* entry)
+{
+    if (_active == entry)
+        return;
+    _active = entry;
+    Cb_SetActiveDoc(entry ? entry->doc : nullptr);
+    refreshDocIndicators();
+}
+
+bool QtShellWindow::closeEntry(DocEntry* entry)
+{
+    if (!entry || !maybeSave(entry))
+        return false;
+    destroyEntry(entry);
+    return true;
+}
+
+// --- Open-document enumeration + headless close (pipe document-selection seam) ---
+
+int QtShellWindow::documentCount() const
+{
+    return _entries.size();
+}
+
+CClassBuilderDoc* QtShellWindow::documentAt(int index) const
+{
+    return (index >= 0 && index < _entries.size()) ? _entries[index]->doc : nullptr;
+}
+
+bool QtShellWindow::isDocumentOpen(CClassBuilderDoc* pDoc) const
+{
+    for (DocEntry* e : _entries)
+        if (e->doc == pDoc)
+            return true;
+    return false;
+}
+
+bool QtShellWindow::closeDocumentHeadless(CClassBuilderDoc* pDoc, bool save)
+{
+    for (DocEntry* e : _entries)
+    {
+        if (e->doc != pDoc)
+            continue;
+        // Headless: no save prompt. Save first only when asked AND the doc already
+        // has a path (an untitled doc would otherwise pop a Save-As dialog and block
+        // the pipe worker's SendMessage). Then tear down exactly like a GUI close.
+        if (save && e->doc && !e->doc->GetPathName().IsEmpty())
+            e->doc->DoSave();
+        destroyEntry(e);
+        return true;
+    }
+    return false;
+}
+
+void QtShellWindow::destroyEntry(DocEntry* entry)
+{
+    _entries.removeOne(entry);
+    if (_active == entry)
+        _active = nullptr;
+
+    // Tree first (its TreeViewModel unregisters from the doc), then the doc
+    // (DeleteContents tears down the diagram ViewModels, which closes any
+    // floating Qt diagram windows). The dock dies via deleteLater, so cut its
+    // signals first -- a late visibilityChanged must not touch the freed entry.
+    if (entry->dock)
+    {
+        entry->dock->disconnect(this);
+        static_cast<ModelDockWidget*>(entry->dock)->onCloseRequested = nullptr;
+        entry->dock->setWidget(nullptr);
+        entry->dock->deleteLater();
+    }
+    delete entry->tree;
+    if (entry->doc)
+    {
+        if (Cb_ActiveDoc() == entry->doc)
+            Cb_SetActiveDoc(nullptr);
+        delete entry->doc;
+    }
+    delete entry;
+
+    if (!_active && !_entries.isEmpty())
+    {
+        setActiveEntry(_entries.last());
+        _entries.last()->dock->raise();
+    }
+    refreshDocIndicators();
+    // Closing a model can leave a surviving tab-mate alone -> re-run the chrome
+    // (deferred: the dock dies via deleteLater, so let the layout settle first).
+    QMetaObject::invokeMethod(this, [this] {
+        refreshDockChrome();
+        wireDockTabBars();
+        // The closed model's docks die via deleteLater; FLUSH those deferred
+        // deletes so they're really gone first -- otherwise the relayout below
+        // still sees them and leaves the orphaned separators (the lingering
+        // "split bars") behind. Then force QMainWindow to recompute its dock
+        // layout: a 1px resize-nudge mirrors the manual resize that clears them;
+        // when maximized (resize is ignored) re-seat the central widget instead.
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        const QSize s = size();
+        if (!isMaximized() && !isFullScreen() && s.width() > 2)
+        {
+            resize(s.width() - 1, s.height());
+            resize(s);
+        }
+        else if (QWidget* central = takeCentralWidget())
+        {
+            setCentralWidget(central);
+        }
+    }, Qt::QueuedConnection);
+}
+
+CClassBuilderDoc* QtShellWindow::newDocument()
+{
+    CClassBuilderDoc* doc = new CClassBuilderDoc;
+    doc->SetStateChangedHook(&QtShellWindow::docStateChangedThunk, this);
+    doc->SetPostFlushHook(&QtShellWindow::docPostFlushThunk, this);
+    if (!doc->OnNewDocument())
+    {
+        delete doc;
+        return nullptr;
+    }
+    return addDocument(doc)->doc;
+}
+
+CClassBuilderDoc* QtShellWindow::openDocument(const QString& path)
+{
+    // Already open? Activate that tab instead of loading a second doc on the
+    // same file (two models writing one .cbz would be a corruption hazard).
+    const QString wanted = QFileInfo(path).absoluteFilePath();
+    for (DocEntry* entry : _entries)
+    {
+        const QString open =
+            QFileInfo(toQ(entry->doc->GetPathName())).absoluteFilePath();
+        if (!open.isEmpty() && open.compare(wanted, Qt::CaseInsensitive) == 0)
+        {
+            entry->dock->raise();
+            setActiveEntry(entry);
+            return entry->doc;
+        }
+    }
+
+    CClassBuilderDoc* doc = new CClassBuilderDoc;
+    doc->SetStateChangedHook(&QtShellWindow::docStateChangedThunk, this);
+    doc->SetPostFlushHook(&QtShellWindow::docPostFlushThunk, this);
+    if (!doc->OnOpenDocument(path.toLocal8Bit().constData()))
+    {
+        delete doc;
+        return nullptr;
+    }
+    DocEntry* entry = addDocument(doc);
+
+    // Source-freshness check at OPEN (the MFC shell ran it in the view's
+    // OnInitialUpdate): a freshly started app never re-activates before the
+    // user starts working, so the activation-time check alone misses sources
+    // edited while the model was closed. Deferred so the window is up first.
+    // Funnels through checkSourceFreshness() (debounced) so this and the
+    // reactivation check that the File-Open dialog triggers don't double-prompt.
+    QMetaObject::invokeMethod(this, [this] { checkSourceFreshness(); },
+                              Qt::QueuedConnection);
+
+    return entry->doc;
+}
+
+bool QtShellWindow::saveDocument()
+{
+    CClassBuilderDoc* doc = activeDoc();
+    if (!doc)
+        return false;
+    if (doc->GetPathName().IsEmpty())
+        return saveDocumentAs();
+    return doc->DoSave();
+}
+
+bool QtShellWindow::saveDocumentAs()
+{
+    CClassBuilderDoc* doc = activeDoc();
+    if (!doc)
+        return false;
+    QString initial = toQ(doc->GetPathName());
+    QString path = QFileDialog::getSaveFileName(
+        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz)");
+    if (path.isEmpty())
+        return false;
+    if (!path.endsWith(".cbz", Qt::CaseInsensitive))
+        path += ".cbz";
+
+    const bool ok = doc->OnSaveDocument(path.toLocal8Bit().constData()) != 0;
+    if (ok)
+        doc->SetPathName(path.toLocal8Bit().constData());
+    refreshDocIndicators();
+    return ok;
+}
+
+bool QtShellWindow::maybeSave(DocEntry* entry)
+{
+    if (!entry->doc || !entry->doc->IsModified())
+        return true;
+
+    const QMessageBox::StandardButton ret = QMessageBox::warning(
+        this, "ClassBuilder",
+        QString("Save changes to %1?").arg(toQ(entry->doc->GetTitle())),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    if (ret == QMessageBox::Save)
+    {
+        // Save THIS model (Save As needs it active for the file dialog).
+        setActiveEntry(entry);
+        return saveDocument();
+    }
+    return ret == QMessageBox::Discard;
+}
+
+void QtShellWindow::refreshDocIndicators()
+{
+    // Dock tab titles carry the per-model dirty marker; the window title
+    // follows the active model.
+    for (DocEntry* entry : _entries)
+    {
+        QString docTitle = toQ(entry->doc->GetTitle());
+        if (docTitle.isEmpty())
+            docTitle = "Untitled";
+        if (entry->doc->IsModified())
+            docTitle += "*";
+        entry->dock->setWindowTitle(docTitle);
+    }
+
+    QString title = "ClassBuilder";
+    if (_active)
+    {
+        QString docTitle = toQ(_active->doc->GetTitle());
+        if (docTitle.isEmpty())
+            docTitle = "Untitled";
+        title = docTitle + "[*] - ClassBuilder";
+        setWindowModified(_active->doc->IsModified() != 0);
+    }
+    else
+    {
+        setWindowModified(false);
+    }
+    setWindowTitle(title);
+
+    updateToolBarEnables();
+
+    // Fan out: every open view re-evaluates its OWN undo/redo toolbar enables
+    // (each reads its own doc's CanUndo/CanRedo). A per-diagram action only
+    // refreshes the acting view, so this keeps the other views of the same
+    // model in sync. invokeMethod by name no-ops on widgets without the slot.
+    for (DocEntry* entry : _entries)
+        if (entry->tree)
+            QMetaObject::invokeMethod(entry->tree, "refreshUndoRedoEnables");
+    for (const QPointer<QDockWidget>& d : _diagramDocks)
+        if (d && d->widget())
+            QMetaObject::invokeMethod(d->widget(), "refreshUndoRedoEnables");
+}
+
+void QtShellWindow::docStateChangedThunk(void* ctx)
+{
+    QtShellWindow* w = static_cast<QtShellWindow*>(ctx);
+    w->refreshDocIndicators();   // dirty flags changed -> titles + Save/Undo/Redo
+}
+
+void QtShellWindow::docPostFlushThunk(void* ctx, CClassBuilderDoc* pDoc)
+{
+    QtShellWindow* w = static_cast<QtShellWindow*>(ctx);
+    QMetaObject::invokeMethod(w, [w, pDoc] {
+        // The doc may have died between queueing and landing -- only flush
+        // documents the shell still owns.
+        for (DocEntry* entry : w->_entries)
+        {
+            if (entry->doc == pDoc)
+            {
+                pDoc->FlushQueuedRefresh();
+                return;
+            }
+        }
+    }, Qt::QueuedConnection);
+}
+
+void QtShellWindow::onAppStateChanged(Qt::ApplicationState state)
+{
+    // Mirrors the MFC OnActivateApp CheckUpdates: when the app regains focus,
+    // ask each model whether generated sources changed on disk (offer re-read).
+    if (state == Qt::ApplicationActive)
+        checkSourceFreshness();
+}
+
+void QtShellWindow::checkSourceFreshness()
+{
+    // The single funnel for the source-freshness prompt, hit by BOTH the
+    // open-time check (openDocument) and the app-activation check. Opening a
+    // model fires both (the File-Open dialog deactivates/reactivates the
+    // window), which used to double-prompt. Guards:
+    //   - s_loadInProgress: never mid-load.
+    //   - checking: re-entry (the read dialog pumps the event loop, which can
+    //     redeliver an activation signal while we're still inside).
+    //   - timer debounce: collapse the open-time + reactivation pair (which
+    //     arrive within a moment of each other) into ONE check; a genuine
+    //     later re-activation is well past the window and still prompts.
+    if (CMainFrame::s_loadInProgress)
+        return;
+    static bool checking = false;
+    if (checking)
+        return;
+    static QElapsedTimer sinceLast;   // invalid until first run -> first call proceeds
+    if (sinceLast.isValid() && sinceLast.elapsed() < 1000)
+        return;
+
+    checking = true;
+    const QList<DocEntry*> entries = _entries;   // prompts can close models
+    for (DocEntry* entry : entries)
+    {
+        if (!_entries.contains(entry))
+            continue;
+        if (entry->doc && entry->doc->GetDataModelDoc().GetDataModel())
+            entry->doc->GetDataModelDoc().GetDataModel()->CheckUpdates();
+    }
+    sinceLast.restart();   // stamp after the (possibly modal) checks finish
+    checking = false;
+}
+
+void QtShellWindow::closeEvent(QCloseEvent* e)
+{
+    for (DocEntry* entry : _entries)
+    {
+        if (!maybeSave(entry))
+        {
+            e->ignore();
+            return;
+        }
+    }
+
+    // GroupedDragging: a FLOATING dock-group window crashes Qt's teardown on exit --
+    // QDockWidgetGroupWindow's close drives endDrag -> QMainWindowLayout::restore ->
+    // reparentWidgets, which derefs an already-freed widget (AV reading 0xFFFF...).
+    // Re-dock every floating dock NOW, while all widgets are still alive, so no group
+    // window is left for the close cascade to tear down. The dock layout isn't
+    // persisted (only the shell geometry is), so this is invisible to the user.
+    for (QDockWidget* d : findChildren<QDockWidget*>())
+        if (d->isFloating())
+            d->setFloating(false);
+
+    // Only persist a usable geometry -- never save a transient tiny/minimized state,
+    // or it reloads tiny next launch (paired with the restore guard in the ctor).
+    if (width() >= 700 && height() >= 500)
+    {
+        QSettings settings("ClassBuilder", "ClassBuilder");
+        settings.setValue("shell/geometry", saveGeometry());
+    }
+
+    while (!_entries.isEmpty())                 // also closes the floating
+        destroyEntry(_entries.last());          // diagram windows per doc
+    e->accept();
+}
+
+bool QtShellWindow::event(QEvent* e)
+{
+    // Track "a dock separator is being dragged": presses land on the shell
+    // itself only over separators / empty dock space, and over a separator
+    // the split cursor is showing. ShellSeparatorStyle paints the dragged
+    // separator in the selection accent (consistent with the diagrams).
+    if (e->type() == QEvent::MouseButtonPress
+ && static_cast<QMouseEvent*>(e)->button() == Qt::LeftButton
+ && testAttribute(Qt::WA_SetCursor))
+    {
+        const Qt::CursorShape shape = cursor().shape();
+        if (shape == Qt::SplitHCursor || shape == Qt::SplitVCursor ||
+            shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor)
+        {
+            _separatorDragging = true;
+            update();   // repaint separators: dragged one -> accent
+        }
+    }
+    else if (e->type() == QEvent::MouseButtonRelease && _separatorDragging)
+    {
+        _separatorDragging = false;
+        update();       // back to the normal separator colour
+    }
+
+    const bool handled = QMainWindow::event(e);
+
+    if (e->type() == QEvent::HoverMove || e->type() == QEvent::HoverEnter)
+    {
+        // QMainWindow just flipped a resize cursor if the hover is over ANY
+        // dock separator -- including the immovable phantom one against the
+        // central placeholder (ShellSeparatorStyle suppresses its painting).
+        // The phantom strips lie OUTSIDE the union of the docked widgets'
+        // bounds (real separators lie BETWEEN docks); drop the cursor there.
+        if (testAttribute(Qt::WA_SetCursor))
+        {
+            const QPoint pos =
+                static_cast<QHoverEvent*>(e)->position().toPoint();
+            int minL = INT_MAX, maxR = INT_MIN, minT = INT_MAX, maxB = INT_MIN;
+            bool any = false;
+            const QList<QDockWidget*> docks = findChildren<QDockWidget*>();
+            for (const QDockWidget* d : docks)
+            {
+                if (!d->isVisible() || d->isFloating())
+                    continue;
+                const QRect g = d->geometry();
+                any = true;
+                minL = qMin(minL, g.left());   maxR = qMax(maxR, g.right());
+                minT = qMin(minT, g.top());    maxB = qMax(maxB, g.bottom());
+            }
+            if (any && (pos.x() > maxR || pos.x() < minL ||
+                        pos.y() > maxB || pos.y() < minT))
+                unsetCursor();
+        }
+    }
+    return handled;
+}
+
+// ---------------------------------------------------------------------------
+// Entry point (called by the EXE's WinMain via qt/QtShell.h)
+// ---------------------------------------------------------------------------
+
+int Cb_RunQtShell(const char* fileToOpen)
+{
+    Qt_EnsureApplication();
+
+    QtShellWindow w;
+    w.show();
+
+    Cb_SetMainHwnd((void*)w.winId());
+
+    // Cross-platform command transport: a QTcpServer on 127.0.0.1 driven by the
+    // Qt event loop on this (GUI) thread -- replaces the old Win32 named-pipe
+    // worker + SendMessage(WM_CB_COMMAND) hop. Dispatch runs inline on the GUI
+    // thread, so command handlers touch the model exactly like a menu action.
+    QtCommandServer cmdServer;
+    cmdServer.start();   // 127.0.0.1:CB_CMD_PORT (default 51777)
+
+    if (fileToOpen && *fileToOpen)
+        w.openDocument(QString::fromLocal8Bit(fileToOpen));
+
+    const int rc = qApp->exec();
+
+    cmdServer.stop();
+    Cb_SetMainHwnd(nullptr);
+    return rc;
+}

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ExternClassDialog</class>
+ <widget class="QDialog" name="ExternClassDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>460</width>
+    <height>240</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Extern Class</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="nameRow">
+     <item>
+      <widget class="QLabel" name="labelName">
+       <property name="text">
+        <string>Class &amp;Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>editName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="editName">
+       <property name="maxLength">
+        <number>64</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="midRow">
+     <item>
+      <widget class="QGroupBox" name="templateGroup">
+       <property name="title">
+        <string/>
+       </property>
+       <layout class="QGridLayout" name="templateGrid">
+        <item row="0" column="0" colspan="2">
+         <widget class="QCheckBox" name="checkTemplate">
+          <property name="text">
+           <string>&amp;Template</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="labelDecl">
+          <property name="text">
+           <string>&amp;Declaration:</string>
+          </property>
+          <property name="buddy">
+           <cstring>editTemplateDecl</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="editTemplateDecl"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="labelRef">
+          <property name="text">
+           <string>&amp;Reference:</string>
+          </property>
+          <property name="buddy">
+           <cstring>editTemplate</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="editTemplate"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="propertiesGroup">
+       <property name="title">
+        <string>Properties</string>
+       </property>
+       <layout class="QVBoxLayout" name="propertiesLayout">
+        <item>
+         <widget class="QCheckBox" name="checkStruct">
+          <property name="text">
+           <string>Str&amp;uct</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkSuppress">
+          <property name="text">
+           <string>Su&amp;ppress forward declaration</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="propertiesSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="prefixRow">
+     <item>
+      <widget class="QLabel" name="labelPrefix">
+       <property name="text">
+        <string>&amp;Member Prefix:</string>
+       </property>
+       <property name="buddy">
+        <cstring>editMemberPrefix</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="editMemberPrefix">
+       <property name="maxLength">
+        <number>3</number>
+       </property>
+       <property name="maximumWidth">
+        <number>60</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="prefixSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

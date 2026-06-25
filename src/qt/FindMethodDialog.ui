@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FindMethodDialog</class>
+ <widget class="QDialog" name="FindMethodDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Find Method</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="nameRow">
+     <item>
+      <widget class="QLabel" name="labelName">
+       <property name="text">
+        <string>Method &amp;Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>editName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="editName">
+       <property name="maxLength">
+        <number>64</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="attribRow">
+     <item>
+      <widget class="QGroupBox" name="accessGroup">
+       <property name="title">
+        <string>&amp;Access</string>
+       </property>
+       <layout class="QVBoxLayout" name="accessLayout">
+        <item>
+         <widget class="QRadioButton" name="radioPublic">
+          <property name="text">
+           <string>Public</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioProtected">
+          <property name="text">
+           <string>Protected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioPrivate">
+          <property name="text">
+           <string>Private</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="propertiesGroup">
+       <property name="title">
+        <string>Properties</string>
+       </property>
+       <layout class="QGridLayout" name="propertiesLayout">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="checkNext">
+          <property name="text">
+           <string>Ne&amp;xt/Previous</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="checkReverse">
+          <property name="text">
+           <string>&amp;Reverse</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="checkDllExport">
+          <property name="text">
+           <string>Dll E&amp;xport</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="labelCallConv">
+          <property name="text">
+           <string>&amp;Calling Convention:</string>
+          </property>
+          <property name="buddy">
+           <cstring>comboCallConv</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="comboCallConv">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="mapGroup">
+     <property name="title">
+      <string>Argument &amp;map</string>
+     </property>
+     <layout class="QHBoxLayout" name="mapLayout">
+      <item>
+       <widget class="QListWidget" name="listArguments">
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="mapButtonsCol">
+        <item>
+         <spacer name="mapButtonsTopSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="buttonAdd">
+          <property name="text">
+           <string>&lt;-  &amp;+</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="buttonDelete">
+          <property name="text">
+           <string>-&gt;  &amp;-</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="mapButtonsBottomSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="CbTreeWidget" name="tree">
+        <property name="headerHidden">
+         <bool>true</bool>
+        </property>
+        <column>
+         <property name="text">
+          <string notr="true">1</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelNote">
+     <property name="text">
+      <string>N&amp;ote:</string>
+     </property>
+     <property name="buddy">
+      <cstring>editNote</cstring>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="editNote">
+     <property name="maximumHeight">
+      <number>90</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CbTreeWidget</class>
+   <extends>QTreeWidget</extends>
+   <header>CbTreeWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SequenceDiagramDialog</class>
+ <widget class="QDialog" name="SequenceDiagramDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>577</width>
+    <height>448</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>SequenceDiagram</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <layout class="QHBoxLayout" name="nameRow">
+     <item>
+      <widget class="QLabel" name="labelName">
+       <property name="text">
+        <string>&amp;Name:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditName</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEditName"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="pageRow">
+     <item>
+      <widget class="QLabel" name="labelPageSize">
+       <property name="text">
+        <string>Pa&amp;ge size:</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboPageSize</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboPageSize"/>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioPortrait">
+       <property name="text">
+        <string>&amp;Portrait</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioLandscape">
+       <property name="text">
+        <string>&amp;Landscape</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="pageRowSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="labelScale">
+       <property name="text">
+        <string>&amp;Scale:</string>
+       </property>
+       <property name="buddy">
+        <cstring>spinScale</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="spinScale">
+       <property name="suffix">
+        <string> %</string>
+       </property>
+       <property name="minimum">
+        <number>10</number>
+       </property>
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="groupsRow">
+     <item>
+      <widget class="QGroupBox" name="groupNumbering">
+       <property name="title">
+        <string>Message Num&amp;bering</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QRadioButton" name="radioNumNone">
+          <property name="text">
+           <string>None</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QRadioButton" name="radioNum1">
+          <property name="text">
+           <string>1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QRadioButton" name="radioNumALo">
+          <property name="text">
+           <string>a</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QRadioButton" name="radioNumAUp">
+          <property name="text">
+           <string>A</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QRadioButton" name="radioNum111">
+          <property name="text">
+           <string>1.1.1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QRadioButton" name="radioNumAaa">
+          <property name="text">
+           <string>a.a.a</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QRadioButton" name="radioNumAAA">
+          <property name="text">
+           <string>A.A.A</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupMessageName">
+       <property name="title">
+        <string>Message Name</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="checkArgumentTypes">
+          <property name="text">
+           <string>Argument &amp;Types</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="checkScope">
+          <property name="text">
+           <string>Scop&amp;e</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="checkArgumentNames">
+          <property name="text">
+           <string>&amp;Argument Names</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="captionRow">
+     <item>
+      <widget class="QLabel" name="labelCaption">
+       <property name="text">
+        <string>&amp;Caption:</string>
+       </property>
+       <property name="buddy">
+        <cstring>lineEditCaption</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEditCaption"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="noteRow">
+     <item>
+      <layout class="QVBoxLayout" name="noteCol">
+       <item>
+        <widget class="QLabel" name="labelNote">
+         <property name="text">
+          <string>N&amp;ote:</string>
+         </property>
+         <property name="buddy">
+          <cstring>plainTextNote</cstring>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPlainTextEdit" name="plainTextNote"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupMultiPage">
+       <property name="title">
+        <string>Multiple page support</string>
+       </property>
+       <layout class="QHBoxLayout" name="multiPageLayout">
+        <item>
+         <widget class="QLabel" name="labelPageIllustration">
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="multiPageRadios">
+          <item>
+           <widget class="QRadioButton" name="radioPage1">
+            <property name="text">
+             <string>&amp;1 page</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage2">
+            <property name="text">
+             <string>&amp;2 pages</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage4">
+            <property name="text">
+             <string>&amp;4 pages</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage8">
+            <property name="text">
+             <string>&amp;8 pages</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioPage16">
+            <property name="text">
+             <string>1&amp;6 pages</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
