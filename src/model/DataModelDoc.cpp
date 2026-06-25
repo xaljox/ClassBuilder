@@ -351,7 +351,9 @@ CbString DataModelDoc::GetPath()
 {//@CODE_3166
     CbString value = GetDocument()->GetPathName();
 
-    int index = value.ReverseFind('\\');
+    int bs = value.ReverseFind('\\');
+    int fs = value.ReverseFind('/');
+    int index = (bs > fs) ? bs : fs;
     if (index != -1)
     {
         value = value.Left(index);

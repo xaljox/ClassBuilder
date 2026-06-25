@@ -186,7 +186,16 @@ if(WIN32)
     set_target_properties(ClassBuilder PROPERTIES WIN32_EXECUTABLE TRUE)
 else()
     add_executable(ClassBuilder ${CB_SOURCES})
-    set_target_properties(ClassBuilder PROPERTIES MACOSX_BUNDLE TRUE)
+    set_target_properties(ClassBuilder PROPERTIES
+        MACOSX_BUNDLE TRUE
+        # Custom Info.plist: declares CB owns the .cbz model file
+        # (CFBundleDocumentTypes), so a Finder double-click / "Open With" routes
+        # the file to the app -> QFileOpenEvent in QtApp.cpp.
+        MACOSX_BUNDLE_INFO_PLIST   "${CMAKE_CURRENT_SOURCE_DIR}/res/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME         "ClassBuilder"
+        MACOSX_BUNDLE_GUI_IDENTIFIER      "com.xaljox.ClassBuilder"
+        MACOSX_BUNDLE_BUNDLE_VERSION      "1.0"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0")
 endif()
 target_include_directories(ClassBuilder PRIVATE ${CB_INCLUDE_DIRS})
 

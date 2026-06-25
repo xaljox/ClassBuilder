@@ -18,6 +18,10 @@
 #include <QIcon>
 #include <QString>
 #include <QWidget>
+#ifdef __APPLE__
+#include <QFileOpenEvent>
+#include "CbShellHooks.h"   // Cb_ShellOpenDocument (Finder file association)
+#endif
 
 // Static Qt: the platform plugin (qwindows) and the native style are baked
 // into the EXE instead of loaded as DLLs at runtime, so they must be
@@ -209,6 +213,23 @@ class CbApplication : public QApplication
 {
 public:
     CbApplication(int& argc, char** argv) : QApplication(argc, argv) {}
+
+    // macOS hands a double-clicked / "Open With" / Finder-associated file to the
+    // app as a QFileOpenEvent -- NOT as an argv path (that's Windows/Linux). So a
+    // .cbz double-click launches CB but the file never loads unless we handle it
+    // here. The shell window exists by the time this is delivered (created before
+    // exec()), so route straight to the open-document flow.
+    bool event(QEvent* e) override
+    {
+        if (e->type() == QEvent::FileOpen)
+        {
+            const QString file = static_cast<QFileOpenEvent*>(e)->file();
+            if (!file.isEmpty())
+                Cb_ShellOpenDocument(file.toLocal8Bit().constData());
+            return true;
+        }
+        return QApplication::event(e);
+    }
 };
 } // namespace
 

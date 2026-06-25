@@ -183,19 +183,27 @@ void CClassBuilderDoc::SetModifiedFlag(int bModified)
 
 void CClassBuilderDoc::SetPathName(const char* path, int /*addToMru*/)
 {
-    // Normalize to backslashes at this single chokepoint. The Qt file dialog
-    // hands back forward-slash paths ("C:/.../Foo.cbz"), but GetPath() splits
-    // the directory on '\\' only -- a forward-slash path made GetPath() return
-    // the whole file path, so the codegen _chdir() failed and generated
-    // sources landed in the launch CWD instead of the .cbz's folder.
+    // Normalize to the PLATFORM-NATIVE separator at this single chokepoint. The
+    // Qt file dialog hands back forward-slash paths ("C:/.../Foo.cbz") on every
+    // platform. Windows wants backslashes (GetPath() + the codegen _chdir());
+    // macOS/Linux MUST keep forward slashes -- the std file I/O (ofstream /
+    // rename in OnSaveDocument) treats a backslashed POSIX path as a single
+    // legal-but-bogus filename, so saves silently wrote a junk file into the CWD
+    // and never touched the real .cbz. GetPath() now splits on either separator.
     std::string s(path ? path : "");
+#ifdef _WIN32
     for (char& c : s)
         if (c == '/')
             c = '\\';
+#else
+    for (char& c : s)
+        if (c == '\\')
+            c = '/';
+#endif
     m_pathName = s.c_str();
 
-    // Title = filename without directory.
-    const size_t slash = s.find_last_of('\\');
+    // Title = filename without directory (split on either separator).
+    const size_t slash = s.find_last_of("/\\");
     m_title = (slash != std::string::npos ? s.substr(slash + 1) : s).c_str();
     notifyStateChanged();
 }
