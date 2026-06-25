@@ -154,11 +154,23 @@ fixed bottle yet); CB points at it via a local-only `CMakeUserPresets.json`
 (`mac-patched` preset, gitignored). Full recipe + toolchain gotchas (Xcode check,
 x86_64-vs-arm64 cmake/ninja) in [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md).
 
+### Static Qt on macOS — DONE (2026-06-25), shippable single binary
+
+Built a **static** patched Qt (`-DBUILD_SHARED_LIBS=OFF`, same patched source) into
+`~/Qt-6.11.1-patched-static` and pointed CB at it via the local `mac-static`
+preset (`CMakeUserPresets.json`). CMake auto-detected static (`Qt6::Core TYPE`)
+and statically imported the Cocoa + SVG plugins (the `CB_STATIC_QT` plumbing in
+`QtApp.cpp`/`CMakeLists.txt`). Result: a **24 MB single binary** with Qt baked in
+— `otool -L` shows only system libs, no Qt frameworks, no `Contents/Frameworks/`.
+zstd was already static. Distribution: `macdeployqt` is NOT needed for the static
+build; just ad-hoc `codesign --deep --sign -` + `ditto` zip (~9 MB). Still
+arm64-only + unsigned (Gatekeeper: right-click→Open / strip quarantine).
+
+The SHARED `mac-patched` preset stays for fast dev iteration; `mac-static` is the
+ship build. (Both drop away once brew ships Qt ≥ 6.11.2 and you no longer need the
+local patched Qt.)
+
 ### Still open (deferred, not build blockers)
-- **Static Qt on Mac** — brew only ships shared Qt; a static link (to match the
-  Windows ship model) needs a from-source static Qt build, then just repoint
-  `CMAKE_PREFIX_PATH` (CMake already auto-detects static via `Qt6::Core TYPE`
-  and the Cocoa plugin import is wired). zstd is already static.
 - **`DataModelDoc::GetPath()`** still splits on `'\\'` only (§4-F) — a *runtime*
   path bug, not a compile error; fix when driving codegen on Mac.
 - **`NL` CRLF** (§4-I) and the `register` warnings (§4-J) — unchanged, benign.
