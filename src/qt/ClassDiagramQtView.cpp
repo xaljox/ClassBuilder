@@ -2524,7 +2524,10 @@ void ClassDiagramCanvas::keyPressEvent(QKeyEvent* e)
     // (header <-> members <-> methods) for keyboard row-select. No wrap at the
     // ends; only active when a class row is selected (else falls through). Left/
     // Right between classes is intentionally NOT done -- spatial nav is fuzzy.
-    if (e->modifiers() == Qt::NoModifier &&
+    // NB: macOS flags the arrow keys with Qt::KeypadModifier, so mask it out --
+    // a plain `== NoModifier` check never matches the arrows there (Windows has
+    // no such flag, so this is a no-op on Windows).
+    if ((e->modifiers() & ~Qt::KeypadModifier) == Qt::NoModifier &&
         (e->key() == Qt::Key_Up || e->key() == Qt::Key_Down))
     {
         if (navigateClassRow(e->key() == Qt::Key_Down))

@@ -229,6 +229,16 @@ int CClassBuilderDoc::OnNewDocument()
 
     DataModel* pDataModel = new DataModel(&m_impl->dataModelDoc);
 
+    // New-project line-ending default = the platform CB runs on. The model's
+    // _crlf defaults to true (CRLF) for back-compat; here we make the FIRST
+    // guess automatic -- Windows stays CRLF, macOS/Linux default to LF -- set
+    // BEFORE the dialog so it shows the platform default and the user can accept
+    // or change it. Only this initial guess is automatic; loading an existing
+    // model keeps its stored setting (this path runs only for NEW projects).
+#ifndef _WIN32
+    pDataModel->SetCrlf(false);   // macOS / Linux: default to LF
+#endif
+
     // Pipe-driven creation (new_model_basic / new_model_serialize) stashes
     // params on CbCommandServer before asking for a new doc; when present,
     // skip the wizard and apply them directly.

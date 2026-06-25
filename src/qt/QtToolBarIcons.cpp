@@ -40,6 +40,31 @@ const int kGlyphCount = int(sizeof(kGlyphNames) / sizeof(kGlyphNames[0]));
 // the transparent background when adding the strip to its CImageList).
 const QRgb kMask = qRgb(192, 192, 192);
 
+#ifdef __APPLE__
+// A clearly-"disabled" rendering of a toolbar glyph: desaturate to a light grey
+// and fade the alpha. Qt asks the active QStyle to grey disabled icons, and
+// Windows' style does so clearly -- but macOS' style dims them only faintly, so
+// the (deliberately green) undo/redo glyphs still read as enabled. On macOS we
+// supply an explicit QIcon::Disabled pixmap so "disabled" is unmistakable.
+// macOS-only: Windows keeps its native (already-clear) disabled greying.
+QImage makeDisabledGlyph(const QImage& src)
+{
+    QImage out = src.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < out.height(); ++y)
+        for (int x = 0; x < out.width(); ++x)
+        {
+            const QRgb p = out.pixel(x, y);
+            const int a = qAlpha(p);
+            if (a == 0)
+                continue;
+            const int g = qRound(0.30 * qRed(p) + 0.59 * qGreen(p) + 0.11 * qBlue(p));
+            const int light = (g + 165) / 2;      // push toward light grey
+            out.setPixel(x, y, qRgba(light, light, light, a * 2 / 5));  // ~40% alpha
+        }
+    return out;
+}
+#endif  // __APPLE__
+
 const QVector<QIcon>& glyphs()
 {
     static const QVector<QIcon> v = [] {
@@ -62,7 +87,20 @@ const QVector<QIcon>& glyphs()
                 const QString svg = QString(":/icons/tb_") + kGlyphNames[i] + ".svg";
                 if (QFile::exists(svg))
                 {
-                    out.append(QIcon(svg));
+                    QIcon ic(svg);
+#ifdef __APPLE__
+                    // Attach explicit greyed Disabled pixmaps at the sizes the
+                    // toolbars actually render (incl. 2x retina), so disabled
+                    // reads clearly on macOS (its style dims SVG icons faintly).
+                    for (int s : {16, 20, 24, 32, 40, 48})
+                    {
+                        const QImage norm = ic.pixmap(QSize(s, s)).toImage();
+                        if (!norm.isNull())
+                            ic.addPixmap(QPixmap::fromImage(makeDisabledGlyph(norm)),
+                                         QIcon::Disabled);
+                    }
+#endif
+                    out.append(ic);
                     continue;
                 }
             }
@@ -89,7 +127,13 @@ const QVector<QIcon>& glyphs()
                                 tile.setPixel(x, y, qRgba(0, 150, 0, a));
                         }
 
-                out.append(QIcon(QPixmap::fromImage(tile)));
+                QIcon ic(QPixmap::fromImage(tile));
+#ifdef __APPLE__
+                // Explicit greyed Disabled pixmap (macOS dims too faintly).
+                ic.addPixmap(QPixmap::fromImage(makeDisabledGlyph(tile)),
+                             QIcon::Disabled);
+#endif
+                out.append(ic);
             }
             else
             {
