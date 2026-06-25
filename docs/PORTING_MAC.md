@@ -12,6 +12,91 @@ the Windows/MSVC constructs that need a macOS branch.
 
 ---
 
+## ✅ macOS branch — LANDED 2026-06-25 (first build + runs)
+
+ClassBuilder now **compiles, links, and launches** on macOS (Apple Silicon,
+arm64) from the single codebase. `cmake --preset mac && cmake --build --preset
+mac-debug` produces `out/build/mac/bin/Debug/ClassBuilder.app`, and the Qt shell
+window opens. Principle held throughout: **one source tree, `#ifdef _WIN32` /
+`#else` branches** — the Windows build is byte-for-byte its original `_WIN32`
+side; everything new lives in the `#else` (which is Mac **and** Linux, so the
+Linux build later falls out of the same branch). `__APPLE__` is used only for
+genuinely Mac-only bits (the Cocoa Qt plugin import).
+
+**Toolchain used:** Apple clang 21, CMake 3.30 + Ninja, Qt 6.11.1 **shared**
+(brew), zstd 1.5.7 **static** (`libzstd.a`, brew). zstd is statically linked
+(no dylib dep); Qt is shared for now — see "still open" below.
+
+**What was done (all single-codebase branches unless noted):**
+- **Build:** `mac` preset (Ninja Multi-Config, `CMAKE_OSX_ARCHITECTURES=arm64`,
+  Qt prefix `/opt/homebrew/opt/qt`). CMakeLists gates every MSVC/Win32 piece
+  behind `if(WIN32)`/`if(MSVC)`: the `.rc`, `WIN32_EXECUTABLE` vs
+  `MACOSX_BUNDLE`, `/UUNICODE` strip, `/LTCG`/`/SAFESEH`/`/ignore`, windeployqt,
+  and the zstd lib path (Mac uses the static `libzstd.a`, forced via
+  `CMAKE_FIND_LIBRARY_SUFFIXES`). The UNICODE quarantine is Windows-only, so on
+  Mac `ClassBuilderQt` links Qt **PUBLIC** (the platform seam in the EXE needs
+  Qt's wait cursor). `src/qt` added to the Qt lib's include dirs (AUTOUIC's
+  `ui_*.h` include a bare `CodeEditor.h`).
+- **New file `src/platform/CbWinTypes.h`** — the windows.h-free Win32 vocabulary
+  for the non-Windows side: scalar typedefs (`UINT`/`DWORD`/...), `RGB`/`GetRValue`,
+  and the GDI constants the painter mirrors (`PS_*`, `TA_*`, `ETO_*`, `DT_*`,
+  `MM_*`, `TRANSPARENT`/`OPAQUE`, `NULL_BRUSH`) with the **real Win32 numeric
+  values** (the shared Qt painter backend reads them on both platforms). Also
+  maps MSVC CRT spellings to POSIX: `_chdir`→`chdir`, `_stat`→`stat`,
+  `__iscsym`, `sprintf_s`→`snprintf`. Pulled in (non-Windows) by `StdAfx.h`,
+  `CbPainter.h`, `QtShellWindow.cpp` in place of `<windows.h>`.
+- **Entry point** `WinMain.cpp` — `#else` adds `int main(argc,argv)` →
+  same `Cb_RunQtShell`.
+- **Platform seam** `CbPlatformCompat.cpp` — Mac wait-cursor via
+  `QGuiApplication::setOverrideCursor`, `TRACE`→`qDebug`.
+- **`CB_CriticalSection.h`** — all three old branches replaced by one
+  `std::recursive_mutex` (no more silent no-op stub).
+- **`QtApp.cpp`** — the Win32 SEH GUI-crash net + native `GWLP_HWNDPARENT`
+  dialog parenting are `#ifdef _WIN32`; Mac/Linux get a plain `QApplication` and
+  `dlg.exec()` (application-modal). Static-plugin imports made platform-correct
+  (`QCocoaIntegrationPlugin` for `__APPLE__`).
+- **`<direct.h>`/`<io.h>`** includes gated; `Read.l.cpp` uses `<unistd.h>`.
+- **`value/CbTime.h`, `value/CbString.h`** — MSVC time vocab (`__time64_t`,
+  `_mktime64`, `_time64`, `_localtime64_s`) and `_stricmp` mapped to POSIX
+  inside the value tier (it stays standalone, no windows.h).
+
+### ⚠️ Windows reconcile list (model bodies — do this on the Windows side)
+
+68 call sites passed a `CbString` through printf-style varargs (`Format("%s",
+GetName())`). MSVC accepts it by ABI luck; clang **errors** (it would abort at
+runtime), so each was given an explicit `.c_str()`. **Almost all are inside
+`//@CODE_NNNN` markers — i.e. model method bodies whose authoritative copy is
+in `ClassBuilder.CBZ`.** They compile Mac now, but a Windows regen will
+overwrite them unless folded back into the model. On Windows: read these edits
+back into the CBZ (CB is open on its own model → accept the re-read prompt), or
+better, fix the **codegen** to emit `.c_str()` for `CbString` args to the
+printf family. Files + counts (97 total `.c_str()` insertions):
+
+| File | sites | File | sites |
+|------|------:|------|------:|
+| Class.cpp | 35 | Method.cpp | 3 |
+| Read.y / Read.y.cpp | 14+14 | DataModel.cpp | 3 |
+| BaseClass.cpp | 3 | ClassDiagram.cpp | 2 |
+| ClassGroup.cpp | 2 | Constructor.cpp | 2 |
+| Inherit.cpp | 2 | Member.cpp | 2 |
+| MemberAndMethodGroup.cpp | 2 | OtherType.cpp | 2 |
+| SequenceDiagram.cpp | 2 | (10 more) | 1 each |
+
+`Read.y` is the bison source (not a `//@CODE` body) — the same 14 fixes were
+applied to both `Read.y` and the committed `Read.y.cpp`, so a `bison` regen on
+Windows keeps them. `yyerror`'s `const char* str` was correctly left untouched.
+
+### Still open (deferred, not build blockers)
+- **Static Qt on Mac** — brew only ships shared Qt; a static link (to match the
+  Windows ship model) needs a from-source static Qt build, then just repoint
+  `CMAKE_PREFIX_PATH` (CMake already auto-detects static via `Qt6::Core TYPE`
+  and the Cocoa plugin import is wired). zstd is already static.
+- **`DataModelDoc::GetPath()`** still splits on `'\\'` only (§4-F) — a *runtime*
+  path bug, not a compile error; fix when driving codegen on Mac.
+- **`NL` CRLF** (§4-I) and the `register` warnings (§4-J) — unchanged, benign.
+
+---
+
 ## 0. Mental model — how the port works
 
 ClassBuilder **generates its own source** from `src/model/ClassBuilder.CBZ`, and
