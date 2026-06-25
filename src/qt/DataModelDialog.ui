@@ -244,6 +244,29 @@
         </property>
        </widget>
       </item>
+      <item row="2" column="1">
+       <widget class="QGroupBox" name="groupLineEndings">
+        <property name="title">
+         <string>Line Endings</string>
+        </property>
+        <layout class="QHBoxLayout" name="lineEndingsLayout">
+         <item>
+          <widget class="QRadioButton" name="radioCrlf">
+           <property name="text">
+            <string>Windows (CRLF)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="radioLf">
+           <property name="text">
+            <string>Unix (LF)</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

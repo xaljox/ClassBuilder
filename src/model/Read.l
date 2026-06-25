@@ -10,6 +10,28 @@
 #pragma GCC diagnostic ignored "-Wregister"
 #endif
 
+/* CB cross-platform read normalization: strip '\r' so the lexer always sees LF.
+   Windows fopen("r") already drops it; macOS/Linux "r"=="rb" keeps it, which would
+   make every CRLF method body look "changed" on a Mac read-source. Defining
+   READ_INPUT here makes flex use ours instead of its default skeleton macro. Keep
+   in sync with the mirror prepended in the generated Read.l.cpp. */
+#define READ_INPUT(buf,result,max_size) \
+    if ( read_current_buffer->read_is_interactive ) \
+        { \
+        int c; \
+        do { c = getc( readin ); } while ( c == '\r' ); \
+        result = c == EOF ? 0 : 1; \
+        buf[0] = (char) c; \
+        } \
+    else \
+        { \
+        if ( ((result = fread( buf, 1, max_size, readin )) == 0) && ferror( readin ) ) \
+            READ_FATAL_ERROR( "input in flex scanner failed" ); \
+        else \
+            { int ri, wi = 0; for ( ri = 0; ri < (int)result; ++ri ) \
+                if ( buf[ri] != '\r' ) buf[wi++] = buf[ri]; result = wi; } \
+        }
+
 #include <stdlib.h>
 #include <string.h>
 

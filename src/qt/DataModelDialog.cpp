@@ -81,6 +81,8 @@ DataModelDialog::DataModelDialog(DataModel* pDataModel,
     _ui->checkShowDllExport->setChecked(_pDataModel->GetShowDllExport());
     _ui->checkTemplateHeaderOnly->setChecked(
         _pDataModel->GetTemplateClassHeaderOnly());
+    _ui->radioCrlf->setChecked(_pDataModel->GetCrlf());
+    _ui->radioLf->setChecked(!_pDataModel->GetCrlf());
 
     // --- signal wiring -----------------------------------------------------
     connect(_ui->buttonBox, &QDialogButtonBox::accepted,
@@ -362,6 +364,7 @@ void DataModelDialog::accept()
     const bool phaseSup   = _ui->checkPhaseSupport->isChecked();
     const bool showDll    = _ui->checkShowDllExport->isChecked();
     const bool tmplHdr    = _ui->checkTemplateHeaderOnly->isChecked();
+    const bool crlf       = _ui->radioCrlf->isChecked();
     const QString qNote   = _ui->plainTextNote->toPlainText();
     const QString qMember = _ui->lineEditMemberPrefix->text();
     const QString qClassP = _ui->lineEditClassPrefix->text();
@@ -398,7 +401,8 @@ void DataModelDialog::accept()
         _pDataModel->GetUndoRedo() != undoRedo ||
         _pDataModel->GetTemplateClassHeaderOnly() != tmplHdr ||
         _pDataModel->GetIndentSize() != indentSize ||
-        _pDataModel->GetShowDllExport() != showDll)
+        _pDataModel->GetShowDllExport() != showDll ||
+        _pDataModel->GetCrlf() != crlf)
     {
         _pDataModel->SaveState();
 
@@ -423,6 +427,7 @@ void DataModelDialog::accept()
         _pDataModel->SetSerialize(serialize);
         _pDataModel->SetTemplateClassHeaderOnly(tmplHdr);
         _pDataModel->SetShowDllExport(showDll);
+        _pDataModel->SetCrlf(crlf);
 
         markModelChanged();
     }

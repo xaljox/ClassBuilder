@@ -2,11 +2,15 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          DataModel.h
-* Creation date: June 25, 2026 12:36
+* Creation date: June 25, 2026 19:48
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'DataModel'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* June 25, 2026 19:48 JV
+*     Added method 'SetCrlf'
+*     Added method 'GetCrlf'
+*     Updated member '_crlf'
 *
 * Copyright 2026, Jimmy Venema
 * All rights are reserved. Reproduction in whole or part is prohibited
@@ -91,7 +95,7 @@ private:
     bool _includeSequenceDiagramMessages;
     bool _showDllExport;
     int __notUsed_rtfDiagramFormat;
-    bool __notUsed_mfcSerialize;
+    bool _crlf;
 
 protected:
 
@@ -162,6 +166,8 @@ public:
     void SetClassPrefix(const CbString& rClassPrefix);
     const CbString& GetCppHeader();
     void SetCppHeader(const CbString& rCppHeader);
+    bool GetCrlf() const;
+    void SetCrlf(bool crlf);
     bool GetGetSetMethods() const;
     void SetGetSetMethods(bool getSetMethods);
     const CbString& GetHFile();
@@ -295,6 +301,26 @@ inline void DataModel::SetClassOverview(bool classOverview)
 {//@CODE_27617
     _classOverview = classOverview;
 }//@CODE_27617
+
+
+
+/*@NOTE_41500
+Returns the value of member '_crlf'.
+*/
+inline bool DataModel::GetCrlf() const
+{//@CODE_41500
+    return _crlf;
+}//@CODE_41500
+
+
+
+/*@NOTE_41501
+Set the value of member '_crlf' to 'crlf'.
+*/
+inline void DataModel::SetCrlf(bool crlf)
+{//@CODE_41501
+    _crlf = crlf;
+}//@CODE_41501
 
 
 

@@ -96,18 +96,22 @@ Route the generated-source writes through it (all `ofstream(... ios::binary)`):
 Each site can reach the `DataModel` (`GetDataModel()` / `GetClass()->GetDataModel()`)
 → read `GetCrlf()`. These are `//@CODE` bodies → edits round-trip into the model.
 
-## 5. Read hook — keep the round-trip EOL-stable
+## 5. Read hook — DONE (strip `\r` in the lexer input)
 
 The bison parser reads sources back with `fopen(..., "r")`
 ([Read.y:449/504/576](../src/model/Read.y)). **Text mode differs by platform** —
-Windows `"r"` strips `\r`; macOS/Linux `"r"` keeps it. Don't let that leak into
-the model.
+Windows `"r"` strips `\r`; macOS/Linux `"r"` keeps it. Left alone, a Mac
+read-source on a CRLF project would see `\r\n` and flag every method body as
+"changed."
 
-Requirement: **normalize incoming EOL to the model's internal canonical (CRLF) on
-read**, independent of platform and of the project's emit choice. Net effect: the
-`.cbz` always stores method bodies as CRLF; only emitted files differ. So flipping
-a project's setting (or opening an LF project) does **not** make every body look
-"changed." Read binary + normalize explicitly rather than relying on `fopen("r")`.
+**Fix (implemented):** override flex's `READ_INPUT` macro to drop `\r` from the
+input, so the lexer always sees LF regardless of platform or file EOL. Defined in
+both [Read.l](../src/model/Read.l)'s prologue (survives a flex regen) and prepended
+in the generated [Read.l.cpp](../src/model/Read.l.cpp) (active now). On Windows it's
+a no-op (`"r"` already stripped `\r`); on macOS/Linux it's the actual fix.
+**Verified on Windows:** read-source after an LF emit reports no changes. **macOS:
+verify after pull** (build, then read-source an LF and a CRLF project — neither
+should show spurious body changes).
 
 ## 6. UI — DataModel dialog, Code Generation group
 

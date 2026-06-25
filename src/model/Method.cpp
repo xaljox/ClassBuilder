@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          Method.cpp
-* Creation date: June 25, 2026 12:36
+* Creation date: June 25, 2026 19:48
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'Method'
 *

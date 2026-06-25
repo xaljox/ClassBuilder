@@ -310,6 +310,12 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
         std::istream zis(&zbuf);
         CbArchive ar(zis);
         m_impl->dataModelDoc.Serialize(ar);
+        // Line-ending default for pre-v3 .cbz. _crlf reuses the dead _mfcSerialize
+        // slot, so an old file's byte is the stale MFC value, not a real CRLF/LF
+        // choice -- and every pre-v3 project emitted CRLF, so force it. Must run
+        // BEFORE the INT_MAX saturation below (which destroys the file version).
+        if (m_impl->dataModelDoc._objectVersion < 3)
+            m_impl->dataModelDoc.GetDataModel()->SetCrlf(true);
         // Saturate _objectVersion so the undo/redo evolution gates treat
         // a freshly loaded document as current. (The legacy CBD->CBZ
         // version-migration fixups live in ClassBuilderStatic.exe.)

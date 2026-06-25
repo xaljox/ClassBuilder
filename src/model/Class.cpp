@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          Class.cpp
-* Creation date: June 25, 2026 12:36
+* Creation date: June 25, 2026 19:48
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'Class'
 *
@@ -1802,9 +1802,15 @@ void Class::WriteCppFile(SourceLogInterface* pDialog, bool unconditional)
             pDialog->AddLog(str);
             
             UpdateCppHeader();
-            os << _cppHeader << NL;
-            os << newContent;
-            
+            // Emit the project's line ending: codegen builds with CRLF (NL); an
+            // LF project flips the whole file to LF just before writing.
+            CbString cbOut = _cppHeader;
+            cbOut += NL;
+            cbOut += newContent;
+            if (!GetDataModel()->GetCrlf())
+                cbOut.Replace("\r\n", "\n");
+            os << cbOut;
+
             os.close();
             struct _stat buf;
             if (_stat(GetCppFile(), &buf) == 0)
@@ -2024,8 +2030,12 @@ int Class::WriteHFile(SourceLogInterface* pDialog, bool unconditional)
             SourceCheck(pDialog);
         
             UpdateHHeader();
-            os << _hHeader << NL;
-            os << newContent;
+            CbString cbOut = _hHeader;
+            cbOut += NL;
+            cbOut += newContent;
+            if (!GetDataModel()->GetCrlf())
+                cbOut.Replace("\r\n", "\n");
+            os << cbOut;
 
             os.close();
             struct _stat buf;

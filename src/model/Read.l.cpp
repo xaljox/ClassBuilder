@@ -580,6 +580,28 @@ READ_MALLOC_DECL
 /* Gets input and stuffs it into "buf".  number of characters read, or READ_NULL,
  * is returned in "result".
  */
+/* CB cross-platform read normalization (mirror of the block in Read.l's prologue):
+   strip '\r' so the lexer always sees LF. Windows fopen("r") already drops it;
+   macOS/Linux "r"=="rb" keeps it, which would make every CRLF method body look
+   "changed" on a Mac read-source. This #define pre-empts flex's default below (the
+   #ifndef now sees READ_INPUT already set). */
+#define READ_INPUT(buf,result,max_size) \
+    if ( read_current_buffer->read_is_interactive ) \
+        { \
+        int c; \
+        do { c = getc( readin ); } while ( c == '\r' ); \
+        result = c == EOF ? 0 : 1; \
+        buf[0] = (char) c; \
+        } \
+    else \
+        { \
+        if ( ((result = fread( buf, 1, max_size, readin )) == 0) && ferror( readin ) ) \
+            READ_FATAL_ERROR( "input in flex scanner failed" ); \
+        else \
+            { int ri, wi = 0; for ( ri = 0; ri < (int)result; ++ri ) \
+                if ( buf[ri] != '\r' ) buf[wi++] = buf[ri]; result = wi; } \
+        }
+
 #ifndef READ_INPUT
 #define READ_INPUT(buf,result,max_size) \
 	if ( read_current_buffer->read_is_interactive ) \

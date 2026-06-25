@@ -2,11 +2,15 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          DataModel.cpp
-* Creation date: June 25, 2026 12:36
+* Creation date: June 25, 2026 19:48
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'DataModel'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* June 25, 2026 19:48 JV
+*     Added method 'SetCrlf'
+*     Added method 'GetCrlf'
+*     Updated member '_crlf'
 *
 * Copyright 2026, Jimmy Venema
 * All rights are reserved. Reproduction in whole or part is prohibited
@@ -123,7 +127,7 @@ DataModel::DataModel(DataModelDoc* pDataModelDoc) //@INIT_934
     , _includeSequenceDiagramObjects(true)
     , _showDllExport(1)
     , __notUsed_rtfDiagramFormat(1)
-    , __notUsed_mfcSerialize(false)
+    , _crlf(true)
 {//@CODE_934
     ConstructorInclude(pDataModelDoc);
 
@@ -194,7 +198,7 @@ DataModel::DataModel() //@INIT_321
     , _includeSequenceDiagramObjects(true)
     , _showDllExport(1)
     , __notUsed_rtfDiagramFormat(1)
-    , __notUsed_mfcSerialize(false)
+    , _crlf(true)
 {//@CODE_321
     SerializeConstructorInclude();
 
@@ -2339,7 +2343,11 @@ void DataModel::WriteHFile(SourceLogInterface* pDialog, bool unconditional)
             str.Format("- Writing file '%s'", GetHFile().c_str());
             pDialog->AddLog(str);
             
-            os << newContent;
+            CbString cbOut;
+            cbOut += newContent;
+            if (!GetCrlf())
+                cbOut.Replace("\r\n", "\n");
+            os << cbOut;
             os.close();
             
             struct _stat buf;
@@ -3450,7 +3458,7 @@ void DataModel::Serialize(CbArchive& archive)
         archive << _includeSequenceDiagramMessages;
         archive << _showDllExport;
         archive << __notUsed_rtfDiagramFormat;
-        archive << __notUsed_mfcSerialize;
+        archive << _crlf;
     }
     else
     {
@@ -3503,7 +3511,7 @@ void DataModel::Serialize(CbArchive& archive)
             archive >> _includeSequenceDiagramMessages;
             archive >> _showDllExport;
             archive >> __notUsed_rtfDiagramFormat;
-            archive >> __notUsed_mfcSerialize;
+            archive >> _crlf;
         }
     }
 }
