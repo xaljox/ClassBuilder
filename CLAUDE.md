@@ -4,13 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build
 
-Visual Studio 2026 (originally VS2019; retargeted, no code changes) MFC + Qt project.
+Originally an MFC app on Visual Studio 2019; retargeted to **VS 2026** 2026-04-27 (no code changes). **MFC was fully removed 2026-06-09** — this is now an **all-Qt** application: a Qt shell hosts an MFC-free model/logic core. There is no MFC, no `mfc*.dll` import, and no `AFX_EXT_CLASS` export boundary.
 
-The **CMake build** (preferred) produces a **single collapsed `ClassBuilder.exe`** — all ~207 logic sources in [ClassBuilder/](ClassBuilder/) plus the former thin-app [ClassBuilder.cpp](ClassBuilder.cpp) linked into one executable. The old MFC-extension-DLL + thin-EXE split existed only for the (parked) add-in mechanism; collapsing it removes that boundary and `AFX_EXT_CLASS` as an export macro. The Qt dialog code is quarantined in a separate static lib, `ClassBuilderQt` (Qt forces `UNICODE`; this keeps it off the MultiByte MFC sources).
+The **CMake build** produces a **single `ClassBuilder.exe`**. The source is organized into dependency tiers (restructured 2026-06-24 from the old add-in DLL/EXE-split folders):
 
-The old MSBuild solution (`ClassBuilderEXE.sln` + `.vcxproj`/`.dsp`/`.dsw`) built the original two products — `ClassBuilder.dll` (extension DLL) + `ClassBuilderEXE` (thin app) — but had **diverged** from CMake (which produces one collapsed EXE) and gone stale. It was **removed 2026-06-06**; CMake is now the only build. A full 2026-05-14 source snapshot is preserved at the sibling dir `..\ClassBuilderXX` if those legacy files are ever needed.
+- [include/](include/) — generic `CB_*` container / AVL-tree / value-tree / critical runtime headers (no deps)
+- [value/](value/) — standalone value types (`CbColor` / `CbGeometry` = `CbRect`/`CbPoint`/`CbSize` / `CbString` / `CbTime`); **zero** serialization dependency
+- [serialize/](serialize/) — `CbArchive` (`CbSerialize`) + `CbZstdStream`, the **optional** serialization layer; depends *down* on `value/`
+- [src/model/](src/model/) — the MFC-free model + logic + generated classes + the self-host model `ClassBuilder.CBZ` + the tiny `WinMain.cpp` (→ `Cb_RunQtShell`) + the flex/bison `Read.l.cpp` / `Read.y.cpp`
+- [src/qt/](src/qt/) — Qt views / dialogs / canvas, quarantined in a static lib `ClassBuilderQt` (Qt 6 forces `UNICODE` on consumers; the lib keeps that define off the MultiByte MFC-free model sources)
+- [src/platform/](src/platform/) — `CbPlatformCompat` (the single `#ifdef` seam = the multi-platform pivot) + `CbMessageBox` / `CbShellHooks`
+- [third_party/](third_party/) — `zstd` (CBZ compression) + `json` (command-server)
+- [res/](res/) [models/](models/) [tools/](tools/) [docs/](docs/)
 
-### CMake (preferred)
+(Historical: the EXE was once an MFC-extension-DLL + thin-EXE split that existed only for the parked add-in mechanism. The build collapsed to one EXE, MFC itself was then removed, and the folders were restructured into the tiers above. A full 2026-05-14 source snapshot is preserved at the sibling dir `..\ClassBuilderXX`, and the pre-restructure tree at `..\ClassBuilder_old`, if legacy files are ever needed. The old MSBuild solution — `ClassBuilderEXE.sln` + `.vcxproj`/`.dsp`/`.dsw` — was removed 2026-06-06; CMake is the only build.)
+
+### CMake
 
 [CMakeLists.txt](CMakeLists.txt) + [CMakePresets.json](CMakePresets.json) at the repo root. Read by VS 2026 ("Open Folder"), VS Code (CMake Tools), and the command line — all share the `out/build/<preset>` tree. The primary target is **x64 Release**.
 
@@ -19,28 +28,27 @@ cmake --preset x64
 cmake --build --preset x64-release      # or x64-debug
 ```
 
+The exe lands at `out/build/x64/bin/Release/ClassBuilder.exe`.
+
 Key CMakeLists facts (each there for a root-caused reason — see auto-memory):
-- MFC macros are defined **explicitly**, not via `CMAKE_MFC_FLAG` — that flag is honored only by the VS generator, and VS 2026's Open Folder uses Ninja. The collapsed EXE compiles with `_AFXDLL` (MFC as a shared DLL) + **`NODLL`**; `NODLL` makes `AFX_EXT_CLASS` expand to nothing and compiles out the add-in `LoadLibrary` loop in `InitInstance`.
-- The zstd lib arch is derived from `CMAKE_CXX_COMPILER_ARCHITECTURE_ID` (generator-agnostic), not `CMAKE_VS_PLATFORM_NAME`.
-- Debug uses `/Z7` (embedded debug info), not `/Zi` — avoids the shared-`vc145.pdb` `mspdbsrv` race (error C1090) under the ~200-file parallel build.
+- The Qt static lib `ClassBuilderQt` links `Qt6::Widgets`/`Qt6::Network` **PRIVATE** so Qt 6's forced `UNICODE`/`_UNICODE` stays inside it; the EXE re-strips those with `/UUNICODE /U_UNICODE` (the model is a MultiByte build calling the ANSI Win32 APIs directly, and `cl.exe` gives `/U` precedence over `/D` for the same symbol).
+- The zstd lib arch is derived from `CMAKE_CXX_COMPILER_ARCHITECTURE_ID` (generator-agnostic), with `CMAKE_VS_PLATFORM_NAME` preferred when the VS generator sets it.
+- Debug uses `/Z7` (embedded debug info), not `/Zi` — avoids the shared-`vc145.pdb` `mspdbsrv` race (error C1090) under the ~300-file parallel build.
 - Release carries **no** debug info by design (no `/DEBUG`, no `.pdb`); debugging happens on Debug builds.
-- PCH on `stdafx.h` (the two flex lexer sources opt out) — incremental rebuilds ~3.5 s.
-
-### MSBuild (legacy, removed 2026-06-06)
-
-The original `ClassBuilderEXE.sln` (+ `.vcxproj`/`.dsp`/`.dsw`) was **removed** — it had diverged from CMake and gone stale. CMake is the only build now. Those files survive in the `..\ClassBuilderXX` 2026-05-14 snapshot if ever needed. (Historical, now in auto-memory: that MSBuild **Release** shipped ~1 MB of dead code because modern MSBuild defaults `GenerateDebugInformation` to true, silently disabling `/OPT:REF`; the CMake build doesn't have this.)
+- PCH on [src/model/StdAfx.h](src/model/StdAfx.h) (the flex lexer `Read.l.cpp` opts out) — incremental rebuilds ~3.5 s.
+- Static Qt (`C:/Qt-static/6.11.1`) links the Qt libs + plugins into the EXE → no `Qt6*.dll` beside it, no windeployqt. With the Svg module present, SVG model icons are enabled.
 
 For TRACE output during debug, run with F5 in VS (Output → "Debug" pane). TRACE is compiled out in Release.
 
-`libzstd_static.lib` is linked (CBZ compression) — the `/MD` (shared-CRT) variant under `ClassBuilder/zstd/lib/<arch>/`. The collapsed EXE is still `/MD` (shared MFC/CRT); the planned full-static build (`/MT` static CRT + static MFC + static Qt) will need a `/MT` variant of the zstd lib built.
+`libzstd_static.lib` is linked (CBZ compression) — the `/MD` (shared-CRT) variant under [third_party/zstd/lib/](third_party/zstd/lib/)`<arch>/`. The EXE is currently `/MD` (shared CRT); the planned full-static build (`/MT` static CRT + static Qt) will use the `/MT` zstd variant already staged at `third_party/zstd/lib-mt/x64/`.
 
 There is no test suite. Verification is manual: open the project's own `.cbz` in CB, regenerate sources, rebuild, repeat (self-host).
 
 ## What this app does
 
-ClassBuilder is a code-generation tool. The user defines an OO data model (classes, members, methods, relations, inheritance, diagrams) in the GUI; CB writes `.h` / `.cpp` source for that model. The generated code uses a runtime support layer (the `CB_*` headers in [Include/](Include/)) for owned containers, AVL trees, value trees, criticals, etc.
+ClassBuilder is a code-generation tool. The user defines an OO data model (classes, members, methods, relations, inheritance, diagrams) in the GUI; CB writes `.h` / `.cpp` source for that model. The generated code uses a runtime support layer (the `CB_*` headers in [include/](include/)) for owned containers, AVL trees, value trees, criticals, etc.
 
-The app is **self-hosted**: the model that generates ClassBuilder's own source ships in the repo as [ClassBuilder/ClassBuilder_org.cbz](ClassBuilder/ClassBuilder_org.cbz). When you change CB's source by hand and CB is open on its own model, you'll be prompted to re-read the changed sources back into the model — accept the prompt so the edit is saved into the CBD when you save.
+The app is **self-hosted**: the model that generates ClassBuilder's own source ships in the repo as [src/model/ClassBuilder.CBZ](src/model/ClassBuilder.CBZ). When you change CB's source by hand and CB is open on its own model, you'll be prompted to re-read the changed sources back into the model — accept the prompt so the edit is saved into the model when you save.
 
 ## Generated vs user code regions
 
@@ -54,28 +62,30 @@ Anything outside those markers is regenerated and your edit is lost. In particul
 
 ## Serialization
 
-The serialization runtime is **`CbArchive`** ([ClassBuilder/CbSerialize.h](ClassBuilder/CbSerialize.h), [CbArchive.cpp](ClassBuilder/CbArchive.cpp)) — MFC-free, with explicit class registration via `CB_DECLARE_SERIAL` / `CB_IMPLEMENT_SERIAL`. Wire format v1 has no per-version gates: every field always written, single version check on read. `.cbz` files are a raw Zstd frame around the CbArchive byte stream.
+The serialization runtime is **`CbArchive`** ([serialize/CbSerialize.h](serialize/CbSerialize.h), [serialize/CbSerialize.cpp](serialize/CbSerialize.cpp)) — MFC-free, with explicit class registration via `CB_DECLARE_SERIAL` / `CB_IMPLEMENT_SERIAL`. Wire format v1 has no per-version gates: every field always written, single version check on read. `.cbz` files are a raw Zstd frame ([serialize/CbZstdStream.h](serialize/CbZstdStream.h)) around the CbArchive byte stream.
 
-`CbObject` is the polymorphic root — a **bare class** (no `: public CObject`). DataModelDoc and other classes inherit from it directly; the MFC document framework integration lives in `CClassBuilderDoc` (which contains a `DataModelDoc` member, not is one).
+`CbObject` is the polymorphic root — a **bare class** (no `: public CObject`). DataModelDoc and other classes inherit from it directly; the framework integration lives in `CClassBuilderDoc` (which contains a `DataModelDoc` member, not is one).
 
-The legacy MFC `CArchive` path has been **removed**: the `_mfcSerialize` model field is retained as `_mfcSerialize_notUsed` for CBZ format compatibility (it's still in the byte stream); all conditional codegen branches and the `MFC_*_SERIAL` escape-hatch macros are gone. A standalone [ClassBuilderStatic.exe](ClassBuilder/) build was produced once for portable `.cbd` → `.cbz` conversion and archived if a legacy file ever needs rescue; not part of the regular build.
+The legacy MFC `CArchive` path has been **removed**: the `_mfcSerialize` model field is retained as `_mfcSerialize_notUsed` for CBZ format compatibility (it's still in the byte stream); all conditional codegen branches and the `MFC_*_SERIAL` escape-hatch macros are gone. A standalone `ClassBuilderStatic.exe` was produced once for portable `.cbd` → `.cbz` conversion and **archived** (not in this repo); it is not part of the regular build.
 
 Single inheritance is enforced for any class with `Serialize` enabled. The `Serialize` codegen iterates all bases at the top of the body, but the GUI rule prevents the cases (diamond, mixed ancestry) the codegen doesn't handle safely. See [project_classbuilder_serialize_single_inheritance.md](C:\Users\jimmy\.claude\projects\c--Users-jimmy-Projects-ClassBuilder\memory\project_classbuilder_serialize_single_inheritance.md) in auto-memory for the sharp edges.
 
 ## Pipe API
 
-`ClassBuilder.exe` runs a JSON-over-named-pipe server at `\\.\pipe\ClassBuilder` ([CbCommandServer.cpp](ClassBuilder/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/PIPE_API.md](tools/PIPE_API.md). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The intent is that the pipe API will also be used to drive port-related model migrations without modifying CB itself during the Qt port.
+`ClassBuilder.exe` runs a JSON-over-named-pipe server at `\\.\pipe\ClassBuilder` ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/PIPE_API.md](tools/PIPE_API.md). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The pipe API is also the intended way to drive port-related model migrations without modifying CB itself.
 
 ## Conventions
 
 - **Prefer `Gti::IsX()` over MFC `IsKindOf(RUNTIME_CLASS(...))`** — `IsClass()` / `IsMethod()` / `IsArgument()` / `IsMember()` etc. are MFC-free, lighter compile dependencies, and Qt-port friendly.
 - **Don't snapshot the linked-list head/tail in `CB_*_ACTIVE` cascade-delete loops** — the macros must re-query `GetFirst`/`GetLast` each iteration. Caching `_first`/`_last` and walking via `_prev`/`_next` is a use-after-free under cascade delete with VS2019+ stricter CRT.
-- **Line endings are CRLF** on disk — CB stores method bodies with CRLF, regenerated source must emit CRLF. Audit `NL` usage when porting to Qt.
-- **Toolbar bitmaps:** padding goes into the bitmap itself in `ScaleToolBar`, never via `SetSizes` (CToolBar adds extra height to the bottom otherwise).
+- **Line endings are CRLF** on disk — CB stores method bodies with CRLF, regenerated source must emit CRLF. Audit `NL` usage when porting to other platforms.
+- **Toolbar bitmaps:** padding goes into the bitmap itself in `ScaleToolBar`, never via `SetSizes` (the toolbar adds extra height to the bottom otherwise).
+- **Window-system access only via `CbPlatformCompat`** ([src/platform/](src/platform/)) — never inline Win32/Qt; the port is `#ifdef` branches inside that seam.
+- **Prefer `bool` over `BOOL`** in new/edited hand-written code (don't mass-rewrite the model's `BOOL`).
 
-## Phased port plan
+## Port status
 
-The repo is mid-migration. The **strict order** is: VS2019 upgrade → VS2026 retarget (done 2026-04-27) → MFC→Qt port. Don't skip ahead. The current Windows MFC build is intended to remain the working tool throughout the Qt port, with port-related model migrations driven through the pipe API rather than by editing CB itself, to avoid the deadlock of changing the tool you depend on.
+Historical migration order: VS2019 upgrade → VS2026 retarget (done 2026-04-27) → MFC→Qt port (**done 2026-06-09**, zero `mfc*.dll` imports). The app is now all-Qt, the folders are restructured for multi-platform, and the repo is in Git (private, `github.com/xaljox/ClassBuilder`). The **next** phase is the cross-platform (Mac/Linux) build: the committed generated sources build on other platforms (CB can't yet *run* there to regenerate), pivoting on the single `CbPlatformCompat` `#ifdef` seam. Port-related model migrations are driven through the pipe API rather than by editing CB itself, to avoid the deadlock of changing the tool you depend on.
 
 ## Auto-memory
 
