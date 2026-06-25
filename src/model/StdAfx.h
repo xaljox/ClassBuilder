@@ -13,7 +13,11 @@
 
 #include <iosfwd>           // std::ostream / std::istream forward declarations
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "CbWinTypes.h"     // windows.h-free Win32 vocabulary (UINT/RGB/GDI consts)
+#endif
 
 #include "CbPlatformCompat.h"      // AfxGetMainWnd / AfxGetApp / TRACE shims (+ CbMessageBox via CbMessageBox.h)
 

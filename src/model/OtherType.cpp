@@ -146,7 +146,7 @@ void OtherType::Drop(bool ctrlKeyDown, Gti* pGtiDrop)
         {
             CbString str;
             str.Format("Are you sure you want to promote other type '%s' into an external class, this action can not be undone!!", 
-                GetName());
+                GetName().c_str());
             if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_OKCANCEL) == CBMB_IDOK)
             {
                 ExternClass* pExternClass = new ExternClass(this);
@@ -237,7 +237,7 @@ int OtherType::OnDelete(bool checkOnly)
     else if (!checkOnly)
     {
         CbString str;
-        str.Format("Are you sure you want to delete type '%s'", GetName());
+        str.Format("Are you sure you want to delete type '%s'", GetName().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();

@@ -491,7 +491,7 @@ int SequenceDiagram::OnDelete(bool checkOnly)
         {
             CbString str;
             str.Format("Are you sure you want to delete sequence diagram '%s'",
-                GetName());
+                GetName().c_str());
             if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_OKCANCEL) == CBMB_IDOK)
             {
                 Delete();
@@ -501,7 +501,7 @@ int SequenceDiagram::OnDelete(bool checkOnly)
         {
             CbString str;
             str.Format("Can not delete sequence diagram '%s' views on it are still open, close them first.",
-                GetName());
+                GetName().c_str());
             CbMessageBox(str, CBMB_ICONEXCLAMATION);
         }
     }

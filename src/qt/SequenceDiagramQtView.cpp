@@ -21,6 +21,7 @@
 #include <QWheelEvent>
 #include <QMouseEvent>
 #include <QKeyEvent>
+#include <QNativeGestureEvent>
 #include <QResizeEvent>
 #include <QGridLayout>
 #include <QToolBar>
@@ -3106,12 +3107,50 @@ void SequenceDiagramCanvas::onScrollV(int v)
 
 // Ctrl+wheel = zoom around cursor; bare wheel scrolls aren't yet meaningful
 // (no scrollbars) and are ignored.
+bool SequenceDiagramCanvas::event(QEvent* e)
+{
+    // macOS trackpad pinch arrives as a native zoom gesture (not a wheel event).
+    // value() is the incremental scale delta per step; map it to a multiplicative
+    // zoom factor about the gesture point.
+    if (e->type() == QEvent::NativeGesture)
+    {
+        auto* ng = static_cast<QNativeGestureEvent*>(e);
+        if (ng->gestureType() == Qt::ZoomNativeGesture)
+        {
+            zoomAt(1.0 + ng->value(), ng->position());
+            ng->accept();
+            return true;
+        }
+    }
+    return QWidget::event(e);
+}
+
 void SequenceDiagramCanvas::wheelEvent(QWheelEvent* e)
 {
     if (e->modifiers() & Qt::ControlModifier)
     {
-        const qreal step = (e->angleDelta().y() > 0) ? 1.15 : (1.0 / 1.15);
-        zoomAt(step, e->position());
+        // Proportional zoom: one wheel notch (120 eighths-of-a-degree) == 1.15x.
+        // Scale by the ACTUAL delta -- a Magic Mouse / trackpad sends many small
+        // high-resolution deltas per swipe, so a fixed 1.15 per event zoomed
+        // wildly ("trigger happy"). pow() makes a swipe sum to a sane amount.
+        const int dy = e->angleDelta().y();
+        if (dy != 0)
+            zoomAt(qPow(1.15, dy / 120.0), e->position());
+        e->accept();
+        return;
+    }
+    // Plain scroll/swipe = pan (no modifier). A Magic Mouse / trackpad has no
+    // middle button, so this is the only natural way to move a zoomed diagram
+    // there; a wheel mouse pans too. pixelDelta is set for touch devices (smooth,
+    // both axes); fall back to angleDelta/8 (one notch ~= 15deg) for a plain
+    // wheel. Same _pan/repaint path as the middle-drag pan.
+    QPointF delta = !e->pixelDelta().isNull() ? QPointF(e->pixelDelta())
+                                              : QPointF(e->angleDelta()) / 8.0;
+    if (!delta.isNull())
+    {
+        _pan += delta;
+        updateScrollBars();
+        update();
         e->accept();
         return;
     }
@@ -3897,8 +3936,16 @@ void SequenceDiagramQtView::exportSvg()
     QString def = _canvas->diagramName();
     if (def.isEmpty())
         def = "sequencediagram";
+    // macOS: force Qt's own file dialog (the native NSSavePanel does not appear
+    // in this app -- same gap as the File Open panel in QtShellWindow).
+#ifdef __APPLE__
+    const QFileDialog::Options svgOpts = QFileDialog::DontUseNativeDialog;
+#else
+    const QFileDialog::Options svgOpts = QFileDialog::Options();
+#endif
     QString path = QFileDialog::getSaveFileName(
-        this, "Export Diagram as SVG", def + ".svg", "SVG files (*.svg)");
+        this, "Export Diagram as SVG", def + ".svg", "SVG files (*.svg)",
+        nullptr, svgOpts);
     if (path.isEmpty())
         return;
     if (!path.endsWith(".svg", Qt::CaseInsensitive))

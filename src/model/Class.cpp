@@ -329,7 +329,7 @@ void Class::Drop(bool ctrlKeyDown, Gti* pGtiDrop)
         {
             CbString str;
             str.Format("Are you sure you want to degrade class '%s' into an external class, this action can not be undone!!", 
-                GetName());
+                GetName().c_str());
             if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_OKCANCEL) == CBMB_IDOK)
             {
                 CbViewLock lock(pDocument);
@@ -824,7 +824,7 @@ int Class::OnDelete(bool checkOnly)
     else if (!checkOnly)
     {
         CbString str;
-        str.Format("Are you sure you want to delete class '%s'", GetName());
+        str.Format("Are you sure you want to delete class '%s'", GetName().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();
@@ -1189,8 +1189,8 @@ void Class::SourceCheck(SourceLogInterface* pDialog)
                     if (method->FindStringInStrippedCode("ConstructorInclude") == -1)
                     {
                         str.Format("  ! Error: No call to '%s' in constructor '%s'", 
-                            GetConstructorIncludeMethod()->GetItemText(), 
-                            method->GetItemText());
+                            GetConstructorIncludeMethod()->GetItemText().c_str(), 
+                            method->GetItemText().c_str());
                         pDialog->AddLogError(str);
                     }
                 }
@@ -1199,7 +1199,7 @@ void Class::SourceCheck(SourceLogInterface* pDialog)
                     if (method->FindStringInStrippedCode("SerializeConstructorInclude") == -1)
                     {
                         str.Format("  ! Error: No call to 'SerializeConstructorInclude()' in constructor '%s'", 
-                            method->GetItemText());
+                            method->GetItemText().c_str());
                         pDialog->AddLogError(str);
                     }
                 }
@@ -1208,7 +1208,7 @@ void Class::SourceCheck(SourceLogInterface* pDialog)
                     if (method->FindStringInStrippedCode("ReplaceConstructorInclude") == -1)
                     {
                         str.Format("  ! Error: No call to 'ReplaceConstructorInclude()' in constructor '%s'", 
-                            method->GetItemText());
+                            method->GetItemText().c_str());
                         pDialog->AddLogError(str);
                     }
                 }
@@ -1223,7 +1223,7 @@ void Class::SourceCheck(SourceLogInterface* pDialog)
             if (method->FindStringInStrippedCode("DestructorInclude") == -1)
             {
                 str.Format("  ! Error: No call to 'DestructorInclude()' in destructor  '%s'",
-                    method->GetItemText());
+                    method->GetItemText().c_str());
                 pDialog->AddLogError(str);
             }
         }
@@ -1234,12 +1234,12 @@ void Class::SourceCheck(SourceLogInterface* pDialog)
     {
         if (!GetFromRelationCount() && !GetToRelationCount())
         {
-            str.Format("  ! Warning: No constructor present for class '%s'", GetName());
+            str.Format("  ! Warning: No constructor present for class '%s'", GetName().c_str());
             pDialog->AddLogWarning(str);
         }
         else
         {
-            str.Format("  ! Error: No constructor present for class '%s'", GetName());
+            str.Format("  ! Error: No constructor present for class '%s'", GetName().c_str());
             pDialog->AddLogError(str);
         }
     }
@@ -1344,12 +1344,12 @@ void Class::UpdateCppHeader()
         {
             if (member->GetVersion() == member->GetInitialVersion())
             {
-                str.Format("@Added member '%s'", member->GetPrefixedName());
+                str.Format("@Added member '%s'", member->GetPrefixedName().c_str());
                 added += str;
             }
             else
             {
-                str.Format("@Updated member '%s'", member->GetPrefixedName());
+                str.Format("@Updated member '%s'", member->GetPrefixedName().c_str());
                 updated += str;
             }
         }
@@ -1362,12 +1362,12 @@ void Class::UpdateCppHeader()
         {
             if (inherit->GetVersion() == inherit->GetInitialVersion())
             {
-                str.Format("@Added inheritance '%s'", inherit->GetBaseName());
+                str.Format("@Added inheritance '%s'", inherit->GetBaseName().c_str());
                 added += str;
             }
             else
             {
-                str.Format("@Updated inheritance '%s'", inherit->GetBaseName());
+                str.Format("@Updated inheritance '%s'", inherit->GetBaseName().c_str());
                 updated += str;
             }
         }
@@ -1381,12 +1381,12 @@ void Class::UpdateCppHeader()
         {
             if (version == fromRelation->GetFromRelation()->GetInitialVersion())
             {
-                str.Format("@Added relation '%s'", fromRelation->GetNotation());
+                str.Format("@Added relation '%s'", fromRelation->GetNotation().c_str());
                 added += str;
             }
             else
             {
-                str.Format("@Updated relation '%s'", fromRelation->GetNotation());
+                str.Format("@Updated relation '%s'", fromRelation->GetNotation().c_str());
                 updated += str;
             }
         }
@@ -1402,12 +1402,12 @@ void Class::UpdateCppHeader()
             {
                 if (version == toRelation->GetToRelation()->GetInitialVersion())
                 {
-                    str.Format("@Added relation '%s'", toRelation->GetNotation());
+                    str.Format("@Added relation '%s'", toRelation->GetNotation().c_str());
                     added += str;
                 }
                 else
                 {
-                    str.Format("@Updated relation '%s'", toRelation->GetNotation());
+                    str.Format("@Updated relation '%s'", toRelation->GetNotation().c_str());
                     updated += str;
                 }
             }
@@ -1421,7 +1421,7 @@ void Class::UpdateCppHeader()
         {
             if (method->GetVersion() == method->GetInitialVersion())
             {
-                str.Format("@Added method '%s'", method->GetName());
+                str.Format("@Added method '%s'", method->GetName().c_str());
                 added += str;
             }
             else
@@ -1433,7 +1433,7 @@ void Class::UpdateCppHeader()
                     if (argument->GetVersion() > GetDataModelDoc()->GetVersion())
                     {
                         str.Format("@Updated interface of method '%s'", 
-                            method->GetName());
+                            method->GetName().c_str());
                         updated += str;
                         codeChanged = false;
                         break;
@@ -1443,7 +1443,7 @@ void Class::UpdateCppHeader()
                 if (codeChanged)
                 {
                     str.Format("@Updated code of method '%s'", 
-                        method->GetName());
+                        method->GetName().c_str());
                     updated += str;
                 }
             }
@@ -1568,12 +1568,12 @@ int Class::UpdateHHeader()
         {
             if (member->GetVersion() == member->GetInitialVersion())
             {
-                str.Format("@Added member '%s'", member->GetPrefixedName());
+                str.Format("@Added member '%s'", member->GetPrefixedName().c_str());
                 added += str;
             }
             else
             {
-                str.Format("@Updated member '%s'", member->GetPrefixedName());
+                str.Format("@Updated member '%s'", member->GetPrefixedName().c_str());
                 updated += str;
             }
         }
@@ -1586,12 +1586,12 @@ int Class::UpdateHHeader()
         {
             if (inherit->GetVersion() == inherit->GetInitialVersion())
             {
-                str.Format("@Added inheritance '%s'", inherit->GetBaseName());
+                str.Format("@Added inheritance '%s'", inherit->GetBaseName().c_str());
                 added += str;
             }
             else
             {
-                str.Format("@Updated inheritance '%s'", inherit->GetBaseName());
+                str.Format("@Updated inheritance '%s'", inherit->GetBaseName().c_str());
                 updated += str;
             }
         }
@@ -1605,12 +1605,12 @@ int Class::UpdateHHeader()
         {
             if (version == fromRelation->GetFromRelation()->GetInitialVersion())
             {
-                str.Format("@Added relation '%s'", fromRelation->GetNotation());
+                str.Format("@Added relation '%s'", fromRelation->GetNotation().c_str());
                 added += str;
             }
             else
             {
-                str.Format("@Updated relation '%s'", fromRelation->GetNotation());
+                str.Format("@Updated relation '%s'", fromRelation->GetNotation().c_str());
                 updated += str;
             }
         }
@@ -1626,12 +1626,12 @@ int Class::UpdateHHeader()
             {
                 if (version == toRelation->GetToRelation()->GetInitialVersion())
                 {
-                    str.Format("@Added relation '%s'", toRelation->GetNotation());
+                    str.Format("@Added relation '%s'", toRelation->GetNotation().c_str());
                     added += str;
                 }
                 else
                 {
-                    str.Format("@Updated relation '%s'", toRelation->GetNotation());
+                    str.Format("@Updated relation '%s'", toRelation->GetNotation().c_str());
                     updated += str;
                 }
             }
@@ -1645,7 +1645,7 @@ int Class::UpdateHHeader()
         {
             if (method->GetVersion() == method->GetInitialVersion())
             {
-                str.Format("@Added method '%s'", method->GetName());
+                str.Format("@Added method '%s'", method->GetName().c_str());
                 added += str;
             }
             else
@@ -1656,7 +1656,7 @@ int Class::UpdateHHeader()
                     if (argument->GetVersion() > GetDataModelDoc()->GetVersion())
                     {
                         str.Format("@Updated interface of method '%s'", 
-                            method->GetName());
+                            method->GetName().c_str());
                         updated += str;
                         break;
                     }
@@ -1798,7 +1798,7 @@ void Class::WriteCppFile(SourceLogInterface* pDialog, bool unconditional)
         if (os)
         {
             CbString str;
-            str.Format("- Writing file '%s'", GetCppFile());
+            str.Format("- Writing file '%s'", GetCppFile().c_str());
             pDialog->AddLog(str);
             
             UpdateCppHeader();
@@ -1819,7 +1819,7 @@ void Class::WriteCppFile(SourceLogInterface* pDialog, bool unconditional)
         else
         {
             CbString str;
-            str.Format("! Error can not open file '%s'", GetCppFile());
+            str.Format("! Error can not open file '%s'", GetCppFile().c_str());
             pDialog->AddLogError(str);
         }
     }
@@ -2018,7 +2018,7 @@ int Class::WriteHFile(SourceLogInterface* pDialog, bool unconditional)
         if (os)
         {
             CbString str;
-            str.Format("- Writing file '%s'", GetHFile());
+            str.Format("- Writing file '%s'", GetHFile().c_str());
             pDialog->AddLog(str);
 
             SourceCheck(pDialog);
@@ -2041,7 +2041,7 @@ int Class::WriteHFile(SourceLogInterface* pDialog, bool unconditional)
         else
         {
             CbString str;
-            str.Format("! Error can not open file '%s'", GetHFile());
+            str.Format("! Error can not open file '%s'", GetHFile().c_str());
             pDialog->AddLogError(str);
         }
 
@@ -2374,7 +2374,7 @@ void Class::WriteRecursiveInclude(CbString& str)
         if (GetFlag() == 2)
         {
             CbString msg;
-            msg.Format("Recursive include file relation for class '%s'", GetName());
+            msg.Format("Recursive include file relation for class '%s'", GetName().c_str());
             CbMessageBox(msg, CBMB_ICONEXCLAMATION);
             SetFlag(1);
         }

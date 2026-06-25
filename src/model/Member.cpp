@@ -249,7 +249,7 @@ void Member::Delete()
             pClass->SetVersion(version + 1);
 
             CbString str;
-            str.Format("@Deleted member '%s'", GetPrefixedName());
+            str.Format("@Deleted member '%s'", GetPrefixedName().c_str());
     
             pClass->AddModified(str);
         }
@@ -778,7 +778,7 @@ int Member::OnDelete(bool checkOnly)
     if (!checkOnly)
     {
         CbString str;
-        str.Format("Are you sure you want to delete member '%s'", GetName());
+        str.Format("Are you sure you want to delete member '%s'", GetName().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();

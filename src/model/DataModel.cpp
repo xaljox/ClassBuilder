@@ -28,7 +28,9 @@
 #include <sys/stat.h>
 #include <fstream>
 using namespace std;
-#include <direct.h>
+#ifdef _WIN32
+#include <direct.h>   // _chdir (POSIX chdir via CbWinTypes.h on non-Windows)
+#endif
 
 #include "ClassBuilderDoc.h"
 #include "ParseLogInterface.h"
@@ -323,7 +325,7 @@ bool DataModel::CheckUpdates()
     {
         CbString str;
         str.Format("Source files have been modified outside of ClassBuilder for project '%s'. "
-			"Do you want to reload them?", GetDataModelDoc()->GetTitle());
+			"Do you want to reload them?", GetDataModelDoc()->GetTitle().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             CbTime lastSave = _lastSave;
@@ -2334,7 +2336,7 @@ void DataModel::WriteHFile(SourceLogInterface* pDialog, bool unconditional)
         if (os)
         {
             CbString str;
-            str.Format("- Writing file '%s'", GetHFile());
+            str.Format("- Writing file '%s'", GetHFile().c_str());
             pDialog->AddLog(str);
             
             os << newContent;
@@ -2353,7 +2355,7 @@ void DataModel::WriteHFile(SourceLogInterface* pDialog, bool unconditional)
         else
         {
             CbString str;
-            str.Format("! Error can not open file '%s'", GetHFile());
+            str.Format("! Error can not open file '%s'", GetHFile().c_str());
             pDialog->AddLogError(str);
         }
     }

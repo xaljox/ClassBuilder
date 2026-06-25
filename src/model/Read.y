@@ -269,7 +269,7 @@ void CheckNote()
                 pMethod->SetNote(g_note);
                 pMethod->SetVersion(g_newVersion);
                 CbString str;
-                str.Format("    Update note method '%s'", pMethod->GetName());
+                str.Format("    Update note method '%s'", pMethod->GetName().c_str());
                 g_pDialog->AddLog(str);
             }
         }
@@ -291,7 +291,7 @@ void CheckInit()
         pConstructor->SetInit(g_init);
         pConstructor->SetVersion(g_newVersion);
         CbString str;
-        str.Format("    Update init part of constructor '%s'", pConstructor->GetName());
+        str.Format("    Update init part of constructor '%s'", pConstructor->GetName().c_str());
         g_pDialog->AddLog(str);
     }
 }
@@ -305,7 +305,7 @@ void CheckCode()
         pMethod->SetCode(g_code);
         pMethod->SetVersion(g_newVersion);
         CbString str;
-        str.Format("    Update code of method '%s'", pMethod->GetName());
+        str.Format("    Update code of method '%s'", pMethod->GetName().c_str());
         g_pDialog->AddLog(str);
     }
 
@@ -328,7 +328,7 @@ void CheckCode()
         }
 
 		CbString warning;
-		warning.Format("! Warning at line %d: Found unexpected tag '%s'", lineno, g_code.Mid(start, end-start));
+		warning.Format("! Warning at line %d: Found unexpected tag '%s'", lineno, g_code.Mid(start, end-start).c_str());
 		g_pDialog->AddLogWarning(warning);
     }
 }
@@ -355,7 +355,7 @@ void CheckInterface()
 		if (str.Find(ref) == -1)
 		{
 			CbString text;
-			text.Format("    Warning interface of method '%s' has changed", pMethod->GetName());
+			text.Format("    Warning interface of method '%s' has changed", pMethod->GetName().c_str());
 			g_pDialog->AddLogWarning(text);
 		}
     }
@@ -415,7 +415,7 @@ static void CheckInitStaticMembers(CbString initStaticMembers)
 						iMember->SetInitialization(init);
 
 						CbString text;
-						text.Format("    Update initialization of static member '%s'", iMember->GetPrefixedName());
+						text.Format("    Update initialization of static member '%s'", iMember->GetPrefixedName().c_str());
 						g_pDialog->AddLog(text);
 					}
 					initStaticMembers = initStaticMembers.Mid(index);
@@ -423,14 +423,14 @@ static void CheckInitStaticMembers(CbString initStaticMembers)
 				else
 				{
 					CbString text;
-					text.Format("    Warning static member '%s' is not properly initialized", iMember->GetPrefixedName());
+					text.Format("    Warning static member '%s' is not properly initialized", iMember->GetPrefixedName().c_str());
 					g_pDialog->AddLogWarning(text);
 				}
 			}
 			else
 			{
 				CbString text;
-				text.Format("    Warning static member '%s' not found", iMember->GetPrefixedName());
+				text.Format("    Warning static member '%s' not found", iMember->GetPrefixedName().c_str());
 				g_pDialog->AddLogWarning(text);
 			}
 		}
@@ -448,12 +448,12 @@ int ReadHSource(ParseLogInterface* pDialog, DataModel* pDataModel)
     FILE* fp;
 	if ((fp = fopen(pDataModel->GetHFile(), "r")) == NULL)
 	{
-        str.Format("! Error: can not open file '%s' for reading", pDataModel->GetHFile());
+        str.Format("! Error: can not open file '%s' for reading", pDataModel->GetHFile().c_str());
         pDialog->AddLogError(str);
 		return 0;
 	}
 
-    str.Format("- Reading file '%s'", pDataModel->GetHFile());
+    str.Format("- Reading file '%s'", pDataModel->GetHFile().c_str());
     pDialog->AddLog(str);
 
     g_commentTmp.Empty();
@@ -503,12 +503,12 @@ int ReadHSource(ParseLogInterface* pDialog, Class* pClass)
     FILE* fp;
 	if ((fp = fopen(pClass->GetHFile(), "r")) == NULL)
 	{
-        str.Format("! Error: can not open file '%s' for reading", pClass->GetHFile());
+        str.Format("! Error: can not open file '%s' for reading", pClass->GetHFile().c_str());
         pDialog->AddLogError(str);
 		return 0;
 	}
 
-    str.Format("- Reading file '%s'", pClass->GetHFile());
+    str.Format("- Reading file '%s'", pClass->GetHFile().c_str());
     pDialog->AddLog(str);
 
     g_commentTmp.Empty();
@@ -575,12 +575,12 @@ int ReadCppSource(ParseLogInterface* pDialog, Class* pClass)
     FILE* fp;
 	if ((fp = fopen(pClass->GetCppFile(), "r")) == NULL)
 	{
-        str.Format("! Error: can not open file '%s' for reading", pClass->GetCppFile());
+        str.Format("! Error: can not open file '%s' for reading", pClass->GetCppFile().c_str());
         pDialog->AddLogError(str);
 		return 0;
 	}
 
-    str.Format("- Reading file '%s'", pClass->GetCppFile());
+    str.Format("- Reading file '%s'", pClass->GetCppFile().c_str());
     pDialog->AddLog(str);
 
     g_commentTmp.Empty();

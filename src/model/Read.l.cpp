@@ -29,11 +29,11 @@
 #ifdef __cplusplus
 
 #include <stdlib.h>
-//#ifndef __BORLANDC__
-//#include <unistd.h>
-//#else /* __BORLANDC__ */
+#ifdef _WIN32
 #include <io.h>
-//#endif /* __BORLANDC__ */
+#else
+#include <unistd.h>
+#endif
 
 /* Use prototypes in function declarations. */
 #define READ_USE_PROTOS

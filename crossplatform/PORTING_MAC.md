@@ -86,6 +86,74 @@ printf family. Files + counts (97 total `.c_str()` insertions):
 applied to both `Read.y` and the committed `Read.y.cpp`, so a `bison` regen on
 Windows keeps them. `yyerror`'s `const char* str` was correctly left untouched.
 
+### Runtime gaps fixed on macOS (no Windows reconcile needed)
+
+- **Native file dialogs never appeared** — `File ▸ Open`, `Save As`, and both
+  diagram `Export as SVG` panels did nothing on click. The menus/actions fire
+  fine (in-app Qt dialogs like `File ▸ New` work), but the **native Cocoa
+  `NSOpenPanel`/`NSSavePanel`** behind `QFileDialog::getOpenFileName/
+  getSaveFileName` does not show in this app (consistent with macOS file-access
+  / TCC behaviour). **Fix:** force Qt's own dialog on Mac via a
+  `QFileDialog::DontUseNativeDialog` option, `#ifdef __APPLE__`-gated; the
+  `#else` branch passes an empty `QFileDialog::Options()`, i.e. the native panel
+  unchanged — **so the Windows build is byte-for-byte identical**. Call sites:
+  `QtShellWindow.cpp` (file-scoped `kCbFileDialogOpts`, used by Open / Save As /
+  toolbar Open) and `ClassDiagramQtView.cpp` / `SequenceDiagramQtView.cpp`
+  (local `svgOpts` in each `exportSvg()`). This is a pure GUI fix — no model /
+  codegen involvement.
+
+- **Whole UI smaller than Windows** — tree rows, model icons (sized from
+  `fontMetrics().height()`), and dialogs all rendered smaller, because macOS
+  renders a given point size smaller than Windows (different default system font
+  + DPI basis). **Fix:** the single UI-font knob `CB_UI_FONT_PT` in
+  `QtApp.cpp` is now `#ifdef __APPLE__` → **15pt** (Windows stays **11pt**), so
+  everything scales up together to match — no per-widget tweaks. Tune the macOS
+  value to taste; Windows is unchanged.
+
+### UI / UX parity pass (2026-06-25) — all `#ifdef __APPLE__`, Windows untouched
+
+All in `QtApp.cpp` unless noted; each is a one-knob tunable.
+
+- **Font weight** — Windows bumps the UI font to Medium(500) (renders light there);
+  macOS renders that half-bold, so `CB_UI_FONT_WEIGHT` is **350** on macOS.
+- **Tree text rendered smaller than the rest** — `CbTreeWidget` sets its own
+  stylesheet (row height), which routes it through Qt's stylesheet renderer and
+  drops the `setFont` size. It now re-asserts `font-size: <CB_UI_FONT_PT>pt` in
+  that same stylesheet (`CbTreeWidget.cpp`).
+- **Accent contrast** — macOS' light-blue system Highlight left the tree
+  expand/collapse triangles + connector lines (drawn from `QPalette::Highlight`)
+  barely visible on white. Pin a darker blue `#0A4DA8` as the app Highlight
+  (also drives diagram selection). Not about hue — about contrast on white.
+- **Dialog background** — set `QPalette::Window` to light grey `#ECECEC` with a
+  white `Base`, like Windows, so white edit boxes stand out. Plus a soft
+  `#c0c0c0` border on `QLineEdit/QPlainTextEdit/QTextEdit` for a clean white↔grey
+  separation line.
+- **Square buttons** — the global `QWidget { font-size }` stylesheet rule routed
+  every widget (incl. `QPushButton`) through Qt's stylesheet renderer, squaring
+  the native rounded macOS button. That rule is now **Windows-only** (macOS uses
+  `setFont`, which is enough there); buttons stay native.
+- **Main toolbar too tall** — the shell "Main" toolbar never set an icon size, so
+  it used the larger macOS default. Pinned to `CB_TOOLBAR_ICON_PX` (20px) like
+  the view toolbars (`QtShellWindow.cpp`).
+- **Dock tabs centred** — macOS' style returns centre for `SH_TabBar_Alignment`.
+  Overridden to `AlignLeft` in `ShellSeparatorStyle` (`QtShellWindow.cpp`) so
+  model/dock tabs pack from the left like Windows.
+- **Context-menu shortcuts hidden** — macOS defaults `AA_DontShowShortcutsInContextMenus`
+  ON; turned it off so right-click items show their shortcut text (e.g.
+  `Ctrl+Shift+M`) as on Windows.
+- **Diagram nav (Magic Mouse / trackpad)** — added: plain scroll/swipe **pans**
+  both canvases (no middle button on Apple devices); trackpad **pinch** zooms
+  (`QNativeGestureEvent`); `⌘+scroll` zoom is now **proportional to the delta**
+  (was a fixed 1.15× per event → trigger-happy on hi-res devices). All in
+  `ClassDiagramQtView.cpp` / `SequenceDiagramQtView.cpp` (+ headers).
+
+### Build: patched Qt for the dock tear-off
+
+Built a from-source arm64 Qt 6.11.1 carrying the dock-tearoff patch (brew has no
+fixed bottle yet); CB points at it via a local-only `CMakeUserPresets.json`
+(`mac-patched` preset, gitignored). Full recipe + toolchain gotchas (Xcode check,
+x86_64-vs-arm64 cmake/ninja) in [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md).
+
 ### Still open (deferred, not build blockers)
 - **Static Qt on Mac** — brew only ships shared Qt; a static link (to match the
   Windows ship model) needs a from-source static Qt build, then just repoint

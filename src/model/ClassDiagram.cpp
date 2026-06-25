@@ -536,7 +536,7 @@ int ClassDiagram::OnDelete(bool checkOnly)
         {
             CbString str;
             str.Format("Are you sure you want to delete class diagram '%s'", 
-                GetName());
+                GetName().c_str());
             if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_OKCANCEL) == CBMB_IDOK)
             {
                 Delete();
@@ -546,7 +546,7 @@ int ClassDiagram::OnDelete(bool checkOnly)
         {
             CbString str;
             str.Format("Can not delete class diagram '%s' views on it are still open, close them first.", 
-                GetName());
+                GetName().c_str());
             CbMessageBox(str, CBMB_ICONEXCLAMATION);
         }
     }

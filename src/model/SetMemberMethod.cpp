@@ -103,7 +103,7 @@ SetMemberMethod::SetMemberMethod(Member* pMember) //@INIT_907
 
     CbString note;
     note.Format("Set the value of member '%s' to '%s'.", 
-        pMember->GetPrefixedName(), argName);
+        pMember->GetPrefixedName().c_str(), argName.c_str());
     SetNote(note);
 }//@CODE_907
 

@@ -347,12 +347,12 @@ int ClassGroup::OnDelete(bool checkOnly)
         bool deleteGroup = false;
         
         CbString str;
-        str.Format("Are you sure you want to delete group '%s'", GetName());
+        str.Format("Are you sure you want to delete group '%s'", GetName().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             if (GetChildCount())
             {
-                str.Format("Group '%s' isn't empty, do you want to delete all in it", GetName());
+                str.Format("Group '%s' isn't empty, do you want to delete all in it", GetName().c_str());
                 if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO|CBMB_DEFBUTTON2) == CBMB_IDYES)
                 {
                     CbViewLock lock(GetDataModelDoc());

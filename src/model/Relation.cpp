@@ -133,7 +133,7 @@ void Relation::Delete()
         GetToClass()->SetVersion(version + 1);
 
         CbString str;
-        str.Format("@Deleted relation '%s'", GetNotation());
+        str.Format("@Deleted relation '%s'", GetNotation().c_str());
     
         GetFromClass()->AddModified(str);
         if (GetFromClass() != GetToClass())

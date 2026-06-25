@@ -13,7 +13,9 @@
 #include "CbCommandServer.h"
 #include "MainFrm.h"
 
-#include <direct.h>
+#ifdef _WIN32
+#include <direct.h>   // _chdir (POSIX chdir via CbWinTypes.h on non-Windows)
+#endif
 #include <fstream>
 #include <string>
 #include "CbZstdStream.h"

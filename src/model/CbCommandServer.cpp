@@ -26,7 +26,9 @@
 #include "CbZstdStream.h"
 #include "SourceLogInterface.h"
 #include "ParseLogInterface.h"
-#include <direct.h>
+#ifdef _WIN32
+#include <direct.h>   // _chdir (POSIX chdir via CbWinTypes.h on non-Windows)
+#endif
 
 using nlohmann::json;
 

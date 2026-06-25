@@ -267,7 +267,7 @@ int ExternClass::OnDelete(bool checkOnly)
     else if (!checkOnly)
     {
         CbString str;
-        str.Format("Are you sure you want to delete extern class '%s'", GetName());
+        str.Format("Are you sure you want to delete extern class '%s'", GetName().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();

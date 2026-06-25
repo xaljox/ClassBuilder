@@ -306,7 +306,7 @@ void BaseClass::Drop(bool ctrlKeyDown, Gti* pGtiDrop)
         {
             CbString str;
             str.Format("Are you sure you want to degrade extern class '%s' into an other type, this action can not be undone!!", 
-                GetName());
+                GetName().c_str());
             if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_OKCANCEL) == CBMB_IDOK)
             {
                 OtherType* pOtherType = new OtherType(pExternClass);
@@ -524,7 +524,7 @@ void BaseClass::MoveMember(Member* pMember)
             pClass->SetVersion(version + 1);
 
             CbString str;
-            str.Format("@Deleted method '%s'", method->GetName());
+            str.Format("@Deleted method '%s'", method->GetName().c_str());
     
             pClass->AddModified(str);
         }
@@ -547,7 +547,7 @@ void BaseClass::MoveMember(Member* pMember)
         pClass->SetVersion(version + 1);
 
         CbString str;
-        str.Format("@Deleted member '%s'", pMember->GetPrefixedName());
+        str.Format("@Deleted member '%s'", pMember->GetPrefixedName().c_str());
 
         pClass->AddModified(str);
     }

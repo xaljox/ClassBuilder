@@ -87,7 +87,7 @@ GetMemberMethod::GetMemberMethod(Member* pMember) //@INIT_904
     SetName("Get" + name);
 
     CbString note;
-    note.Format("Returns the value of member '%s'.", pMember->GetPrefixedName());
+    note.Format("Returns the value of member '%s'.", pMember->GetPrefixedName().c_str());
     SetNote(note);
 
     SetTemplate(pMember->GetTemplate());

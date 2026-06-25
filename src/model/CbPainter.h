@@ -33,6 +33,9 @@
 // winspool.h, whose DocumentProperties->DocumentPropertiesW A/W macro otherwise
 // clobbers Qt's QIcon::ThemeIcon::DocumentProperties in any qt TU that pulls
 // this header. NOMINMAX keeps min/max macros out of std::min/std::max.
+// On macOS/Linux there is no windows.h -- CbWinTypes.h supplies UINT + the same
+// GDI constants (TRANSPARENT/OPAQUE, TA_*, ETO_*) with the real Win32 values.
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -46,6 +49,9 @@
 // CalcText so this is moot, but undef anyway to keep the header friendly.
 #ifdef DrawText
 #  undef DrawText
+#endif
+#else
+#include "CbWinTypes.h"   // UINT, TRANSPARENT/OPAQUE, TA_*, ETO_* (windows.h-free)
 #endif
 
 class CbPainter

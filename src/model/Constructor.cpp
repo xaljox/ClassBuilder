@@ -482,7 +482,7 @@ int Constructor::OnDelete(bool checkOnly)
         {
             CbString str;
             str.Format("Can not delete, an editor is open on constructor '%s::%s'", 
-                GetBaseClass()->GetName(), GetItemText());
+                GetBaseClass()->GetName().c_str(), GetItemText().c_str());
             CbMessageBox(str, CBMB_ICONEXCLAMATION);
         }
         
@@ -492,7 +492,7 @@ int Constructor::OnDelete(bool checkOnly)
     {
         CbString str;
         str.Format("Are you sure you want to delete constructor '%s::%s'", 
-            GetBaseClass()->GetName(), GetItemText());
+            GetBaseClass()->GetName().c_str(), GetItemText().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();

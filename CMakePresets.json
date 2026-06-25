@@ -20,6 +20,19 @@
       "generator": "Visual Studio 18 2026",
       "architecture": "Win32",
       "binaryDir": "${sourceDir}/out/build/${presetName}"
+    },
+    {
+      "name": "mac",
+      "displayName": "macOS - Ninja/clang",
+      "description": "macOS build. Ninja + Apple clang, shared Qt 6 + zstd from Homebrew.",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "/opt/homebrew/opt/qt",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
+      }
     }
   ],
   "buildPresets": [
@@ -39,6 +52,18 @@
       "name": "win32-release",
       "displayName": "Win32 Release (legacy)",
       "configurePreset": "win32",
+      "configuration": "Release"
+    },
+    {
+      "name": "mac-debug",
+      "displayName": "macOS Debug",
+      "configurePreset": "mac",
+      "configuration": "Debug"
+    },
+    {
+      "name": "mac-release",
+      "displayName": "macOS Release",
+      "configurePreset": "mac",
       "configuration": "Release"
     }
   ]

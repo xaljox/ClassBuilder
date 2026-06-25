@@ -113,7 +113,7 @@ void Inherit::Delete()
         GetExternClass()->SetVersion(version + 1);
 
         CbString str;
-        str.Format("@Deleted inheritance '%s'", GetBaseName());
+        str.Format("@Deleted inheritance '%s'", GetBaseName().c_str());
         ((Class*)GetExternClass())->AddModified(str);
     }
 
@@ -170,7 +170,7 @@ int Inherit::OnDelete(bool checkOnly)
     {
         CbString str;
         str.Format("Are you sure you don't want to inherit from '%s'", 
-            GetBaseName());
+            GetBaseName().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();

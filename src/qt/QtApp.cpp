@@ -29,8 +29,13 @@
 // dropped by the linker, taking the plugin registration with it.
 #ifdef CB_STATIC_QT
 #include <QtPlugin>
+// The platform integration + native style plugins are platform-specific.
+#ifdef _WIN32
 Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
 Q_IMPORT_PLUGIN(QModernWindowsStylePlugin)
+#elif defined(__APPLE__)
+Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
+#endif
 // The SVG image-format + icon-engine plugins -- only when this Qt has the Svg
 // module (CB_HAVE_SVG); a static Qt does not self-load plugins. Lets
 // QtModelIcons render redrawn .svg model icons.
@@ -40,9 +45,12 @@ Q_IMPORT_PLUGIN(QSvgIconPlugin)
 #endif
 #endif
 
+#ifdef _WIN32
 // windows.h last, after the Qt headers, with the macro guards -- otherwise its
 // min/max macros collide with Qt headers. Guarded -- CMake also defines both
-// globally, so an unguarded #define warns C4005 (redefinition).
+// globally, so an unguarded #define warns C4005 (redefinition). The Win32 GUI
+// crash net + native dialog parenting below need it; macOS/Linux use the
+// Qt-native fallbacks.
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -50,16 +58,35 @@ Q_IMPORT_PLUGIN(QSvgIconPlugin)
 #define NOMINMAX
 #endif
 #include <windows.h>
+#endif
 
 // The one knob for the Qt dialog UI font size, in points. The platform
 // default is ~9pt; this is deliberately larger for readability.
+//
+// macOS renders a given point size smaller than Windows (different default
+// system font + DPI basis), so the whole UI -- dialogs, tree rows, and the
+// model icons (sized from fontMetrics().height()) -- came out smaller than the
+// Windows build. Bump the point size on macOS so EVERYTHING scales up together
+// to match; Windows keeps 11. One knob -- tune to taste.
+#ifdef __APPLE__
+static const int CB_UI_FONT_PT = 15;   // macOS renders points smaller than Windows; matches density
+#else
 static const int CB_UI_FONT_PT = 11;
+#endif
 
 // UI font weight: a bit heavier than Normal(400) for crisper text, short of
 // Bold(700). 500 == QFont::Medium. Weight is stroke thickness, not glyph
 // height, so this does NOT change fontMetrics().height() -> row heights / line
 // spacing are unaffected. One knob, applied both ways like the size below.
+//
+// Windows renders the UI font too light, so it's bumped to Medium(500) there.
+// macOS renders the same weight noticeably heavier (Core Text), so 500 looks
+// half-bold in the tree -- keep macOS at Normal(400).
+#ifdef __APPLE__
+static const int CB_UI_FONT_WEIGHT = 350;   // 300=Light, 400=Normal -- 350 chosen
+#else
 static const int CB_UI_FONT_WEIGHT = 500;
+#endif
 
 // --------------------------------------------------------------------------
 // Last-resort GUI-crash safety net. Rearranging/tearing tabs in a FLOATING dock
@@ -75,6 +102,8 @@ static const int CB_UI_FONT_WEIGHT = 500;
 static void (*g_cbEmergencySave)() = nullptr;
 
 void Cb_SetEmergencySaveHandler(void (*fn)()) { g_cbEmergencySave = fn; }
+
+#ifdef _WIN32
 
 static int cbGuiCrashFilter(DWORD code)
 {
@@ -171,6 +200,20 @@ public:
 };
 } // namespace
 
+#else  // macOS / Linux: no Win32 SEH. The dock-reparent AV net is a Windows-only
+       // safety measure; elsewhere use a plain QApplication. (If the same crash
+       // surfaces on another platform, add a POSIX signal-based net here.)
+
+namespace {
+class CbApplication : public QApplication
+{
+public:
+    CbApplication(int& argc, char** argv) : QApplication(argc, argv) {}
+};
+} // namespace
+
+#endif // _WIN32
+
 void Qt_EnsureApplication()
 {
     if (qApp)
@@ -180,6 +223,13 @@ void Qt_EnsureApplication()
     static char  argv0[] = "ClassBuilder";
     static char* argv[]  = { argv0, nullptr };
     new CbApplication(argc, argv);
+
+    // Show shortcut text (e.g. "Ctrl+Shift+M") next to CONTEXT-menu items, as on
+    // Windows. macOS defaults this attribute ON (shortcuts hidden in context
+    // menus); the diagram/tree right-click menus carry shortcuts worth showing,
+    // so turn it off. (Top menu-bar items already show their shortcut.) Harmless
+    // on Windows -- it already shows them.
+    QCoreApplication::setAttribute(Qt::AA_DontShowShortcutsInContextMenus, false);
 
     // App-wide window/taskbar icon. The EXE's Win32 resource icon
     // (ClassBuilder_app.rc) is what the shell shows for the file and a pinned
@@ -191,7 +241,10 @@ void Qt_EnsureApplication()
 
     // Backstop for an AV that escapes the notify() SEH (a fault outside event
     // dispatch). Installed AFTER the app so neither Qt nor the CRT overrides it.
+    // Windows-only (SEH); macOS/Linux run without this net.
+#ifdef _WIN32
     ::SetUnhandledExceptionFilter(cbUnhandledExceptionFilter);
+#endif
 
     // The UI font. The platform default (~9pt) is too small for the dense
     // class / member / method text in the ported dialogs. Set an ABSOLUTE
@@ -211,6 +264,35 @@ void Qt_EnsureApplication()
         qApp->setFont(appFont);
     }
 
+#ifdef __APPLE__
+    // Accent colour. The issue isn't the hue -- it's contrast: macOS' light-blue
+    // system accent leaves the tree's expand/collapse triangles and connector
+    // lines (custom-drawn from QPalette::Highlight in CbTreeWidget::drawBranches)
+    // barely visible on the white tree. Pin a DARKER blue -- still squarely in
+    // the macOS style, just enough contrast to read on white -- as the app-wide
+    // Highlight (drives tree chrome + diagram selection, both keyed off it).
+    // Windows keeps its own (OS) accent -- this block is __APPLE__-only.
+    // One knob: the `accent` RGB below, tune to taste.
+    {
+        const QColor accent(0x0A, 0x4D, 0xA8);   // deep blue (Mac-style, high contrast)
+        QPalette pal = qApp->palette();
+        pal.setColor(QPalette::Active,   QPalette::Highlight, accent);
+        pal.setColor(QPalette::Inactive, QPalette::Highlight, accent);
+        pal.setColor(QPalette::Active,   QPalette::HighlightedText, Qt::white);
+        pal.setColor(QPalette::Inactive, QPalette::HighlightedText, Qt::white);
+
+        // Dialog background: a light grey Window vs a white Base, like Windows --
+        // so white edit boxes stand out against the dialog by contrast (the real
+        // reason they "popped" on Windows; no edit-box border needed).
+        const QColor dialogGrey(0xEC, 0xEC, 0xEC);
+        pal.setColor(QPalette::Active,   QPalette::Window, dialogGrey);
+        pal.setColor(QPalette::Inactive, QPalette::Window, dialogGrey);
+        pal.setColor(QPalette::Active,   QPalette::Base,   Qt::white);
+        pal.setColor(QPalette::Inactive, QPalette::Base,   Qt::white);
+        qApp->setPalette(pal);
+    }
+#endif
+
     // App-wide stylesheet: the font size (see above) + soften the QGroupBox
     // frame -- the modern Windows style draws a hard, near-black 1px box that
     // is too "in your face"; a soft theme-grey (palette `mid`) reads better.
@@ -218,9 +300,19 @@ void Qt_EnsureApplication()
     // Tree connector lines are NOT done here -- a stylesheet cannot pick a
     // branch glyph per node (no notion of depth). CbTreeWidget::drawBranches
     // does that; see CbTreeWidget.cpp.
-    qApp->setStyleSheet(
-        QString("QWidget { font-size: %1pt; font-weight: %2; }")
-            .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT) +
+    QString sheet;
+    // The font via stylesheet is a WINDOWS need: its default UI font is
+    // pixel-sized, so QApplication::setFont's pointSize doesn't take for
+    // rendering and the QSS rule is authoritative. On macOS setFont (above) is
+    // authoritative AND a global `QWidget` QSS rule routes every widget --
+    // including QPushButton -- through Qt's stylesheet renderer, which drops the
+    // native rounded macOS button (renders it square). So omit it on macOS;
+    // buttons stay native.
+#ifndef __APPLE__
+    sheet += QString("QWidget { font-size: %1pt; font-weight: %2; }")
+                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
+#endif
+    sheet +=
         "QGroupBox {"
         "  border: 1px solid palette(mid);"
         "  border-radius: 4px;"
@@ -231,7 +323,18 @@ void Qt_EnsureApplication()
         "  subcontrol-position: top left;"
         "  left: 8px;"
         "  padding: 0 3px;"
-        "}");
+        "}";
+#ifdef __APPLE__
+    // A soft grey border on the text-edit widgets: a clear (but not dark)
+    // separation line between the white field and the light-grey dialog
+    // background. macOS-only; Windows keeps its native frames.
+    sheet +=
+        "QLineEdit, QPlainTextEdit, QTextEdit {"
+        "  border: 1px solid #c0c0c0;"
+        "  border-radius: 3px;"
+        "}";
+#endif
+    qApp->setStyleSheet(sheet);
 
     // Install the process-wide headless text-measure painter. Model-side layout
     // methods (lifeline auto-width, class auto-size, OptimizePlacement, the
@@ -245,19 +348,20 @@ void Qt_EnsureApplication()
 
 int Qt_ExecModal(QDialog& dlg, void* ownerHwnd)
 {
+#ifdef _WIN32
     HWND owner = static_cast<HWND>(ownerHwnd);
     if (!owner || !::IsWindow(owner))
         return dlg.exec();
 
-    // Own the Qt dialog to the MFC window: winId() forces the native window
+    // Own the Qt dialog to the shell window: winId() forces the native window
     // into existence, then GWLP_HWNDPARENT makes it a Win32-owned popup --
-    // it stays above the MFC frame and shares its taskbar entry.
+    // it stays above the shell frame and shares its taskbar entry.
     ::SetWindowLongPtr(reinterpret_cast<HWND>(dlg.winId()),
                        GWLP_HWNDPARENT,
                        reinterpret_cast<LONG_PTR>(owner));
 
     // Disable the owner for the dialog's lifetime -- exactly what a native
-    // modal dialog does. Without this the MFC window stays clickable and can
+    // modal dialog does. Without this the shell window stays clickable and can
     // be closed, orphaning the Qt dialog.
     const bool wasEnabled = ::IsWindowEnabled(owner) != FALSE;
     if (wasEnabled)
@@ -267,16 +371,26 @@ int Qt_ExecModal(QDialog& dlg, void* ownerHwnd)
 
     if (wasEnabled)
         ::EnableWindow(owner, TRUE);
-    ::SetForegroundWindow(owner);   // restore activation to the MFC window
+    ::SetForegroundWindow(owner);   // restore activation to the shell window
     return rc;
+#else
+    // macOS/Linux: no native HWND re-parenting. exec() is application-modal,
+    // which gives the same "blocks the rest of the app" behaviour; Qt manages
+    // stacking above the main window. (ownerHwnd is the main window's winId,
+    // not a QWidget we can setParent on, so it is unused here.)
+    (void)ownerHwnd;
+    return dlg.exec();
+#endif
 }
 
 void Qt_ShowModeless(QWidget& w, void* ownerHwnd)
 {
-    // Make it a top-level window (not embedded as a child) and force the
-    // native HWND into existence so GWLP_HWNDPARENT can be set BEFORE show().
+    // Make it a top-level window (not embedded as a child).
     w.setWindowFlag(Qt::Window, true);
 
+#ifdef _WIN32
+    // Force the native HWND into existence so GWLP_HWNDPARENT can be set BEFORE
+    // show(), owning the Qt window to the shell frame.
     HWND owner = static_cast<HWND>(ownerHwnd);
     if (owner && ::IsWindow(owner))
     {
@@ -284,6 +398,9 @@ void Qt_ShowModeless(QWidget& w, void* ownerHwnd)
                            GWLP_HWNDPARENT,
                            reinterpret_cast<LONG_PTR>(owner));
     }
+#else
+    (void)ownerHwnd;   // no native parenting on macOS/Linux
+#endif
 
     // No EnableWindow toggle here -- non-modal: the owner stays usable.
     w.show();

@@ -15,6 +15,22 @@
 #include <time.h>
 #include "CbString.h"
 
+#ifndef _WIN32
+// MSVC's 64-bit time vocabulary -> portable POSIX. time_t is already 64-bit on
+// macOS/Linux, so __time64_t maps straight onto it and the serialized wire
+// width (8 bytes, see CbSerialize) is unchanged. Keeps the value tier
+// standalone (no windows.h) on the non-Windows side of the single codebase.
+#include <cstdint>
+typedef int64_t __time64_t;
+inline __time64_t _mktime64(struct tm* t)         { return (__time64_t)::mktime(t); }
+inline __time64_t _time64(__time64_t* /*unused*/) { return (__time64_t)::time(nullptr); }
+inline void       _localtime64_s(struct tm* dst, const __time64_t* src)
+{
+    time_t tt = (time_t)*src;
+    ::localtime_r(&tt, dst);
+}
+#endif
+
 class CbTime
 {
 public:

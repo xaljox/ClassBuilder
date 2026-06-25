@@ -126,7 +126,7 @@ int FromRelation::OnDelete(bool checkOnly)
     {
         CbString str;
         str.Format("Are you sure you want to delete relation '%s'", 
-            GetRelation()->GetNotation());
+            GetRelation()->GetNotation().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             GetRelation()->Delete();

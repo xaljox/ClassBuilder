@@ -27,6 +27,12 @@
 #include <cctype>
 #include <cstdint>   // intptr_t / int32_t etc. -- portable, windows.h-free integer types
 
+#ifndef _WIN32
+#include <strings.h>           // strcasecmp / strncasecmp (POSIX)
+#define _stricmp  strcasecmp   // MSVC case-insensitive compare -> POSIX spelling
+#define _strnicmp strncasecmp
+#endif
+
 class CbArchive;
 
 class CbString

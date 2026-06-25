@@ -9,6 +9,7 @@
 #include "QtDiagramZoom.h"
 #include "QtAbout.h"          // Qt_ShowAboutDialog
 #include "QtCommandServer.h"  // QTcpServer-based command transport
+#include "QtToolBarIcons.h"   // CB_TOOLBAR_ICON_PX (shared toolbar icon size)
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -40,6 +41,8 @@
 // windows.h before the model headers (LONG_PTR / LONG / DWORD still used by model headers), matching the
 // other Qt views. Also WM_CB_COMMAND / MSG for the pipe marshal. Guarded --
 // CMake also defines both globally, so an unguarded #define warns C4005.
+// macOS/Linux have no windows.h -- CbWinTypes.h supplies the same vocabulary.
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -47,6 +50,9 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#else
+#include "CbWinTypes.h"
+#endif
 
 #define FORWARD_ONLY
 #include "ClassBuilderInclude.h"
@@ -211,6 +217,19 @@ public:
         return QProxyStyle::pixelMetric(m, opt, w);
     }
 
+    int styleHint(StyleHint h, const QStyleOption* opt, const QWidget* w,
+                  QStyleHintReturn* ret) const override
+    {
+#ifdef __APPLE__
+        // macOS' style centres tab-bar tabs (SH_TabBar_Alignment == AlignCenter);
+        // Windows left-aligns. Force left so the model/dock tabs pack from the
+        // left edge as on Windows. macOS-only; other platforms are unaffected.
+        if (h == SH_TabBar_Alignment)
+            return Qt::AlignLeft;
+#endif
+        return QProxyStyle::styleHint(h, opt, w, ret);
+    }
+
 private:
     QtShellWindow* _shell;
 };
@@ -328,6 +347,16 @@ void QtShellWindow::emergencySaveAll()
     }
 }
 
+// macOS: the native NSOpenPanel/NSSavePanel behind QFileDialog's static
+// helpers does not appear in this app (the in-app Qt dialogs -- e.g. the File
+// New flow -- show fine, but the native file panel shows nothing). Force Qt's
+// own file dialog there. Windows/Linux keep the native panel.
+#ifdef __APPLE__
+static const QFileDialog::Options kCbFileDialogOpts = QFileDialog::DontUseNativeDialog;
+#else
+static const QFileDialog::Options kCbFileDialogOpts = QFileDialog::Options();
+#endif
+
 void QtShellWindow::buildMenus()
 {
     // --- File ---------------------------------------------------------------
@@ -337,7 +366,8 @@ void QtShellWindow::buildMenus()
     });
     file->addAction("&Open...", QKeySequence::Open, this, [this] {
         const QString path = QFileDialog::getOpenFileName(
-            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)");
+            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)",
+            nullptr, kCbFileDialogOpts);
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -465,6 +495,10 @@ void QtShellWindow::buildToolBar()
     QToolBar* tb = addToolBar("Main");
     tb->setObjectName("mainToolBar");
     tb->setMovable(false);
+    // Match the view toolbars' icon size (CB_TOOLBAR_ICON_PX): without this the
+    // toolbar uses the platform default, which on macOS is ~50% taller than the
+    // diagram/tree bars. Windows' default already matched, so 20px is a no-op there.
+    tb->setIconSize(QSize(CB_TOOLBAR_ICON_PX, CB_TOOLBAR_ICON_PX));
 
     _tbNew = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew),
                            "New", this, [this] {
@@ -473,7 +507,8 @@ void QtShellWindow::buildToolBar()
     _tbOpen = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen),
                             "Open", this, [this] {
         const QString path = QFileDialog::getOpenFileName(
-            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)");
+            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)",
+            nullptr, kCbFileDialogOpts);
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -633,6 +668,10 @@ void QtShellWindow::wireDockTabBars()
         bar->setProperty("cbDocTabsWired", true);
         bar->setTabsClosable(true);
         bar->setElideMode(Qt::ElideRight);
+        // Pack tabs from the LEFT. macOS' native tab layout centres them in the
+        // bar (Windows left-aligns); setExpanding(false) makes each tab its
+        // natural width and starts the row at the left edge, matching Windows.
+        bar->setExpanding(false);
         // The stock Win11 style barely distinguishes the selected tab (text
         // dim only) -- accent top edge + bold + grey block for the selected
         // tab; unselected tabs stay white so they recede into the empty
@@ -962,7 +1001,8 @@ bool QtShellWindow::saveDocumentAs()
         return false;
     QString initial = toQ(doc->GetPathName());
     QString path = QFileDialog::getSaveFileName(
-        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz)");
+        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz)",
+        nullptr, kCbFileDialogOpts);
     if (path.isEmpty())
         return false;
     if (!path.endsWith(".cbz", Qt::CaseInsensitive))

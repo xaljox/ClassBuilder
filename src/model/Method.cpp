@@ -441,7 +441,7 @@ void Method::Delete()
             if (pClass)
             {
                 CbString str;
-                str.Format("@Deleted method '%s'", GetName());
+                str.Format("@Deleted method '%s'", GetName().c_str());
         
                 pClass->AddModified(str);
             }
@@ -1325,7 +1325,7 @@ int Method::OnDelete(bool checkOnly)
         {
             CbString str;
             str.Format("Can not delete, an editor is open on method '%s::%s'", 
-				GetBaseClass()->GetName(), GetItemText());
+				GetBaseClass()->GetName().c_str(), GetItemText().c_str());
             CbMessageBox(str, CBMB_ICONEXCLAMATION);
         }
         
@@ -1335,7 +1335,7 @@ int Method::OnDelete(bool checkOnly)
     {
         CbString str;
         str.Format("Are you sure you want to delete method '%s::%s'", 
-            GetBaseClass()->GetName(), GetItemText());
+            GetBaseClass()->GetName().c_str(), GetItemText().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
             Delete();

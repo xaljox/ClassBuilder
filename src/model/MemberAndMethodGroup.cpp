@@ -374,10 +374,10 @@ int MemberAndMethodGroup::OnDelete(bool checkOnly)
         if (methodCount || memberCount)
             str.Format("Delete group '%s'?\n\nThis will also delete the %d method(s) "
                        "and %d member(s) it contains.",
-                       GetName(), methodCount, memberCount);
+                       GetName().c_str(), methodCount, memberCount);
         else
             str.Format("Are you sure you want to delete the empty group '%s'?",
-                       GetName());
+                       GetName().c_str());
 
         // Destructive when the group has content -> default the box to 'No'.
         unsigned int flags = CBMB_ICONQUESTION | CBMB_YESNO;

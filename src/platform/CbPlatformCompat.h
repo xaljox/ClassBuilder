@@ -13,7 +13,9 @@
 // translation unit.
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 #include "CbMessageBox.h"   // CbMessageBox + CBMB_* (the AfxMessageBox replacement)
 

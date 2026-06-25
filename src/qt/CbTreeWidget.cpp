@@ -31,7 +31,16 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
     // QTreeView::item height in a per-widget stylesheet IS authoritative.
 //    const int rowHeight = fontMetrics().height() + 0;  // no extra padding, the default is already roomy
     const int rowHeight = fontMetrics().height() - 1;  // no extra padding, the default is already roomy
-    setStyleSheet(QString("QTreeView::item { height: %1px; }").arg(rowHeight));
+    // Re-assert the app font-size in this widget's OWN stylesheet. Setting a
+    // stylesheet (the row height) routes the tree through Qt's stylesheet
+    // renderer, which otherwise drops the app font (QApplication::setFont) and
+    // renders the tree text smaller than the rest of the UI. font() here is
+    // still the app font (set before any widget exists), so pointSize() == the
+    // app's CB_UI_FONT_PT. (rowHeight above was measured from that same font.)
+    const int ptSize = font().pointSize();
+    setStyleSheet(QString("QTreeView { font-size: %2pt; }"
+                          "QTreeView::item { height: %1px; }")
+                      .arg(rowHeight).arg(ptSize));
 
     // Model icons: size them just inside the row height (a small inset reads
     // best -- lands ~the MFC tree's 24px with a little breathing room; the bare

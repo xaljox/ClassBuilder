@@ -38,25 +38,45 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 # The model sources are a MultiByte (non-Unicode) build: deliberately do NOT
 # define UNICODE/_UNICODE (the Qt code is quarantined in ClassBuilderQt).
 
-# Per-platform libzstd lives under third_party/zstd/lib/<Win32|x64|ARM64>.
-# Resolve the arch token generator-agnostically (VS sets CMAKE_VS_PLATFORM_NAME;
-# Ninja does not, so fall back to the MSVC compiler architecture id).
-if(CMAKE_VS_PLATFORM_NAME)
-    set(CB_ARCH "${CMAKE_VS_PLATFORM_NAME}")
-elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "x64")
-    set(CB_ARCH "x64")
-elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "X86")
-    set(CB_ARCH "Win32")
-elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
-    set(CB_ARCH "ARM64")
-else()
-    message(FATAL_ERROR
-        "Cannot determine target arch for the zstd lib. "
-        "CMAKE_CXX_COMPILER_ARCHITECTURE_ID='${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}'. "
-        "This build needs the MSVC toolchain.")
-endif()
+# zstd (CBZ compression). The C API + headers are portable; the static archive
+# differs per platform. The vendored zstd.h header (1.5.7) is used on every
+# platform; only the static lib is resolved per-OS.
 set(ZSTD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zstd")
-set(ZSTD_LIB "${ZSTD_DIR}/lib/${CB_ARCH}/libzstd_static.lib")
+if(WIN32)
+    # Per-platform libzstd lives under third_party/zstd/lib/<Win32|x64|ARM64>.
+    # Resolve the arch token generator-agnostically (VS sets CMAKE_VS_PLATFORM_NAME;
+    # Ninja does not, so fall back to the MSVC compiler architecture id).
+    if(CMAKE_VS_PLATFORM_NAME)
+        set(CB_ARCH "${CMAKE_VS_PLATFORM_NAME}")
+    elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "x64")
+        set(CB_ARCH "x64")
+    elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "X86")
+        set(CB_ARCH "Win32")
+    elseif(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
+        set(CB_ARCH "ARM64")
+    else()
+        message(FATAL_ERROR
+            "Cannot determine target arch for the zstd lib. "
+            "CMAKE_CXX_COMPILER_ARCHITECTURE_ID='${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}'. "
+            "This build needs the MSVC toolchain.")
+    endif()
+    set(ZSTD_LIB "${ZSTD_DIR}/lib/${CB_ARCH}/libzstd_static.lib")
+else()
+    # macOS / Linux: link the STATIC archive (libzstd.a) to match the all-static
+    # ship goal. Force the .a suffix so find_library skips the .dylib/.so.
+    set(_cb_saved_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+    find_library(ZSTD_LIB NAMES zstd
+        HINTS /opt/homebrew/opt/zstd/lib /usr/local/opt/zstd/lib
+              /opt/homebrew/lib /usr/local/lib /usr/lib)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ${_cb_saved_suffixes})
+    if(NOT ZSTD_LIB)
+        message(FATAL_ERROR
+            "Static libzstd.a not found. Install it (brew install zstd) or build "
+            "third_party/zstd from source for this platform.")
+    endif()
+    message(STATUS "zstd: static archive ${ZSTD_LIB}")
+endif()
 
 # Shared include set for both targets. Bare model includes ("ExternClasses.h")
 # resolve via src/model; the codegen-baked "qt/QtXxx.h" resolves via src; the
@@ -100,16 +120,31 @@ file(GLOB CB_QT_SOURCES CONFIGURE_DEPENDS
 add_library(ClassBuilderQt STATIC ${CB_QT_SOURCES})
 set_target_properties(ClassBuilderQt PROPERTIES AUTOMOC ON AUTORCC ON AUTOUIC ON)
 target_compile_features(ClassBuilderQt PRIVATE cxx_std_17)
-target_link_libraries(ClassBuilderQt PRIVATE Qt6::Widgets Qt6::Network)
-target_include_directories(ClassBuilderQt PRIVATE ${CB_INCLUDE_DIRS})
+# Windows: link Qt PRIVATE so its forced UNICODE define stays inside this lib
+# (the MultiByte quarantine). macOS/Linux: Qt does NOT force UNICODE, and the
+# platform seam (CbPlatformCompat.cpp, compiled into the EXE) needs Qt's wait
+# cursor -- so link PUBLIC there to propagate Qt's include dirs/libs to the EXE.
+if(WIN32)
+    target_link_libraries(ClassBuilderQt PRIVATE Qt6::Widgets Qt6::Network)
+else()
+    target_link_libraries(ClassBuilderQt PUBLIC Qt6::Widgets Qt6::Network)
+endif()
+target_include_directories(ClassBuilderQt PRIVATE ${CB_INCLUDE_DIRS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/qt")   # AUTOUIC ui_*.h include bare "CodeEditor.h"
 
-# Static Qt: the platform plugin (qwindows) + native style are linked in and
-# registered via Q_IMPORT_PLUGIN (qt/QtApp.cpp). PRIVATE keeps Qt's UNICODE
-# define off the MFC-free sources; the plugin .libs still propagate to the EXE.
+# Static Qt: the platform plugin + native style are linked in and registered
+# via Q_IMPORT_PLUGIN (qt/QtApp.cpp). PRIVATE keeps Qt's UNICODE define off the
+# MFC-free sources; the plugin .libs still propagate to the EXE. The plugin set
+# is platform-specific (qwindows on Windows, qcocoa on macOS).
 if(CB_QT_STATIC)
-    target_link_libraries(ClassBuilderQt PRIVATE
-        Qt6::QWindowsIntegrationPlugin
-        Qt6::QModernWindowsStylePlugin)
+    if(WIN32)
+        target_link_libraries(ClassBuilderQt PRIVATE
+            Qt6::QWindowsIntegrationPlugin
+            Qt6::QModernWindowsStylePlugin)
+    elseif(APPLE)
+        target_link_libraries(ClassBuilderQt PRIVATE
+            Qt6::QCocoaIntegrationPlugin)
+    endif()
     target_compile_definitions(ClassBuilderQt PRIVATE CB_STATIC_QT)
 endif()
 
@@ -143,22 +178,30 @@ file(GLOB CB_SOURCES CONFIGURE_DEPENDS
      "serialize/*.cpp"
      "src/platform/*.cpp")
 
-add_executable(ClassBuilder WIN32
-    ${CB_SOURCES}
-    res/ClassBuilder_app.rc   # Win32 app + .cbz document icons (shell-side)
-)
+# The Win32 .rc (app + .cbz document icons) is MSVC-only; macOS uses a bundle.
+if(WIN32)
+    add_executable(ClassBuilder
+        ${CB_SOURCES}
+        res/ClassBuilder_app.rc)
+    set_target_properties(ClassBuilder PROPERTIES WIN32_EXECUTABLE TRUE)
+else()
+    add_executable(ClassBuilder ${CB_SOURCES})
+    set_target_properties(ClassBuilder PROPERTIES MACOSX_BUNDLE TRUE)
+endif()
 target_include_directories(ClassBuilder PRIVATE ${CB_INCLUDE_DIRS})
 
-target_compile_definitions(ClassBuilder PRIVATE
-    WIN32 _WINDOWS
-    _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE
-)
-
-# Qt6's interface compile-definitions (UNICODE/_UNICODE) leak onto this target
-# through the ClassBuilderQt link interface. The MFC-free model is a MultiByte
-# build calling the ANSI Win32 APIs directly, so strip UNICODE back off (cl.exe
-# gives /U precedence over /D for the same symbol regardless of order).
-target_compile_options(ClassBuilder PRIVATE /UUNICODE /U_UNICODE)
+if(WIN32)
+    target_compile_definitions(ClassBuilder PRIVATE
+        WIN32 _WINDOWS
+        _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE
+    )
+    # Qt6's interface compile-definitions (UNICODE/_UNICODE) leak onto this
+    # target through the ClassBuilderQt link interface. The MFC-free model is a
+    # MultiByte build calling the ANSI Win32 APIs directly, so strip UNICODE back
+    # off (cl.exe gives /U precedence over /D for the same symbol regardless of
+    # order). Windows-only: Qt on macOS/Linux does not force UNICODE.
+    target_compile_options(ClassBuilder PRIVATE /UUNICODE /U_UNICODE)
+endif()
 
 target_link_libraries(ClassBuilder PRIVATE "${ZSTD_LIB}" ClassBuilderQt)
 
@@ -178,15 +221,20 @@ set_target_properties(ClassBuilder PROPERTIES qt_no_entrypoint TRUE)
 # /SAFESEH:NO -- libzstd_static.lib (x86) has no safe-SEH table; x86 only.
 # /LTCG (Release) -- libzstd's Release objects are /GL; pass it up front so the
 # linker does not detect them and restart the whole link with /LTCG.
-target_link_options(ClassBuilder PRIVATE
-    /ignore:4098
-    $<$<STREQUAL:${CB_ARCH},Win32>:/SAFESEH:NO>
-    $<$<CONFIG:Release>:/LTCG>
-)
+# MSVC-only linker switches.
+if(MSVC)
+    target_link_options(ClassBuilder PRIVATE
+        /ignore:4098
+        $<$<STREQUAL:${CB_ARCH},Win32>:/SAFESEH:NO>
+        $<$<CONFIG:Release>:/LTCG>
+    )
+endif()
 
-# windeployqt copies the Qt runtime DLLs next to the EXE for a shared Qt.
-# Skipped for a static Qt -- everything is inside the EXE.
-if(NOT CB_QT_STATIC)
+# windeployqt copies the Qt runtime DLLs next to the EXE for a shared Qt on
+# Windows. Skipped for a static Qt (everything is inside the EXE). On macOS the
+# app runs against brew Qt via rpath from the build tree; macdeployqt is only
+# needed when shipping a relocatable .app (a later packaging step).
+if(WIN32 AND NOT CB_QT_STATIC)
     add_custom_command(TARGET ClassBuilder POST_BUILD
         COMMAND Qt6::windeployqt --no-translations --no-system-d3d-compiler
                 "$<TARGET_FILE:ClassBuilder>"

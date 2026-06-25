@@ -63,6 +63,63 @@ Pick based on how you obtain Qt on the Mac:
    crash-recovery net (emergency-save `<name>.recovered.cbz` + restart) so a tear
    crash doesn't lose work.
 
+### DONE on macOS (2026-06-25) — option 2, from-source patched Qt
+
+brew only ships the affected **6.11.1** (no 6.11.2/6.12 bottle yet), so we built
+a patched Qt from source and pointed the build at it. Reproducible recipe (arm64,
+Apple Silicon):
+
+```sh
+# 1. Get the matching source (qtbase + qtsvg; CB uses Widgets/Network/Svg)
+mkdir -p ~/qt-build/src && cd ~/qt-build/src
+B=https://download.qt.io/official_releases/qt/6.11/6.11.1/submodules
+curl -fsSLO $B/qtbase-everywhere-src-6.11.1.tar.xz
+curl -fsSLO $B/qtsvg-everywhere-src-6.11.1.tar.xz
+tar xf qtbase-everywhere-src-6.11.1.tar.xz && tar xf qtsvg-everywhere-src-6.11.1.tar.xz
+
+# 2. Apply the patch BY HAND (the .patch hunk header has no line numbers, so
+#    `patch -p1` / `git apply` can't place it): insert mwLayout->savedState.clear();
+#    right after `mwLayout->widgetAnimator.abort(dockWidget);` in
+#    qtbase-.../src/widgets/widgets/qmainwindowlayout.cpp
+#    (function QDockWidgetGroupWindow::reparentToMainWindow).
+
+# 3. Build qtbase, then qtsvg, into ~/Qt-6.11.1-patched.
+#    Two macOS-specific gotchas, both worked around with cache flags / arch:
+#    (a) Qt's CMake aborts with "Can't determine Xcode version" when only the
+#        Command Line Tools are installed (no full Xcode). The macOS SDK comes
+#        from `xcrun` (works); only `xcodebuild` is missing -> skip that check
+#        with -DQT_NO_XCODE_MIN_VERSION_CHECK=ON (+ -DQT_NO_APPLE_SDK_MIN_VERSION_CHECK=ON).
+#        NO full Xcode install needed.
+#    (b) **Toolchain arch trap:** if `which cmake`/`ninja` resolve to an
+#        *x86_64* Homebrew (/usr/local), the native Qt build comes out x86_64
+#        and won't link against the arm64 app (ld: "found architecture 'x86_64',
+#        required architecture 'arm64'"). Specifying -DCMAKE_OSX_ARCHITECTURES=arm64
+#        instead makes Qt think it's cross-compiling and demand QT_HOST_PATH.
+#        FIX: install/use arm64 cmake+ninja from the /opt/homebrew brew so the
+#        native build is arm64. Verify: `file $(which cmake)` -> arm64.
+cd ~/qt-build
+cmake -S src/qtbase-everywhere-src-6.11.1 -B build-qtbase -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/Qt-6.11.1-patched \
+  -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF \
+  -DFEATURE_sql=OFF -DFEATURE_dbus=OFF -DFEATURE_printsupport=ON \
+  -DQT_NO_XCODE_MIN_VERSION_CHECK=ON -DQT_NO_APPLE_SDK_MIN_VERSION_CHECK=ON
+cmake --build build-qtbase --parallel && cmake --install build-qtbase
+cmake -S src/qtsvg-everywhere-src-6.11.1 -B build-qtsvg -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/Qt-6.11.1-patched \
+  -DCMAKE_INSTALL_PREFIX=$HOME/Qt-6.11.1-patched \
+  -DQT_NO_XCODE_MIN_VERSION_CHECK=ON -DQT_NO_APPLE_SDK_MIN_VERSION_CHECK=ON
+cmake --build build-qtsvg --parallel && cmake --install build-qtsvg
+
+# 4. Point CB at it. A local-only CMakeUserPresets.json (gitignored) adds a
+#    `mac-patched` preset inheriting `mac` but with
+#    CMAKE_PREFIX_PATH=$env{HOME}/Qt-6.11.1-patched. The committed `mac` preset
+#    stays on brew Qt for any machine that doesn't have the patched build.
+cmake --preset mac-patched && cmake --build --preset mac-patched-debug
+```
+
+The committed `mac` preset is unchanged (still brew). **Drop all of this and use
+brew `mac` once brew ships Qt ≥ 6.11.2.**
+
 ## Verifying
 
 Repro: build a floating tabbed group of 3+ docks, then tear members out one by one.
