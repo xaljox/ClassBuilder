@@ -500,11 +500,18 @@ void QtShellWindow::buildToolBar()
     // diagram/tree bars. Windows' default already matched, so 20px is a no-op there.
     tb->setIconSize(QSize(CB_TOOLBAR_ICON_PX, CB_TOOLBAR_ICON_PX));
 
-    _tbNew = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew),
+    // Prefer the native theme glyph; fall back to the legacy Toolbar.bmp tile so
+    // the button always has an icon. macOS has no native "save" image, so without
+    // the fallback the Save button renders blank/invisible on the icon-only bar.
+    // TODO (toolbar SVG pass): when the toolbar goes all-SVG, draw
+    // tb_file_{new,open,save}.svg and prefer them over fromTheme so New/Open/Save
+    // look the same -- and nicer -- on every platform (macOS's native file icons
+    // are plainer than Windows'). The theme+fallback below is the interim.
+    _tbNew = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew, Qt_ToolBarIcon(TG_FILE_NEW)),
                            "New", this, [this] {
         newDocument();
     });
-    _tbOpen = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen),
+    _tbOpen = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen, Qt_ToolBarIcon(TG_FILE_OPEN)),
                             "Open", this, [this] {
         const QString path = QFileDialog::getOpenFileName(
             this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)",
@@ -512,7 +519,7 @@ void QtShellWindow::buildToolBar()
         if (!path.isEmpty())
             openDocument(path);
     });
-    _tbSave = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSave),
+    _tbSave = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSave, Qt_ToolBarIcon(TG_FILE_SAVE)),
                             "Save", this, [this] {
         saveDocument();
         updateToolBarEnables();
