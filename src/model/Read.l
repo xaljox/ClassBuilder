@@ -1,4 +1,15 @@
 %{
+/* flex/bison skeletons still emit the 'register' storage class, removed in
+   C++17 (MSVC C5033, GCC/Clang -Wregister). It is generator boilerplate, not
+   our code, so silence it for the whole translation unit. Flex copies this
+   prologue into Read.l.cpp; the same block is mirrored at the top of the
+   generated file so the checked-in build stays clean without regenerating. */
+#if defined(_MSC_VER)
+#pragma warning(disable : 5033)
+#elif defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wregister"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 

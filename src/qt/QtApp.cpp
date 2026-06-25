@@ -41,9 +41,14 @@ Q_IMPORT_PLUGIN(QSvgIconPlugin)
 #endif
 
 // windows.h last, after the Qt headers, with the macro guards -- otherwise its
-// min/max macros collide with Qt headers.
+// min/max macros collide with Qt headers. Guarded -- CMake also defines both
+// globally, so an unguarded #define warns C4005 (redefinition).
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 
 // The one knob for the Qt dialog UI font size, in points. The platform

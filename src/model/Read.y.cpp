@@ -1,3 +1,13 @@
+/* flex/bison skeletons still emit the 'register' storage class, removed in
+   C++17 (MSVC C5033, GCC/Clang -Wregister). It is generator boilerplate, not
+   our code, so silence it for the whole translation unit. Keep this in sync
+   with the matching block in the Read.y prologue (this file is regenerated). */
+#if defined(_MSC_VER)
+#pragma warning(disable : 5033)
+#elif defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wregister"
+#endif
+
 #ifndef lint
 char readsccsid[] = "@(#)yaccpar	1.4 (Berkeley) 02/25/90";
 #endif

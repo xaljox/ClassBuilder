@@ -38,9 +38,14 @@
 #include <string>
 
 // windows.h before the model headers (LONG_PTR / LONG / DWORD still used by model headers), matching the
-// other Qt views. Also WM_CB_COMMAND / MSG for the pipe marshal.
+// other Qt views. Also WM_CB_COMMAND / MSG for the pipe marshal. Guarded --
+// CMake also defines both globally, so an unguarded #define warns C4005.
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 
 #define FORWARD_ONLY
