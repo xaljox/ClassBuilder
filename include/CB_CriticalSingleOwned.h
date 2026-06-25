@@ -131,4 +131,4 @@ public:\
 
 #define METHODS_CRITICAL_SINGLE_OWNED_PASSIVE(ClassFrom, NameFrom, ClassTo, NameTo)
 
-#endif
+#endif

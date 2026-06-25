@@ -86,6 +86,23 @@ printf family. Files + counts (97 total `.c_str()` insertions):
 applied to both `Read.y` and the committed `Read.y.cpp`, so a `bison` regen on
 Windows keeps them. `yyerror`'s `const char* str` was correctly left untouched.
 
+### Line endings — CRLF policy (`.gitattributes`, 2026-06-25)
+
+The first Mac merge left a **mixed tree**: the files the Mac touched came back
+LF, the rest stayed CRLF (35 LF / 262 CRLF in `src/model`). CB's codegen emits
+CRLF (`NL == "\015\012"`) and the Windows self-host round-trips its own
+`.cpp/.h` as CRLF, so a repo-root **`.gitattributes`** now pins **all text to
+CRLF in the working tree on every platform** (`eol=crlf` — git stores the
+normalized LF form, checks out CRLF). clang/macOS compiles CRLF fine. Binary
+blobs (`*.cbz`, `*.lib`, `*.ico`, `*.png`) are marked `binary` so EOL conversion
+can never corrupt them; `*.patch` stays LF (it is applied to LF qtbase source on
+macOS); vendored `third_party/**` keeps its upstream bytes. The repo was
+renormalized once when the policy landed. Net effect: the Windows↔macOS
+line-ending flip-flop stops, and a Windows regen (CRLF output) no longer shows
+up as whole-file EOL churn. **macOS note:** after pulling this, your working
+tree is CRLF — `git` may show `^M` in some tools, but it builds and runs fine; do
+not "fix" it back to LF (that restarts the flip-flop).
+
 ### Runtime gaps fixed on macOS (no Windows reconcile needed)
 
 - **Native file dialogs never appeared** — `File ▸ Open`, `Save As`, and both

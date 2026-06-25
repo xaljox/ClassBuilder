@@ -31,6 +31,8 @@ Desktop.ini
 *.bak
 ~*.CBZ
 ~*.cbz
+*.~*CBZ
+*.~*cbz
 
 # Local-only CMake presets (personal Qt prefix etc.)
 CMakeUserPresets.json

@@ -172,4 +172,4 @@ void ClassFrom::Replace##NameTo(ClassTo* item, ClassTo* newItem)\
             DYNAMIC_READ_SINGLE_ACTIVE(ClassFrom, NameFrom, ClassTo, NameTo) \
         }
 
-#endif
+#endif

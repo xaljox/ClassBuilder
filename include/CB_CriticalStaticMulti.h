@@ -224,4 +224,4 @@ void ClassFrom::MergeSort##NameTo(int (*comp)(ClassTo*, ClassTo*))\
 
 #define METHODS_CRITICAL_STATIC_MULTI_PASSIVE(ClassFrom, NameFrom, ClassTo, NameTo)
 
-#endif
+#endif

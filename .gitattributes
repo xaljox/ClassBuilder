@@ -1,0 +1,46 @@
+# .gitattributes -- line-ending + binary policy.
+#
+# ClassBuilder's codegen emits CRLF (NL == "\015\012") and the Windows self-host
+# round-trips its own .cpp/.h as CRLF, so text files are checked out CRLF on
+# EVERY platform (eol=crlf). clang/macOS compiles CRLF fine. Git stores the
+# normalized LF form in the repository; the CRLF lives only in the working tree.
+# This stops the Windows<->macOS line-ending flip-flop seen after the first Mac
+# merge (some files came back LF, leaving a mixed tree). Binary blobs are marked
+# so git never does EOL conversion or text diffs on them -- an EOL-mangled
+# .cbz / .lib would be corrupt.
+
+# --- C/C++ sources, flex/bison, Qt UI + resources -> CRLF working tree ---
+*.cpp   text eol=crlf
+*.h     text eol=crlf
+*.hpp   text eol=crlf
+*.c     text eol=crlf
+*.inl   text eol=crlf
+*.l     text eol=crlf
+*.y     text eol=crlf
+*.ui    text eol=crlf
+*.qrc   text eol=crlf
+*.rc    text eol=crlf
+
+# --- build / scripts / docs (Windows-authored tooling) -> CRLF ---
+*.txt    text eol=crlf
+*.cmake  text eol=crlf
+*.json   text eol=crlf
+*.md     text eol=crlf
+*.ps1    text eol=crlf
+*.bat    text eol=crlf
+*.svg    text eol=crlf
+
+# --- patches apply to LF upstream sources (qtbase on macOS/Linux) -> keep LF ---
+*.patch  text eol=lf
+
+# --- binary blobs: no EOL conversion, no text diff ---
+*.cbz  binary
+*.CBZ  binary
+*.cbd  binary
+*.lib  binary
+*.ico  binary
+*.png  binary
+*.bmp  binary
+
+# --- vendored third-party: keep upstream bytes exactly (skip EOL normalization) ---
+third_party/** -text
