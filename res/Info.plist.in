@@ -39,6 +39,8 @@
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>ClassBuilder</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>com.xaljox.classbuilder.cbz</string>
@@ -52,6 +54,8 @@
 			<string>com.xaljox.classbuilder.cbz</string>
 			<key>UTTypeDescription</key>
 			<string>ClassBuilder Model</string>
+			<key>UTTypeIconFile</key>
+			<string>ClassBuilder</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>

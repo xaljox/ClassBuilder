@@ -44,3 +44,4 @@
 
 # --- vendored third-party: keep upstream bytes exactly (skip EOL normalization) ---
 third_party/** -text
+*.icns binary

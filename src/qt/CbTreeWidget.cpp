@@ -38,9 +38,20 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
     // still the app font (set before any widget exists), so pointSize() == the
     // app's CB_UI_FONT_PT. (rowHeight above was measured from that same font.)
     const int ptSize = font().pointSize();
-    setStyleSheet(QString("QTreeView { font-size: %2pt; }"
-                          "QTreeView::item { height: %1px; }")
-                      .arg(rowHeight).arg(ptSize));
+    QString sheet = QString("QTreeView { font-size: %2pt; }"
+                            "QTreeView::item { height: %1px; }")
+                        .arg(rowHeight).arg(ptSize);
+#ifdef __APPLE__
+    // macOS' style does NOT hover-highlight item-view rows (Windows does), so the
+    // row under the cursor gave no feedback here. Add a subtle hover background so
+    // it reads the same on both -- only on non-selected rows, so it doesn't fight
+    // the selection highlight. (A `:hover` QSS rule also makes Qt enable hover
+    // tracking on the view.) Windows keeps its native hover -- this is macOS-only.
+    sheet += "QTreeView::item:hover:!selected {"
+             "  background: rgba(10, 77, 168, 0.10);"   // accent #0A4DA8 @ ~10%
+             "}";
+#endif
+    setStyleSheet(sheet);
 
     // Model icons: size them just inside the row height (a small inset reads
     // best -- lands ~the MFC tree's 24px with a little breathing room; the bare
