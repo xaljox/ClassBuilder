@@ -188,9 +188,28 @@ ship build. (Both drop away once brew ships Qt ≥ 6.11.2 and you no longer need
 local patched Qt.)
 
 ### Still open (deferred, not build blockers)
-- **`DataModelDoc::GetPath()`** still splits on `'\\'` only (§4-F) — a *runtime*
-  path bug, not a compile error; fix when driving codegen on Mac.
+- **Dialog field-height inconsistency → a native-mimicking `QProxyStyle`.**
+  macOS' native `QLineEdit` is noticeably shorter than `QComboBox`, so a dialog
+  with both reads as inconsistent. This is a *native macOS* trait, not a bug, and
+  it can't be fixed in the shared `.ui` files (that would also touch Windows,
+  where the heights already match). Widget-level hacks (an event filter bumping
+  `QLineEdit::setMinimumHeight`) **regress** — the taller field rows push the
+  dialog push buttons past macOS' rounded "Aqua" bezel, so `QMacStyle` falls back
+  to square buttons. The **correct** fix is a CB-wide `QProxyStyle` over
+  `QMacStyle` (we already use the pattern — `ShellSeparatorStyle`) that keeps the
+  native look but normalises the metrics, owning BOTH halves together:
+    1. `polish(QLineEdit*)` → bump its min height to the combo height, AND
+    2. `drawControl(CE_PushButton, …)` → force the rounded bezel regardless of
+       height, so the taller rows can't square the buttons.
+  Do it as a deliberate, focused pass (not a quick patch); it would also be the
+  single place to absorb future per-platform metric divergence. macOS-only.
 - **`NL` CRLF** (§4-I) and the `register` warnings (§4-J) — unchanged, benign.
+
+> *(Resolved earlier: `DataModelDoc::GetPath()` now splits on `/` OR `\` and is
+> folded back into `ClassBuilder.CBZ` — done on the Mac once CB ran there. The
+> macOS save-path corruption, `.cbz` file association, native focus rings +
+> rounded buttons, and tree-selection chrome visibility are all fixed and
+> committed; see the git history around the 2026-06-25/26 macOS commits.)*
 
 ---
 
