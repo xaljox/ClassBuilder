@@ -125,6 +125,16 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     const QColor lineColour = blend(
         accent, appPal.color(QPalette::Active, QPalette::Base), 0.25);
 
+    // A SELECTED row's background is QPalette::Highlight -- the very colour the
+    // triangle + connector lines use, so they'd be invisible on the selection.
+    // Draw the chrome in HighlightedText (the selection foreground) for the
+    // selected row instead, so it stays visible.
+    const bool selected = selectionModel() && selectionModel()->isSelected(index);
+    const QColor triColour  = selected
+        ? appPal.color(QPalette::Active, QPalette::HighlightedText) : accent;
+    const QColor connColour = selected
+        ? appPal.color(QPalette::Active, QPalette::HighlightedText) : lineColour;
+
     // Walk root..item; record, per level, whether that node has a sibling
     // below it. hasNext.last() is the item itself; size-1 == its depth.
     QList<bool> hasNext;
@@ -140,7 +150,7 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
             renderBranch(painter,
                 QRect(rect.left() + level * ind, rect.top(),
                       ind, rect.height()),
-                QStringLiteral(":/tree/vline.svg"), lineColour);
+                QStringLiteral(":/tree/vline.svg"), connColour);
     }
 
     // The item's own column.
@@ -166,7 +176,8 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
         glyph = QStringLiteral(":/tree/branch_end.svg");   // ell
 
     // Triangles (expand/collapse) get the full accent; the line glyphs the
-    // muted line colour.
-    renderBranch(painter, own, glyph, hasChildren ? accent : lineColour);
+    // muted line colour. On the selected row both switch to the selection
+    // foreground (see triColour/connColour above) so they don't vanish.
+    renderBranch(painter, own, glyph, hasChildren ? triColour : connColour);
 #endif
 }

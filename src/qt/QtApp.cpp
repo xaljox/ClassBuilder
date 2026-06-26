@@ -20,6 +20,8 @@
 #include <QWidget>
 #ifdef __APPLE__
 #include <QFileOpenEvent>
+#include <QPushButton>
+#include <QFont>
 #include "CbShellHooks.h"   // Cb_ShellOpenDocument (Finder file association)
 #endif
 
@@ -231,6 +233,34 @@ public:
         return QApplication::event(e);
     }
 };
+
+// With NO app stylesheet (so edit fields + combos keep the native focus ring),
+// the app's 15pt font makes QPushButtons taller than macOS' rounded "Aqua"
+// bezel can take, so QMacStyle renders them square. Shrink JUST the button font
+// to the macOS system size so they fit the rounded bezel -- rounded buttons +
+// native focus rings, no stylesheet needed.
+class CbButtonFontFilter : public QObject
+{
+public:
+    using QObject::QObject;
+protected:
+    bool eventFilter(QObject* o, QEvent* e) override
+    {
+        if (e->type() == QEvent::Polish)
+        {
+            if (auto* b = qobject_cast<QPushButton*>(o))
+            {
+                QFont f = b->font();
+                if (f.pointSize() > 13)
+                {
+                    f.setPointSize(13);
+                    b->setFont(f);
+                }
+            }
+        }
+        return QObject::eventFilter(o, e);
+    }
+};
 } // namespace
 
 #endif // _WIN32
@@ -322,17 +352,19 @@ void Qt_EnsureApplication()
     // branch glyph per node (no notion of depth). CbTreeWidget::drawBranches
     // does that; see CbTreeWidget.cpp.
     QString sheet;
-    // The font via stylesheet is a WINDOWS need: its default UI font is
-    // pixel-sized, so QApplication::setFont's pointSize doesn't take for
-    // rendering and the QSS rule is authoritative. On macOS setFont (above) is
-    // authoritative AND a global `QWidget` QSS rule routes every widget --
-    // including QPushButton -- through Qt's stylesheet renderer, which drops the
-    // native rounded macOS button (renders it square). So omit it on macOS;
-    // buttons stay native.
+    // The FONT via stylesheet is a Windows-only need (its default UI font is
+    // pixel-sized, so setFont's pointSize doesn't render). It must NOT go on
+    // macOS: a `QWidget` QSS rule there routes EVERY widget -- including
+    // QPushButton -- through Qt's stylesheet renderer in a way that squares the
+    // native rounded button.
+    // macOS gets NO app stylesheet (so edit fields AND combos keep the native
+    // focus ring); the square-button side effect of that is fixed separately by
+    // shrinking just the button font to fit the native rounded bezel (see
+    // CbButtonFontFilter). Windows keeps its QSS: the font (its default UI font
+    // is pixel-sized so setFont's pointSize doesn't render) + QGroupBox softening.
 #ifndef __APPLE__
     sheet += QString("QWidget { font-size: %1pt; font-weight: %2; }")
                  .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
-#endif
     sheet +=
         "QGroupBox {"
         "  border: 1px solid palette(mid);"
@@ -345,17 +377,14 @@ void Qt_EnsureApplication()
         "  left: 8px;"
         "  padding: 0 3px;"
         "}";
-#ifdef __APPLE__
-    // A soft grey border on the text-edit widgets: a clear (but not dark)
-    // separation line between the white field and the light-grey dialog
-    // background. macOS-only; Windows keeps its native frames.
-    sheet +=
-        "QLineEdit, QPlainTextEdit, QTextEdit {"
-        "  border: 1px solid #c0c0c0;"
-        "  border-radius: 3px;"
-        "}";
 #endif
-    qApp->setStyleSheet(sheet);
+    if (!sheet.isEmpty())
+        qApp->setStyleSheet(sheet);
+
+#ifdef __APPLE__
+    // Keep push buttons rounded under the native (stylesheet-free) style.
+    qApp->installEventFilter(new CbButtonFontFilter(qApp));
+#endif
 
     // Install the process-wide headless text-measure painter. Model-side layout
     // methods (lifeline auto-width, class auto-size, OptimizePlacement, the
