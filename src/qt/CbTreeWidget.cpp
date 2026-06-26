@@ -125,15 +125,22 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     const QColor lineColour = blend(
         accent, appPal.color(QPalette::Active, QPalette::Base), 0.25);
 
-    // A SELECTED row's background is QPalette::Highlight -- the very colour the
-    // triangle + connector lines use, so they'd be invisible on the selection.
+#ifdef __APPLE__
+    // macOS: a SELECTED row's background is QPalette::Highlight -- the very colour
+    // the triangle + connector lines use, so they'd be invisible on the selection.
     // Draw the chrome in HighlightedText (the selection foreground) for the
-    // selected row instead, so it stays visible.
+    // selected row instead, so it stays visible. Windows' selection background
+    // differs from the accent, so the triangle stays visible there -- no flip
+    // needed (and flipping it just read as a colour glitch on selection).
     const bool selected = selectionModel() && selectionModel()->isSelected(index);
     const QColor triColour  = selected
         ? appPal.color(QPalette::Active, QPalette::HighlightedText) : accent;
     const QColor connColour = selected
         ? appPal.color(QPalette::Active, QPalette::HighlightedText) : lineColour;
+#else
+    const QColor triColour  = accent;
+    const QColor connColour = lineColour;
+#endif
 
     // Walk root..item; record, per level, whether that node has a sibling
     // below it. hasNext.last() is the item itself; size-1 == its depth.
