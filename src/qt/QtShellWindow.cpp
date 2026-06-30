@@ -699,6 +699,12 @@ void QtShellWindow::wireDockTabBars()
             "  border-top: 3px solid %4; font-weight: bold; }"
             "QTabBar::tab:!selected { margin-top: 3px; }")
             .arg(mid, unselBg, selBg, accent));
+        // Setting a stylesheet makes the bar use QStyleSheetStyle, which takes
+        // over tab layout and overrides setExpanding()/alignment -- on macOS
+        // that re-centres the tabs. Route the bar through the shell's
+        // ShellSeparatorStyle so its SH_TabBar_Alignment (AlignLeft on macOS)
+        // is the style QStyleSheetStyle delegates to, packing tabs from the left.
+        bar->setStyle(style());
         connect(bar, &QTabBar::tabCloseRequested, this, [this, bar](int index) {
             const auto dockPtr =
                 reinterpret_cast<QDockWidget*>(bar->tabData(index).toULongLong());
