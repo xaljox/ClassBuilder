@@ -68,12 +68,13 @@ else()
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     find_library(ZSTD_LIB NAMES zstd
         HINTS /opt/homebrew/opt/zstd/lib /usr/local/opt/zstd/lib
-              /opt/homebrew/lib /usr/local/lib /usr/lib)
+              /opt/homebrew/lib /usr/local/lib /usr/lib
+              "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")  # Debian/Ubuntu multiarch (x86_64-linux-gnu, aarch64-linux-gnu)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ${_cb_saved_suffixes})
     if(NOT ZSTD_LIB)
         message(FATAL_ERROR
-            "Static libzstd.a not found. Install it (brew install zstd) or build "
-            "third_party/zstd from source for this platform.")
+            "Static libzstd.a not found. Install it (Linux: 'apt install libzstd-dev', "
+            "macOS: 'brew install zstd') or build third_party/zstd from source.")
     endif()
     message(STATUS "zstd: static archive ${ZSTD_LIB}")
 endif()
@@ -144,6 +145,14 @@ if(CB_QT_STATIC)
     elseif(APPLE)
         target_link_libraries(ClassBuilderQt PRIVATE
             Qt6::QCocoaIntegrationPlugin)
+    elseif(UNIX AND NOT APPLE)
+        # Linux static Qt: the xcb (X11) platform plugin must be linked AND imported
+        # (Q_IMPORT_PLUGIN in qt/QtApp.cpp, alongside qwindows/qcocoa). Only relevant
+        # once a STATIC Qt is built for Linux; the initial bring-up uses the distro's
+        # SHARED Qt (CB_QT_STATIC=FALSE), which discovers qxcb at runtime -- nothing
+        # to import. Add Qt6::QWaylandIntegrationPlugin here too if/when going static.
+        target_link_libraries(ClassBuilderQt PRIVATE
+            Qt6::QXcbIntegrationPlugin)
     endif()
     target_compile_definitions(ClassBuilderQt PRIVATE CB_STATIC_QT)
 endif()
@@ -184,7 +193,7 @@ if(WIN32)
         ${CB_SOURCES}
         res/ClassBuilder_app.rc)
     set_target_properties(ClassBuilder PROPERTIES WIN32_EXECUTABLE TRUE)
-else()
+elseif(APPLE)
     # App icon: bundle the .icns into Contents/Resources and name it in the
     # Info.plist (CFBundleIconFile / CFBundleTypeIconFile). It also becomes the
     # .cbz document icon (the document type references the same file).
@@ -203,6 +212,11 @@ else()
         MACOSX_BUNDLE_ICON_FILE           "ClassBuilder"
         MACOSX_BUNDLE_BUNDLE_VERSION      "1.0"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0")
+else()
+    # Linux: a plain ELF executable -- no app bundle, no Win32 .rc resource.
+    # The .cbz file association (icon + double-click routing) is a freedesktop
+    # .desktop + shared-MIME-info step done at packaging time, not in the build.
+    add_executable(ClassBuilder ${CB_SOURCES})
 endif()
 target_include_directories(ClassBuilder PRIVATE ${CB_INCLUDE_DIRS})
 

@@ -1,6 +1,6 @@
 // CbPlatformCompat.cpp -- see header.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "CbPlatformCompat.h"
 

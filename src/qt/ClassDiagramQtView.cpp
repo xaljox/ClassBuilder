@@ -4209,17 +4209,17 @@ ClassDiagramQtView::ClassDiagramQtView(ClassDiagram* pClassDiagram,
     _redoAction->setToolTip("Redo (Ctrl+Y)");
 
     tb->addSeparator();
-    QAction* zi = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::ZoomIn),
+    QAction* zi = tb->addAction(QIcon::fromTheme(QStringLiteral("zoom-in")),
                                 "Zoom In", this, [this] { _canvas->applyToolbarZoom(+1); });
     zi->setToolTip("Zoom in (Ctrl+wheel / Ctrl+=)");
-    QAction* zo = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::ZoomOut),
+    QAction* zo = tb->addAction(QIcon::fromTheme(QStringLiteral("zoom-out")),
                                 "Zoom Out", this, [this] { _canvas->applyToolbarZoom(-1); });
     zo->setToolTip("Zoom out (Ctrl+wheel / Ctrl+-)");
-    QAction* zf = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::ZoomFitBest),
+    QAction* zf = tb->addAction(QIcon::fromTheme(QStringLiteral("zoom-fit-best")),
                                 "Fit", this, [this] { _canvas->applyToolbarZoom(0); });
     zf->setToolTip("Reset to fit-to-window (double-click)");
     tb->addSeparator();
-    QAction* sx = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSend),
+    QAction* sx = tb->addAction(QIcon::fromTheme(QStringLiteral("document-send")),
                                 "Export SVG", this, [this] { exportSvg(); });
     sx->setToolTip("Export this diagram as a vector .svg file");
 

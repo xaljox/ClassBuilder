@@ -494,16 +494,16 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     addKeyOnly(TreeAction::AddExternClass);   // Ctrl+Shift+E -- X was grabbed by a global OS hotkey
 
     QAction* actFilters = toolBar->addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::DocumentProperties), "Filters...",
+        QIcon::fromTheme(QStringLiteral("document-properties")), "Filters...",
         this, &MainTreeQtView::showFilterDialog);
     actFilters->setToolTip("Access / phase filters for this tree");
     QAction* actFind = toolBar->addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::EditFind), "Find...",
+        QIcon::fromTheme(QStringLiteral("edit-find")), "Find...",
         this, &MainTreeQtView::onFindKey);
     actFind->setShortcut(QKeySequence::Find);
     actFind->setToolTip("Find a node by name (Ctrl+F)");
     QAction* actNext = toolBar->addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::GoNext), "Next",
+        QIcon::fromTheme(QStringLiteral("go-next")), "Next",
         this, &MainTreeQtView::onRepeatKey);
     actNext->setShortcut(QKeySequence::FindNext);
     actNext->setToolTip("Find next match (F3)");

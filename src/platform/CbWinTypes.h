@@ -20,6 +20,7 @@
 #ifndef _WIN32
 
 #include <cstdint>
+#include <climits>    // INT_MIN/INT_MAX/... (transitively provided by <windows.h> on Win)
 #include <cctype>     // isalnum (for __iscsym)
 #include <cstdio>     // snprintf (for sprintf_s)
 #include <sys/stat.h> // struct stat / stat (for _stat)

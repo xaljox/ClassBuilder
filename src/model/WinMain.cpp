@@ -5,7 +5,7 @@
 // to Cb_RunQtShell in the ClassBuilderQt static lib, which owns the
 // QApplication, the shell window, and the pipe command server.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "qt/QtShell.h"
 

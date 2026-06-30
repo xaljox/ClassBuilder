@@ -18,7 +18,7 @@
 #include <QIcon>
 #include <QString>
 #include <QWidget>
-#ifdef __APPLE__
+#ifndef _WIN32   // macOS + Linux: file-open event + button-font filter use these
 #include <QFileOpenEvent>
 #include <QPushButton>
 #include <QFont>

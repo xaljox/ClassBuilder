@@ -1,6 +1,6 @@
 // MainFrm.cpp : the MFC-free CMainFrame facade statics. See MainFrm.h.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "MainFrm.h"
 

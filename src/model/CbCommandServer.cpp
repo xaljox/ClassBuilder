@@ -12,7 +12,7 @@
 // worker thread reading a named pipe and SendMessage(WM_CB_COMMAND)-ing onto the
 // UI thread -- is gone; that marshaling was the part that wasn't portable.)
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "CbCommandServer.h"
 #include "ClassBuilderDoc.h"
 #include "CbShellHooks.h"

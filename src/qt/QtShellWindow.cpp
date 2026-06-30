@@ -27,6 +27,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QProxyStyle>
+#include <QPushButton>
 #include <QSettings>
 #include <QStyleFactory>
 #include <QStyleOption>
@@ -507,11 +508,11 @@ void QtShellWindow::buildToolBar()
     // tb_file_{new,open,save}.svg and prefer them over fromTheme so New/Open/Save
     // look the same -- and nicer -- on every platform (macOS's native file icons
     // are plainer than Windows'). The theme+fallback below is the interim.
-    _tbNew = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew, Qt_ToolBarIcon(TG_FILE_NEW)),
+    _tbNew = tb->addAction(QIcon::fromTheme(QStringLiteral("document-new"), Qt_ToolBarIcon(TG_FILE_NEW)),
                            "New", this, [this] {
         newDocument();
     });
-    _tbOpen = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen, Qt_ToolBarIcon(TG_FILE_OPEN)),
+    _tbOpen = tb->addAction(QIcon::fromTheme(QStringLiteral("document-open"), Qt_ToolBarIcon(TG_FILE_OPEN)),
                             "Open", this, [this] {
         const QString path = QFileDialog::getOpenFileName(
             this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)",
@@ -519,7 +520,7 @@ void QtShellWindow::buildToolBar()
         if (!path.isEmpty())
             openDocument(path);
     });
-    _tbSave = tb->addAction(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSave, Qt_ToolBarIcon(TG_FILE_SAVE)),
+    _tbSave = tb->addAction(QIcon::fromTheme(QStringLiteral("document-save"), Qt_ToolBarIcon(TG_FILE_SAVE)),
                             "Save", this, [this] {
         saveDocument();
         updateToolBarEnables();

@@ -33,6 +33,14 @@
         "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
         "CMAKE_OSX_ARCHITECTURES": "arm64"
       }
+    },
+    {
+      "name": "linux-x64",
+      "displayName": "Linux - Ninja/GCC (x86_64)",
+      "description": "Linux build. Ninja + GCC, distro (apt) Qt 6 + system static libzstd. For an aqt/source Qt 6.11 pass -DCMAKE_PREFIX_PATH=<qt-dir> on configure.",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     }
   ],
   "buildPresets": [
@@ -64,6 +72,18 @@
       "name": "mac-release",
       "displayName": "macOS Release",
       "configurePreset": "mac",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "configurePreset": "linux-x64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release",
+      "configurePreset": "linux-x64",
       "configuration": "Release"
     }
   ]

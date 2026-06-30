@@ -1,7 +1,7 @@
 // ClassBuilderDoc.cpp : implementation of the CClassBuilderDoc class
 //
 // MFC-FREE since the Qt-shell switch (2026-06-09) -- see ClassBuilderDoc.h.
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "ClassBuilderDoc.h"
 
