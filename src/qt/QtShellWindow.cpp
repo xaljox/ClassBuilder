@@ -214,7 +214,18 @@ public:
                     const QWidget* w) const override
     {
         if (m == PM_DockWidgetSeparatorExtent)
-            return 4;   // the old QSS separator width
+        {
+            // With fewer than two side-by-side docks there's no REAL split --
+            // the only separator is the phantom dock/central boundary. Give it
+            // zero width so the dock fills the whole client area and QMainWindow
+            // reserves no stray "split bar" strip on the edge (which showed as a
+            // dead bar on initial open until a resize). Real splits keep 4px.
+            int live = 0;
+            for (const QDockWidget* d : _shell->findChildren<QDockWidget*>())
+                if (d->isVisible() && !d->isFloating())
+                    ++live;
+            return live < 2 ? 0 : 4;
+        }
         return QProxyStyle::pixelMetric(m, opt, w);
     }
 
