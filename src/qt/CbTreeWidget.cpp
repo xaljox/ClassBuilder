@@ -136,22 +136,33 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     const QColor lineColour = blend(
         accent, appPal.color(QPalette::Active, QPalette::Base), 0.25);
 
-#ifdef __APPLE__
-    // macOS: a SELECTED row's background is QPalette::Highlight -- the very colour
-    // the triangle + connector lines use, so they'd be invisible on the selection.
-    // Draw the chrome in HighlightedText (the selection foreground) for the
-    // selected row instead, so it stays visible. Windows' selection background
-    // differs from the accent, so the triangle stays visible there -- no flip
-    // needed (and flipping it just read as a colour glitch on selection).
-    const bool selected = selectionModel() && selectionModel()->isSelected(index);
-    const QColor triColour  = selected
-        ? appPal.color(QPalette::Active, QPalette::HighlightedText) : accent;
-    const QColor connColour = selected
-        ? appPal.color(QPalette::Active, QPalette::HighlightedText) : lineColour;
-#else
-    const QColor triColour  = accent;
-    const QColor connColour = lineColour;
-#endif
+    // On the selected row the triangle + connector chrome can vanish when the
+    // row's PAINTED selection fill is close to the accent they're drawn in:
+    // macOS fills the row with QPalette::Highlight (== the accent), and this
+    // Pi's qt6ct paints a flat grey the widget palette reports as Highlight. In
+    // those cases draw the chrome in HighlightedText (the selection foreground)
+    // so it stays visible. Where the selection fill CONTRASTS with the accent
+    // -- Windows, and other Linux styles that use a translucent-blue selection
+    // where the accent triangle already reads fine -- keep the accent triangle;
+    // flipping to the selection foreground there is LESS visible. Decided at
+    // RUNTIME (not by #ifdef): two machines on the same OS can style the
+    // selection differently. The WIDGET palette (resolved through the row-height
+    // stylesheet) reports the actually-painted selection colour, unlike qApp's
+    // genuine-accent palette used for `accent` above.
+    QColor triColour  = accent;
+    QColor connColour = lineColour;
+    if (selectionModel() && selectionModel()->isSelected(index))
+    {
+        const QColor selBg = palette().color(QPalette::Active, QPalette::Highlight);
+        auto lum = [](const QColor& c) {
+            return 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF();
+        };
+        if (qAbs(lum(selBg) - lum(accent)) < 0.18)   // chrome would blend in
+        {
+            triColour  = appPal.color(QPalette::Active, QPalette::HighlightedText);
+            connColour = triColour;
+        }
+    }
 
     // Walk root..item; record, per level, whether that node has a sibling
     // below it. hasNext.last() is the item itself; size-1 == its depth.
