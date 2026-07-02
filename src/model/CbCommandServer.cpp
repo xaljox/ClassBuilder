@@ -3174,11 +3174,16 @@ static void RegisterBuiltinCommands()
             error = "no class- or sequence-diagram named '" + name + "'";
         });
 
-    // export_diagram_svg({diagram, path}) -- render the named diagram to a
-    // standalone .svg (vector, selection-free, page extent). Reuses the
-    // diagram's open view when present; opens one first when none exists.
-    // Built for scripted / AI documentation pipelines: construct a diagram
-    // via the pipe, export it, embed the .svg.
+    // export_diagram_svg({diagram, path, tight?, margin?}) -- render the
+    // named diagram to a standalone .svg (vector, selection-free). Reuses
+    // the diagram's open view when present; opens one first when none
+    // exists. Default is the diagram's page extent (page=A4 if unset), same
+    // as the view's Export SVG toolbar button. tight:true instead crops to
+    // the shapes' bounding rect + margin model-units of padding (default 50,
+    // matching the 10-unit grid snap) -- built for embedding a diagram in a
+    // document without page whitespace around a small drawing. Built for
+    // scripted / AI documentation pipelines: construct a diagram via the
+    // pipe, export it, embed the .svg.
     CbCommandServer::Register("export_diagram_svg",
         [resolveDiagram, resolveSequenceDiagram]
         (const json& params, json& response, std::string& error)
@@ -3187,6 +3192,8 @@ static void RegisterBuiltinCommands()
             if (name.empty()) { error = "missing 'diagram'"; return; }
             std::string path = params.value("path", std::string());
             if (path.empty()) { error = "missing 'path'"; return; }
+            bool tight  = params.value("tight", false);
+            int  margin = params.value("margin", 50);
 
             DataModel* pDataModel = GetActiveDataModel();
             if (!pDataModel) { error = "no active document"; return; }
@@ -3196,7 +3203,7 @@ static void RegisterBuiltinCommands()
             std::string cdErr;
             if (ClassDiagram* pCD = resolveDiagram(pDataModel, name, cdErr))
             {
-                ok = Qt_ExportClassDiagramSvg(pCD, path.c_str());
+                ok = Qt_ExportClassDiagramSvg(pCD, path.c_str(), tight, margin);
                 kind = "class_diagram";
             }
             else
@@ -3206,7 +3213,7 @@ static void RegisterBuiltinCommands()
                     pDataModel->GetDataModelDoc(), name, sdErr);
                 if (!pSD)
                 { error = "no class- or sequence-diagram named '" + name + "'"; return; }
-                ok = Qt_ExportSequenceDiagramSvg(pSD, path.c_str());
+                ok = Qt_ExportSequenceDiagramSvg(pSD, path.c_str(), tight, margin);
                 kind = "sequence_diagram";
             }
             if (!ok)
@@ -3214,6 +3221,7 @@ static void RegisterBuiltinCommands()
             response["diagram"] = name;
             response["kind"]    = kind;
             response["path"]    = path;
+            response["tight"]   = tight;
         });
 
     // ----- Note commands --------------------------------------------------

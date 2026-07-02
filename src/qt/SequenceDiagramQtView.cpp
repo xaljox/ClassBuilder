@@ -1262,28 +1262,46 @@ QString SequenceDiagramCanvas::diagramName() const
     return _pSD ? toQ(_pSD->GetName()) : QString();
 }
 
-bool SequenceDiagramCanvas::exportSvg(const QString& path)
+bool SequenceDiagramCanvas::exportSvg(const QString& path, bool tight, int margin)
 {
 #ifdef CB_HAVE_SVG
     if (!_pSD)
         return false;
-    const FitInfo f = computeFit();
+
+    // Page mode: the fixed printable page, same as computeFit()'s A4 default.
+    // Tight mode: the actual shape extents + a margin, so a small diagram
+    // doesn't export as mostly whitespace. GetBoundingRect() calls
+    // RecalculateDiagram() internally, so lifeline/activation layout is
+    // current even if nothing has painted yet.
+    CbRect view;
+    if (tight)
+    {
+        view = _pSD->GetBoundingRect();
+        view.InflateRect(margin, margin);
+    }
+    else
+    {
+        const FitInfo f = computeFit();
+        view = CbRect(0, -f.pageH, f.pageW, 0);
+    }
 
     QSvgGenerator gen;
     gen.setFileName(path);
-    gen.setSize(QSize(qCeil(f.pageW), qCeil(f.pageH)));
-    gen.setViewBox(QRectF(0, 0, f.pageW, f.pageH));
+    gen.setSize(QSize(qCeil((qreal)view.Width()), qCeil((qreal)view.Height())));
+    gen.setViewBox(QRectF(0, 0, view.Width(), view.Height()));
     gen.setTitle(diagramName());
     gen.setDescription(QStringLiteral("ClassBuilder sequence diagram"));
 
     QPainter qp(&gen);
     qp.setRenderHint(QPainter::Antialiasing, true);
     qp.setRenderHint(QPainter::TextAntialiasing, true);
-    // Model Y-up; page spans (0,-pageH)..(pageW,0). The scale(1,-1) flip maps
-    // it onto the SVG viewBox (0,0)..(pageW,pageH) -- the same flip paintEvent
-    // applies (minus the fit-to-window scale + user zoom/pan).
+    // Model Y-up; the scale(1,-1) flip maps model-space onto the SVG viewBox
+    // -- the same flip paintEvent applies (minus fit-to-window scale + user
+    // zoom/pan). The translate re-anchors view's top-left onto the viewBox
+    // origin; it's a no-op in page mode (view.left/bottom == 0).
     qp.scale(1.0, -1.0);
-    qp.fillRect(QRectF(0, -f.pageH, f.pageW, f.pageH), Qt::white);
+    qp.translate(-view.left, -view.bottom);
+    qp.fillRect(QRectF(view.left, view.top, view.Width(), view.Height()), Qt::white);
 
     CbPainter_QPainter painter(&qp);
     painter.SetScreen(false);   // suppress selection highlights, like print/EMF
@@ -1291,6 +1309,8 @@ bool SequenceDiagramCanvas::exportSvg(const QString& path)
     return qp.end();
 #else
     Q_UNUSED(path);
+    Q_UNUSED(tight);
+    Q_UNUSED(margin);
     return false;
 #endif
 }
@@ -3951,7 +3971,10 @@ void SequenceDiagramQtView::exportSvg()
         return;
     if (!path.endsWith(".svg", Qt::CaseInsensitive))
         path += ".svg";
-    if (!_canvas->exportSvg(path))
+    // Tight crop (shapes' bounding rect + margin), not the full page -- a
+    // small diagram exported at page extent is mostly whitespace, which is
+    // useless when embedding into a document.
+    if (!_canvas->exportSvg(path, /*tight=*/true))
         QMessageBox::warning(this, "Export SVG",
             "SVG export failed -- the Qt Svg module may be unavailable in this build.");
 }
@@ -3979,7 +4002,8 @@ void Qt_ShowSequenceDiagramView(SequenceDiagram* pSD, void* ownerHwnd)
 // Pipe-API backend (see qt/QtSequenceDiagramView.h): dialog-free SVG export.
 // Reuse the diagram's open canvas when present; else open the view through
 // the same path as a tree double-click, then export.
-bool Qt_ExportSequenceDiagramSvg(SequenceDiagram* pSD, const char* path)
+bool Qt_ExportSequenceDiagramSvg(SequenceDiagram* pSD, const char* path,
+                                  bool tight, int margin)
 {
     Qt_EnsureApplication();
 
@@ -4000,5 +4024,5 @@ bool Qt_ExportSequenceDiagramSvg(SequenceDiagram* pSD, const char* path)
     }
     if (!pCanvas)
         return false;
-    return pCanvas->exportSvg(QString::fromLocal8Bit(path));
+    return pCanvas->exportSvg(QString::fromLocal8Bit(path), tight, margin);
 }

@@ -92,11 +92,17 @@ public:
     void runAddItem(int item);
     bool addItemEnabled(int item);
 
-    // Render this diagram to a standalone .svg at its page extent (vector,
-    // selection-free). Returns false if the Qt Svg module is unavailable or
-    // the write failed. The shapes paint through CbPainter_QPainter exactly as
-    // on screen -- only the paint device differs (QSvgGenerator vs the widget).
-    bool exportSvg(const QString& path);
+    // Render this diagram to a standalone .svg (vector, selection-free).
+    // Returns false if the Qt Svg module is unavailable or the write failed.
+    // The shapes paint through CbPainter_QPainter exactly as on screen --
+    // only the paint device differs (QSvgGenerator vs the widget). tight=true
+    // crops to GetBoundingRect() of the diagram's shapes, inflated by margin
+    // model-units on every side, instead of the diagram's fixed page extent
+    // -- a small diagram at page extent is mostly whitespace, useless when
+    // embedding into a document. The toolbar's Export SVG button always asks
+    // for tight=true; the pipe API's export_diagram_svg defaults to
+    // tight=false (page extent) but can opt in.
+    bool exportSvg(const QString& path, bool tight = false, int margin = 50);
     QString diagramName() const;          // default export file name
     ClassDiagram* diagram() const { return _pCD; }   // identity (pipe SVG export)
 

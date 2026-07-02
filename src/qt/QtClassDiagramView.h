@@ -12,9 +12,12 @@ class ClassDiagram;
 // `ownerHwnd` is the MFC owner HWND as void*. Returns immediately.
 void Qt_ShowClassDiagramView(ClassDiagram* pClassDiagram, void* ownerHwnd);
 
-// Export `pClassDiagram` to a standalone .svg (vector, selection-free, page
-// extent). Reuses the diagram's open canvas when one exists, else opens the
-// view first (same path as a tree double-click). Returns false when the Qt
-// Svg module is unavailable or the write failed. Pipe-API backend
-// (export_diagram_svg); `path` is 8-bit local encoding.
-bool Qt_ExportClassDiagramSvg(ClassDiagram* pClassDiagram, const char* path);
+// Export `pClassDiagram` to a standalone .svg (vector, selection-free).
+// Reuses the diagram's open canvas when one exists, else opens the view
+// first (same path as a tree double-click). Returns false when the Qt Svg
+// module is unavailable or the write failed. Pipe-API backend
+// (export_diagram_svg); `path` is 8-bit local encoding. Default (tight=false)
+// exports the page extent; tight=true crops to the shapes' bounding rect
+// inflated by `margin` model-units.
+bool Qt_ExportClassDiagramSvg(ClassDiagram* pClassDiagram, const char* path,
+                               bool tight = false, int margin = 50);

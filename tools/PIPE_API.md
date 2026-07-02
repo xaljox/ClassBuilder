@@ -720,9 +720,11 @@ All three are undoable as a single step.
 Opens the GUI view of a class- **or** sequence-diagram, exactly like double-clicking it in the tree (dockable view in the shell). `name` (alias `diagram`) is tried as a ClassDiagram first, then a SequenceDiagram. Each call opens a **new** view (sub-window semantics), so call once per diagram.
 **Returns:** `{name, kind:"class_diagram"|"sequence_diagram"}`.
 
-#### `export_diagram_svg` `{diagram, path}`
-Renders the named diagram to a standalone `.svg` (vector, selection-free, at page extent — the same rendering as the view's **Export SVG** toolbar button, minus the file dialog). Reuses the diagram's open view when present; opens one first when none exists. Works for class- and sequence-diagrams. Built for scripted / AI documentation pipelines: construct a diagram via the pipe, export it, embed the `.svg`.
-**Returns:** `{diagram, kind, path}`.
+#### `export_diagram_svg` `{diagram, path, tight?, margin?}`
+Renders the named diagram to a standalone `.svg` (vector, selection-free). Reuses the diagram's open view when present; opens one first when none exists. Works for class- and sequence-diagrams. Built for scripted / AI documentation pipelines: construct a diagram via the pipe, export it, embed the `.svg`.
+
+By default (`tight` omitted or `false`) the export is at page extent (page size from the diagram, A4 default if unset). Pass `tight: true` to instead crop to the actual shapes' bounding rect, inflated by `margin` model-units of padding on every side (default `50`, i.e. 5 grid squares at the 10-unit snap) — use this when embedding a diagram into a document, so a small diagram doesn't export as mostly page whitespace. The view's **Export SVG** toolbar button always exports tight (a full-page export is rarely useful once you can crop); the pipe defaults to page extent for backward compatibility but should normally be called with `tight: true` too.
+**Returns:** `{diagram, kind, path, tight}`.
 **Errors:** unknown diagram name; `SVG export failed` when the Qt Svg module is unavailable or the file can't be written.
 
 ### Moving existing objects between parents
