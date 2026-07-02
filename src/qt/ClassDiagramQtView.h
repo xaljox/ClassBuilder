@@ -98,6 +98,7 @@ public:
     // on screen -- only the paint device differs (QSvgGenerator vs the widget).
     bool exportSvg(const QString& path);
     QString diagramName() const;          // default export file name
+    ClassDiagram* diagram() const { return _pCD; }   // identity (pipe SVG export)
 
     // Invoked by the owning view's toolbar buttons (same actions as the Del key
     // and Ctrl+Z / Ctrl+Y). undo()/redo() self-guard on canUndo()/canRedo(), so

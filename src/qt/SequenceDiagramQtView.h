@@ -97,6 +97,7 @@ public:
     // the write failed. Same shape Draw as on screen; only the device differs.
     bool exportSvg(const QString& path);
     QString diagramName() const;          // default export file name
+    SequenceDiagram* diagram() const { return _pSD; }   // identity (pipe SVG export)
 
 signals:
     // Emitted once per coalesced model change (from RefreshCanvas) so the owning

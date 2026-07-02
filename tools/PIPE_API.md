@@ -714,6 +714,17 @@ Same three actions exposed in the GUI right-click menu:
 
 All three are undoable as a single step.
 
+### Diagram view commands (GUI-facing) — ADDED 2026-07-02
+
+#### `open_diagram` `{name}`
+Opens the GUI view of a class- **or** sequence-diagram, exactly like double-clicking it in the tree (dockable view in the shell). `name` (alias `diagram`) is tried as a ClassDiagram first, then a SequenceDiagram. Each call opens a **new** view (sub-window semantics), so call once per diagram.
+**Returns:** `{name, kind:"class_diagram"|"sequence_diagram"}`.
+
+#### `export_diagram_svg` `{diagram, path}`
+Renders the named diagram to a standalone `.svg` (vector, selection-free, at page extent — the same rendering as the view's **Export SVG** toolbar button, minus the file dialog). Reuses the diagram's open view when present; opens one first when none exists. Works for class- and sequence-diagrams. Built for scripted / AI documentation pipelines: construct a diagram via the pipe, export it, embed the `.svg`.
+**Returns:** `{diagram, kind, path}`.
+**Errors:** unknown diagram name; `SVG export failed` when the Qt Svg module is unavailable or the file can't be written.
+
 ### Moving existing objects between parents
 
 Pipe equivalent of GUI drag-and-drop: reparent things that already exist. Diagrams reparent via Gti's tree (the same call CB's own `Drop` handlers use); classes reparent by changing their `ClassGroup` membership (their DataModel ownership is unchanged); ClassGroups reparent between the model root and a MetaGroup.

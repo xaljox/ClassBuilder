@@ -17,6 +17,8 @@
 #include "ClassBuilderDoc.h"
 #include "CbShellHooks.h"
 #include "CbColor.h"        // CbColorRef (set_*_color commands)
+#include "qt/QtClassDiagramView.h"     // Qt_ShowClassDiagramView / Qt_ExportClassDiagramSvg (Qt-free bridge)
+#include "qt/QtSequenceDiagramView.h"  // Qt_ShowSequenceDiagramView / Qt_ExportSequenceDiagramSvg (Qt-free bridge)
 #include <sstream>
 #include <fstream>
 #include <set>
@@ -3133,6 +3135,85 @@ static void RegisterBuiltinCommands()
             pSD->UpdateSequenceDiagramViews();
             dmd.MarkLastUndo();
             response["diagram"] = ToStd(pSD->GetName());
+        });
+
+    // ----- Diagram view commands (GUI-facing) ------------------------------
+    //
+    // open_diagram({name}) -- open the GUI view of a class- or sequence-
+    // diagram, exactly like double-clicking it in the tree (dockable view in
+    // the shell). Each call opens a NEW view (sub-window semantics), so call
+    // once per diagram.
+    CbCommandServer::Register("open_diagram",
+        [resolveDiagram, resolveSequenceDiagram]
+        (const json& params, json& response, std::string& error)
+        {
+            std::string name = params.value("name", std::string());
+            if (name.empty()) name = params.value("diagram", std::string());
+            if (name.empty()) { error = "missing 'name'"; return; }
+
+            DataModel* pDataModel = GetActiveDataModel();
+            if (!pDataModel) { error = "no active document"; return; }
+
+            std::string cdErr;
+            if (ClassDiagram* pCD = resolveDiagram(pDataModel, name, cdErr))
+            {
+                Qt_ShowClassDiagramView(pCD, Cb_OwnerHwnd());
+                response["name"] = ToStd(pCD->GetName());
+                response["kind"] = "class_diagram";
+                return;
+            }
+            std::string sdErr;
+            if (SequenceDiagram* pSD = resolveSequenceDiagram(
+                    pDataModel->GetDataModelDoc(), name, sdErr))
+            {
+                Qt_ShowSequenceDiagramView(pSD, Cb_OwnerHwnd());
+                response["name"] = ToStd(pSD->GetName());
+                response["kind"] = "sequence_diagram";
+                return;
+            }
+            error = "no class- or sequence-diagram named '" + name + "'";
+        });
+
+    // export_diagram_svg({diagram, path}) -- render the named diagram to a
+    // standalone .svg (vector, selection-free, page extent). Reuses the
+    // diagram's open view when present; opens one first when none exists.
+    // Built for scripted / AI documentation pipelines: construct a diagram
+    // via the pipe, export it, embed the .svg.
+    CbCommandServer::Register("export_diagram_svg",
+        [resolveDiagram, resolveSequenceDiagram]
+        (const json& params, json& response, std::string& error)
+        {
+            std::string name = params.value("diagram", std::string());
+            if (name.empty()) { error = "missing 'diagram'"; return; }
+            std::string path = params.value("path", std::string());
+            if (path.empty()) { error = "missing 'path'"; return; }
+
+            DataModel* pDataModel = GetActiveDataModel();
+            if (!pDataModel) { error = "no active document"; return; }
+
+            bool ok = false;
+            std::string kind;
+            std::string cdErr;
+            if (ClassDiagram* pCD = resolveDiagram(pDataModel, name, cdErr))
+            {
+                ok = Qt_ExportClassDiagramSvg(pCD, path.c_str());
+                kind = "class_diagram";
+            }
+            else
+            {
+                std::string sdErr;
+                SequenceDiagram* pSD = resolveSequenceDiagram(
+                    pDataModel->GetDataModelDoc(), name, sdErr);
+                if (!pSD)
+                { error = "no class- or sequence-diagram named '" + name + "'"; return; }
+                ok = Qt_ExportSequenceDiagramSvg(pSD, path.c_str());
+                kind = "sequence_diagram";
+            }
+            if (!ok)
+            { error = "SVG export failed (Qt Svg module unavailable or write error)"; return; }
+            response["diagram"] = name;
+            response["kind"]    = kind;
+            response["path"]    = path;
         });
 
     // ----- Note commands --------------------------------------------------

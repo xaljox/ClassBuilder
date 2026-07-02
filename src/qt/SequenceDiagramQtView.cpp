@@ -16,6 +16,7 @@
 #include "QtToolBarIcons.h"          // Qt_ToolBarIcon (real MFC toolbar glyphs)
 #include "CbPainter_QFontMetrics.h"  // headless text measurement for hit-test
 
+#include <QApplication>              // allWidgets (pipe SVG-export canvas lookup)
 #include <QPainter>
 #include <QPaintEvent>
 #include <QWheelEvent>
@@ -3973,4 +3974,31 @@ void Qt_ShowSequenceDiagramView(SequenceDiagram* pSD, void* ownerHwnd)
         w->setAttribute(Qt::WA_DeleteOnClose, true);
         Qt_ShowModeless(*w, ownerHwnd);
     }
+}
+
+// Pipe-API backend (see qt/QtSequenceDiagramView.h): dialog-free SVG export.
+// Reuse the diagram's open canvas when present; else open the view through
+// the same path as a tree double-click, then export.
+bool Qt_ExportSequenceDiagramSvg(SequenceDiagram* pSD, const char* path)
+{
+    Qt_EnsureApplication();
+
+    auto findCanvas = [pSD]() -> SequenceDiagramCanvas* {
+        const QWidgetList widgets = QApplication::allWidgets();
+        for (QWidget* w : widgets)
+            if (auto* c = dynamic_cast<SequenceDiagramCanvas*>(w))
+                if (c->diagram() == pSD)
+                    return c;
+        return nullptr;
+    };
+
+    SequenceDiagramCanvas* pCanvas = findCanvas();
+    if (!pCanvas)
+    {
+        Qt_ShowSequenceDiagramView(pSD, nullptr);
+        pCanvas = findCanvas();
+    }
+    if (!pCanvas)
+        return false;
+    return pCanvas->exportSvg(QString::fromLocal8Bit(path));
 }

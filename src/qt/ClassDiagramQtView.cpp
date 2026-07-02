@@ -4316,3 +4316,30 @@ void Qt_ShowClassDiagramView(ClassDiagram* pClassDiagram, void* ownerHwnd)
         Qt_ShowModeless(*w, ownerHwnd);
     }
 }
+
+// Pipe-API backend (see qt/QtClassDiagramView.h): dialog-free SVG export.
+// Reuse the diagram's open canvas when present; else open the view through
+// the same path as a tree double-click, then export.
+bool Qt_ExportClassDiagramSvg(ClassDiagram* pClassDiagram, const char* path)
+{
+    Qt_EnsureApplication();
+
+    auto findCanvas = [pClassDiagram]() -> ClassDiagramCanvas* {
+        const QWidgetList widgets = QApplication::allWidgets();
+        for (QWidget* w : widgets)
+            if (auto* c = dynamic_cast<ClassDiagramCanvas*>(w))
+                if (c->diagram() == pClassDiagram)
+                    return c;
+        return nullptr;
+    };
+
+    ClassDiagramCanvas* pCanvas = findCanvas();
+    if (!pCanvas)
+    {
+        Qt_ShowClassDiagramView(pClassDiagram, nullptr);
+        pCanvas = findCanvas();
+    }
+    if (!pCanvas)
+        return false;
+    return pCanvas->exportSvg(QString::fromLocal8Bit(path));
+}
