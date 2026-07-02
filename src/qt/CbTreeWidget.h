@@ -21,4 +21,17 @@ public:
 protected:
     void drawBranches(QPainter* painter, const QRect& rect,
                       const QModelIndex& index) const override;
+    void changeEvent(QEvent* event) override;
+
+private:
+    // Whether a selected row's real, style-painted background collides with
+    // the accent colour the branch chrome is drawn in (see drawBranches).
+    // Determined by actually rendering a probe selected cell through this
+    // widget's style/palette and sampling the pixel -- see .cpp -- instead of
+    // guessing from a palette colour or the style/platform name, neither of
+    // which reliably predicts how a given theme renders selection. Lazily
+    // computed and cached; invalidated by changeEvent on palette/style change.
+    bool selectionChromeShouldFlip() const;
+    mutable bool _chromeFlipCached = false;
+    mutable bool _chromeFlip = false;
 };
