@@ -9,6 +9,10 @@
 
 #include "qt/QtShell.h"
 
+#if defined(__linux__)
+#include <cstdlib>   // getenv / setenv -- Qt-free platform default (see main() below)
+#endif
+
 #ifdef _WIN32
 int APIENTRY WinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/,
                      LPSTR /*lpCmdLine*/, int /*nCmdShow*/)
@@ -26,6 +30,16 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/,
 // ClassBuilderQt static lib.
 int main(int argc, char** argv)
 {
+#if defined(__linux__)
+    // CB manages its own child-window placement (MDI / floating tool windows),
+    // which native Wayland forbids -- windows can't be dragged there. Default to
+    // the XCB backend (X11 / XWayland) where that works. Guards: only under a
+    // Wayland session (WAYLAND_DISPLAY) with XWayland actually available
+    // (DISPLAY), and never override an explicit user choice (QT_QPA_PLATFORM).
+    if (!getenv("QT_QPA_PLATFORM") && getenv("WAYLAND_DISPLAY") && getenv("DISPLAY"))
+        setenv("QT_QPA_PLATFORM", "xcb", 0);
+#endif
+
     const char* fileToOpen = (argc > 1) ? argv[1] : nullptr;
 
     return Cb_RunQtShell(fileToOpen);
