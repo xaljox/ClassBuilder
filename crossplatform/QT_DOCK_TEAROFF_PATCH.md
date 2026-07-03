@@ -19,10 +19,13 @@ tiny verbatim backports of the upstream fixes. The diffs are committed here:
 > the full doc header inside the patch file has symptom/root-cause detail.
 
 The Windows static-Qt build at `C:/Qt-static/6.11.1` has BOTH applied
-(2026-07-03). The **macOS and Linux** patched trees at `~/Qt-6.11.1-patched`
-had only the first at that date — apply the second the same way (by hand: two
-one-word edits) and rebuild/install qtbase (Widgets), then rebuild CB. Both
-patches expire together at Qt ≥ 6.11.2.
+(2026-07-03). **Linux** `~/Qt-6.11.1-patched` now also has BOTH — the second
+applied 2026-07-03 (two one-word edits in `src/widgets/widgets/qdockwidget.cpp`
+at the `startDrag` ctrl-drag + `endDrag` stay-floating sites, `KeepSavedState`
+→ `ClearSavedState`), qtbase Widgets rebuilt + installed, CB relinked. **macOS**
+`~/Qt-6.11.1-patched` still had only the first as of that date — apply the second
+the same way and rebuild/install qtbase (Widgets), then rebuild CB. Both patches
+expire together at Qt ≥ 6.11.2.
 
 The remainder of this doc covers the first (tear-off crash) patch in detail;
 the build/apply recipe per platform applies to both.
