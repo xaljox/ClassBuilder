@@ -49,7 +49,21 @@
       "Bash(tr:*)",
       "Bash(xargs:*)",
       "Bash(tar:*)",
-      "Bash(patch:*)"
+      "Bash(patch:*)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(date:*)",
+      "Bash(env:*)",
+      "Bash(pwd:*)",
+      "Bash(true:*)",
+      "Bash(test:*)",
+      "Bash(sleep:*)",
+      "Bash(stat:*)",
+      "Bash(tee:*)",
+      "Bash(uname:*)",
+      "Bash(ps:*)",
+      "Bash(kill:*)",
+      "Bash(killall:*)"
     ]
   }
 }
