@@ -724,11 +724,17 @@ void QtShellWindow::wireDockTabBars()
         // Pack tabs from the LEFT (macOS' native layout centres them).
         bar->setExpanding(false);
 #ifdef _WIN32
-        // Windows native tabs have NO close button and barely distinguish the
-        // selected tab (text dim only), so on Windows we override the look: a
-        // close cross per tab + explicit selected-tab styling (accent top edge,
-        // bold, grey block; unselected stay white). Colours from the APP palette
-        // -- palette(...) refs inside QSS resolve to QSS defaults, not the theme.
+        // A dock tab has no close button of its own (default QTabBar, every
+        // platform) -- you normally close a tabbed model via the dock's TITLE-BAR
+        // close button. On Windows that title-bar button is INCONSISTENTLY present
+        // (sometimes shown, sometimes not), so the title bar can't be relied on to
+        // close a tab; add a per-tab close cross to GUARANTEE closability. (It is
+        // NOT that Windows tabs lack a close the others have -- it's the title-bar
+        // inconsistency that forces the cross here.) Windows' native style also
+        // barely distinguishes the selected tab (text dim only), so override the
+        // look too: selected-tab styling (accent top edge, bold, grey block;
+        // unselected stay white). Colours from the APP palette -- palette(...) refs
+        // inside QSS resolve to QSS defaults, not the theme.
         bar->setTabsClosable(true);
         const QPalette appPal = QApplication::palette();
         const QString selBg   = appPal.color(QPalette::Active, QPalette::Window)
@@ -764,10 +770,13 @@ void QtShellWindow::wireDockTabBars()
                 dockPtr->close();
         });
 #else
-        // macOS/Linux: keep the NATIVE tab style (it already has a close button
-        // and a clearly distinct selected tab) -- no QSS, no per-tab close cross
-        // (close a tabbed model via its dock title-bar button). Only force LEFT
-        // alignment: macOS centres tabs natively. Route the bar through the shell's
+        // macOS/Linux: keep the NATIVE tab style -- no QSS, no per-tab close cross.
+        // A tab has no close button of its own here either, but the dock's TITLE-BAR
+        // close button IS consistently present on these platforms, so it reliably
+        // closes a tabbed model (the Windows title-bar inconsistency that forces the
+        // per-tab cross doesn't occur here), and the native selected-tab highlight is
+        // clear enough. Only force LEFT alignment: macOS centres tabs natively. Route
+        // the bar through the shell's
         // ShellSeparatorStyle -- a thin proxy over the platform style whose only
         // effect here is SH_TabBar_Alignment = AlignLeft on macOS; its other
         // overrides are gated to the shell widget, so the tabs still render fully
