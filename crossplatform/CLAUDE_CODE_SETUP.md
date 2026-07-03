@@ -25,10 +25,19 @@ on another. Permissions are split by what is portable:
 - `allow: ["Bash"]` — **all** shell commands run without prompting (curating a
   per-command allowlist was pure whack-a-mole: read tools, pipeline segments, and
   out-of-project Qt work kept surfacing new prompts).
-- `deny` (takes precedence) — only the genuinely destructive/irreversible:
-  `rm`, `rmdir`, `sudo`, `dd`, `mkfs`, `shutdown`, `reboot`, and
-  `git reset --hard` / `git clean` / `git rebase` / `git push --force[-with-lease]` / `-f`.
-  These still prompt; nothing else does.
+- `deny` (takes precedence) — **only what "refetch the last commit" can't
+  undo.** The safety net is git: commit/push regularly, and reverting an
+  experiment is just discarding uncommitted changes (`git reset --hard` /
+  `git restore .` / `git checkout -- .` — all allowed). So deny is limited to:
+  - `git push --force` / `-f` / `--force-with-lease` — rewrites the *pushed*
+    remote, i.e. the safety net itself.
+  - `rm`, `rmdir`, `sudo`, `dd`, `mkfs`, `shutdown`, `reboot` — can destroy
+    things git doesn't protect: untracked files and **out-of-repo assets**
+    (e.g. the from-source patched Qt at `~/Qt-6.11.1-patched` / `~/qt-build`,
+    not in any commit).
+
+  Everything else — including local history ops like `git reset --hard`,
+  `git clean`, `git rebase` — runs without a prompt.
 
 ### Per-machine `.claude/settings.local.json` (launch path only)
 

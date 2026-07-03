@@ -12,9 +12,6 @@
       "Bash(mkfs:*)",
       "Bash(shutdown:*)",
       "Bash(reboot:*)",
-      "Bash(git reset --hard:*)",
-      "Bash(git clean:*)",
-      "Bash(git rebase:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push --force-with-lease:*)"
