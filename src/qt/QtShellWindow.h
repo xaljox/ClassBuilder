@@ -70,6 +70,20 @@ protected:
     // anything. Real separators (docks on both sides) are untouched.
     bool event(QEvent* e) override;
 
+    // Re-wires the dock tab bars whenever a new direct child appears.
+    // QMainWindowLayout pools its dock QTabBars and creates them lazily as
+    // direct children of the main window -- sometimes only when the dock-drop
+    // ANIMATION finishes, after the deferChrome pass triggered by the dock
+    // signals. A float group's fresh tab bar was born in that gap and stayed
+    // native (no close cross, near-invisible selected tab). ChildAdded on the
+    // shell is the creation signal for the pooled bars AND for the float-group
+    // windows themselves; a bar born directly inside an existing group window
+    // is caught by the eventFilter wireDockTabBars installs on each group
+    // window. The wire itself is deferred (the object is still constructing
+    // during the event) and coalesced.
+    void childEvent(QChildEvent* e) override;
+    bool eventFilter(QObject* obj, QEvent* e) override;
+
     // (Tab tear-off is Qt-native: GroupedDragging in dockOptions lets a tab be
     // dragged off the row, floating that dock and continuing the drag with
     // drop zones -- no event filter needed.)
@@ -151,4 +165,8 @@ private:
     // CursorChange QMainWindow would answer with (it re-sets its "adjusted"
     // split cursor from that handler, defeating the un-set).
     bool _suppressCursorReadjust = false;
+
+    // Coalesced deferred wireDockTabBars (childEvent / group-window filter).
+    void scheduleWireDockTabBars();
+    bool _wireTabBarsPending = false;
 };

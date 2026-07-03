@@ -12,6 +12,7 @@
 #include "QtToolBarIcons.h"   // CB_TOOLBAR_ICON_PX (shared toolbar icon size)
 
 #include <QApplication>
+#include <QChildEvent>
 #include <QCloseEvent>
 #include <QDockWidget>
 #include <QMetaObject>
@@ -672,12 +673,37 @@ void QtShellWindow::wireDockTabBars()
     // every new one close crosses and route the cross to the model-close
     // flow. tabData() holds the QDockWidget* (long-standing Qt behaviour;
     // unmatched data just means an unrelated tab bar -- ignored).
-    // Main-window dock tab bars only. NB: extending this to also wire the tab bars
-    // inside floating QDockWidgetGroupWindows (to give float-group tabs close crosses)
-    // introduced an UNCAUGHT crash in the multi-tab float-group teardown (2026-06-19)
-    // -- reverted. Revisit float-group tab chrome only as a carefully-tested pass.
-    const QList<QTabBar*> bars =
+    //
+    // Wire BOTH the main-window dock tab bars (direct children of the shell)
+    // AND the ones inside floating dock groups (children of the top-level
+    // QDockWidgetGroupWindows). QMainWindow POOLS and REUSES these bars
+    // across both hosts, which is why float-group chrome used to be
+    // inconsistent: a bar first wired while docked kept its cross + selected
+    // style when reused in a float group, while a bar born inside a float
+    // group stayed native (no cross on Windows, near-invisible selected tab).
+    // (Float-group wiring was tried 2026-06-19 and reverted after a teardown
+    // crash; that crash was the Qt 6.11.1 savedState bug family, since fixed
+    // by the two local Qt patches -- see crossplatform/qt-patches/.)
+    QList<QTabBar*> bars =
         findChildren<QTabBar*>(QString(), Qt::FindDirectChildrenOnly);
+    const QList<QWidget*> kids =
+        findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QWidget* w : kids)
+    {
+        if (w->isWindow()
+            && qstrcmp(w->metaObject()->className(), "QDockWidgetGroupWindow") == 0)
+        {
+            bars += w->findChildren<QTabBar*>();
+            // A tab bar born directly inside this group window (e.g. created
+            // when the drop animation finishes) never hits the shell's
+            // childEvent -- watch the group window's own ChildAdded too.
+            if (!w->property("cbGroupWatched").toBool())
+            {
+                w->setProperty("cbGroupWatched", true);
+                w->installEventFilter(this);
+            }
+        }
+    }
     for (QTabBar* bar : bars)
     {
         if (bar->property("cbDocTabsWired").toBool())
@@ -734,6 +760,40 @@ void QtShellWindow::wireDockTabBars()
         // dragging a tab off the row floats that dock and continues the drag
         // (drop zones, one-step re-dock).
     }
+}
+
+void QtShellWindow::scheduleWireDockTabBars()
+{
+    if (_wireTabBarsPending)
+        return;
+    _wireTabBarsPending = true;
+    QMetaObject::invokeMethod(this, [this] {
+        _wireTabBarsPending = false;
+        wireDockTabBars();
+    }, Qt::QueuedConnection);
+}
+
+void QtShellWindow::childEvent(QChildEvent* e)
+{
+    QMainWindow::childEvent(e);
+    // See the header comment: pooled dock tab bars are created lazily as
+    // direct children of the shell (sometimes only at drop-animation finish,
+    // after every dock-signal-driven chrome pass) -- their ChildAdded here is
+    // the reliable wire trigger. Deferred because the child is still
+    // mid-construction during the event; coalesced across the ChildAdded
+    // bursts of a layout transition. The wire is idempotent (cbDocTabsWired).
+    if (e->added())
+        scheduleWireDockTabBars();
+}
+
+bool QtShellWindow::eventFilter(QObject* obj, QEvent* e)
+{
+    // Installed on every floating QDockWidgetGroupWindow (wireDockTabBars):
+    // a tab bar born directly inside an existing group window never touches
+    // the shell's childEvent, so watch the group's own ChildAdded too.
+    if (e->type() == QEvent::ChildAdded)
+        scheduleWireDockTabBars();
+    return QMainWindow::eventFilter(obj, e);
 }
 
 void QtShellWindow::hostDiagramDock(QWidget* view)
