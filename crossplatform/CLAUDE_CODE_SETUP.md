@@ -22,11 +22,13 @@ on another. Permissions are split by what is portable:
 ### Tracked `.claude/settings.json` (shared, identical everywhere)
 
 - `defaultMode: acceptEdits` — file edits never prompt.
-- git: `status pull fetch push add commit diff log show branch checkout switch stash restore remote rev-parse`
-- build/tools: `cmake ninja ctest otool`
-- fs helpers: `cp mkdir touch pkill`
-- **Destructive git stays gated on purpose** — `reset --hard`, `clean -fd`,
-  `rebase`, `push --force` still prompt. They are not part of the "normal" loop.
+- `allow: ["Bash"]` — **all** shell commands run without prompting (curating a
+  per-command allowlist was pure whack-a-mole: read tools, pipeline segments, and
+  out-of-project Qt work kept surfacing new prompts).
+- `deny` (takes precedence) — only the genuinely destructive/irreversible:
+  `rm`, `rmdir`, `sudo`, `dd`, `mkfs`, `shutdown`, `reboot`, and
+  `git reset --hard` / `git clean` / `git rebase` / `git push --force[-with-lease]` / `-f`.
+  These still prompt; nothing else does.
 
 ### Per-machine `.claude/settings.local.json` (launch path only)
 
