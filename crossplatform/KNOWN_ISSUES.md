@@ -58,13 +58,15 @@ closing such a group crashes intermittently (`EXC_BAD_ACCESS`).
 `0x8`); the crashing `QPropertyAnimation` is being deferred-deleted. Every frame
 above the event loop is Qt.
 
-**It is a platform-independent timing use-after-free**, not macOS-specific. It
-surfaces far more readily on macOS (cocoa native NSView reparent) but is confirmed
-on **Linux (xcb)** too, and on Windows with enough attempts — earlier "Windows/Linux
-are fine" was luck in one-model tests. No safe subset: it fires same-model or
-cross-model, on the first group op or the Nth. **Not** the tab styling and **not**
-`AnimatedDocks` (both ruled out by test). Qt 6.11.1; no upstream fix on the 6.11 or
-dev branches (only the two dock patches already backported).
+**It is a platform-independent timing use-after-free** in Qt's own code, observed
+on **macOS** (where it surfaces most readily — cocoa native NSView reparent) and
+**Linux (xcb)**. **NOT reproduced on Windows** (an earlier report naming Windows
+was a miscommunication, corrected by JV 2026-07-04) — but two of three platforms
+crashing in shared Qt code is reason enough to disable it everywhere rather than
+gamble on the third. No safe subset: it fires same-model or cross-model, on the
+first group op or the Nth. **Not** the tab styling and **not** `AnimatedDocks`
+(both ruled out by test). Qt 6.11.1; no upstream fix on the 6.11 or dev branches
+(only the two dock patches already backported).
 
 **Stopgap (`QtShellWindow` ctor `setDockOptions`):** `GroupedDragging` **disabled on
 all platforms** → no floating tab-group can form → crash unreachable. Everything
@@ -75,10 +77,12 @@ and block only group *formation* — no clean Qt hook, and single-model groups c
 too. **Do NOT** disable GroupedDragging per-platform expecting floating to break on
 some — it doesn't; the eager-grab is universal.
 
-**Real fix / when to re-enable:** find or write the upstream fix for the
-`animationFinished` reparent UAF, backport it like the dissolution + endDrag
-patches, then restore `GroupedDragging`. Expires at Qt ≥ 6.11.2 if that clears it.
-Until then the GUI-crash net emergency-saves open models, so a crash loses no work.
+**Real fix / when to re-enable:** investigate on the **Mac first** — it reproduces
+most readily there (JV: "later uitzoeken op de mac waar het het makkelijkste fout
+gaat"). Root-cause the `animationFinished` reparent UAF, find or write the upstream
+fix, backport it like the dissolution + endDrag patches, then restore
+`GroupedDragging`. Expires at Qt ≥ 6.11.2 if that clears it. Until then the
+GUI-crash net emergency-saves open models, so a crash loses no work.
 
 ## Working rule this file encodes
 
