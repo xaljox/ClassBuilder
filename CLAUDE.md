@@ -91,3 +91,5 @@ Historical migration order: VS2019 upgrade → VS2026 retarget (done 2026-04-27)
 ## Auto-memory
 
 Substantial project-specific knowledge (incident history, deferred decisions, design notes) lives in the auto-memory system at `C:\Users\jimmy\.claude\projects\c--Users-jimmy-Projects-ClassBuilder\memory\`. The `MEMORY.md` index is loaded into every session — consult it for status, deferred items, and rationale that isn't in the source.
+
+**Auto-memory is per-machine — it does not sync between Windows/macOS/Linux.** Notes that must be shared across platforms go in the tracked repo instead (they travel in git). Claude Code config shared across platforms — the tracked-vs-local `.claude/` permission split and each platform's build/launch path — is documented in [crossplatform/CLAUDE_CODE_SETUP.md](crossplatform/CLAUDE_CODE_SETUP.md); read it before touching `.claude/` permissions.

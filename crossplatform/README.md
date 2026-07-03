@@ -26,6 +26,7 @@ platform gap in a `WIN32`/`__APPLE__` branch → push the note back here → rep
 | [PORTING_MAC.md](PORTING_MAC.md) | Getting-started report: Mac prerequisites, what's already cross-platform, and the file-by-file Win32/MSVC punch-list. **Start here.** |
 | [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md) | The Qt 6.11.1 float-group "2→1 tear-off" crash (platform-independent Qt bug) and how to fix it on macOS. |
 | [qt-patches/](qt-patches/) | Verbatim third-party patches that must be applied to the platform's Qt build. |
+| [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Shared Claude Code config: the tracked-vs-local permission split and each platform's build/launch path. Read before touching `.claude/` permissions. |
 
 ## Conventions for this directory
 
