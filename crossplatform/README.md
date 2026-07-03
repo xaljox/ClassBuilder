@@ -24,6 +24,8 @@ platform gap in a `WIN32`/`__APPLE__` branch → push the note back here → rep
 | File | What |
 |------|------|
 | [PORTING_MAC.md](PORTING_MAC.md) | Getting-started report: Mac prerequisites, what's already cross-platform, and the file-by-file Win32/MSVC punch-list. **Start here.** |
+| [PORTING_LINUX.md](PORTING_LINUX.md) | Building on Linux (Ubuntu 24.04): distro Qt vs from-source patched Qt (+ the "install Wayland libs before qtbase" gotcha), xcb-as-daily-driver, and the Parallels crispness fix. |
+| [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Parked cross-platform CB bugs with root cause + the *safe* fix approach (phantom dock split-bar; XWayland clipboard UAF). Read before re-fixing dock/separator code. |
 | [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md) | The Qt 6.11.1 float-group "2→1 tear-off" crash (platform-independent Qt bug) and how to fix it on macOS. |
 | [qt-patches/](qt-patches/) | Verbatim third-party patches that must be applied to the platform's Qt build. |
 | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Shared Claude Code config: the tracked-vs-local permission split and each platform's build/launch path. Read before touching `.claude/` permissions. |
