@@ -259,8 +259,19 @@ QtShellWindow::QtShellWindow()
     // Model trees + diagrams live in dock tabs (close cross per tab); per-dock
     // title bars are hidden while TABBED (refreshDockChrome), shown when a pane
     // is alone/split/floating.
+    // Qt 6.11.1: forming a FLOATING dock tab-GROUP (GroupedDragging) crashes
+    // intermittently -- a use-after-free in QMainWindowLayout::animationFinished ->
+    // QWidget::setParent() on a freed dock. It surfaces FAR more readily on
+    // macOS/cocoa (native NSView reparent) but is confirmed on Linux too (xcb, not
+    // cocoa) -- so it is a platform-independent timing/UAF. No safe subset (same- or
+    // cross-model, first op or Nth) and no upstream fix yet. Disable GroupedDragging
+    // on ALL platforms as a stopgap until the root cause is patched (or Qt >= 6.11.2
+    // clears it): no floating tab-group can form, so the crash is unreachable.
+    // Single-dock floating (drag clear of the main), tabs, and side-by-side splits
+    // all still work; only combining several floats into one tabbed group is gone.
+    // See crossplatform/KNOWN_ISSUES.md.
     setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks
-                 | QMainWindow::AllowNestedDocks | QMainWindow::GroupedDragging);
+                 | QMainWindow::AllowNestedDocks);
     setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
 
     // Make the split separator clearly visible: the default is a hairline that's
@@ -709,18 +720,16 @@ void QtShellWindow::wireDockTabBars()
         if (bar->property("cbDocTabsWired").toBool())
             continue;
         bar->setProperty("cbDocTabsWired", true);
-        bar->setTabsClosable(true);
         bar->setElideMode(Qt::ElideRight);
-        // Pack tabs from the LEFT. macOS' native tab layout centres them in the
-        // bar (Windows left-aligns); setExpanding(false) makes each tab its
-        // natural width and starts the row at the left edge, matching Windows.
+        // Pack tabs from the LEFT (macOS' native layout centres them).
         bar->setExpanding(false);
-        // The stock Win11 style barely distinguishes the selected tab (text
-        // dim only) -- accent top edge + bold + grey block for the selected
-        // tab; unselected tabs stay white so they recede into the empty
-        // stretch of the tab row. Explicit colours from the APP palette:
-        // palette(...) refs inside QSS resolve against QSS defaults instead
-        // (same trap as the theme-colour memory note).
+#ifdef _WIN32
+        // Windows native tabs have NO close button and barely distinguish the
+        // selected tab (text dim only), so on Windows we override the look: a
+        // close cross per tab + explicit selected-tab styling (accent top edge,
+        // bold, grey block; unselected stay white). Colours from the APP palette
+        // -- palette(...) refs inside QSS resolve to QSS defaults, not the theme.
+        bar->setTabsClosable(true);
         const QPalette appPal = QApplication::palette();
         const QString selBg   = appPal.color(QPalette::Active, QPalette::Window)
                                     .darker(112).name();
@@ -734,11 +743,9 @@ void QtShellWindow::wireDockTabBars()
             "  border-top: 3px solid %4; font-weight: bold; }"
             "QTabBar::tab:!selected { margin-top: 3px; }")
             .arg(mid, unselBg, selBg, accent));
-        // Setting a stylesheet makes the bar use QStyleSheetStyle, which takes
-        // over tab layout and overrides setExpanding()/alignment -- on macOS
-        // that re-centres the tabs. Route the bar through the shell's
-        // ShellSeparatorStyle so its SH_TabBar_Alignment (AlignLeft on macOS)
-        // is the style QStyleSheetStyle delegates to, packing tabs from the left.
+        // A stylesheet makes the bar use QStyleSheetStyle which re-centres tabs;
+        // route it through ShellSeparatorStyle so SH_TabBar_Alignment (AlignLeft)
+        // wins and tabs pack from the left.
         bar->setStyle(style());
         connect(bar, &QTabBar::tabCloseRequested, this, [this, bar](int index) {
             const auto dockPtr =
@@ -756,9 +763,21 @@ void QtShellWindow::wireDockTabBars()
             if (dockPtr && _diagramDocks.contains(dockPtr))
                 dockPtr->close();
         });
-        // No event filter: tab tear-off is Qt-native via GroupedDragging --
-        // dragging a tab off the row floats that dock and continues the drag
-        // (drop zones, one-step re-dock).
+#else
+        // macOS/Linux: keep the NATIVE tab style (it already has a close button
+        // and a clearly distinct selected tab) -- no QSS, no per-tab close cross
+        // (close a tabbed model via its dock title-bar button). Only force LEFT
+        // alignment: macOS centres tabs natively. Route the bar through the shell's
+        // ShellSeparatorStyle -- a thin proxy over the platform style whose only
+        // effect here is SH_TabBar_Alignment = AlignLeft on macOS; its other
+        // overrides are gated to the shell widget, so the tabs still render fully
+        // native, just packed from the left. (The float-group style switch was
+        // ruled out as the crash cause -- native tabs crashed identically.)
+        bar->setStyle(style());
+#endif
+        // No event filter: dragging a tab off the row floats that dock as a
+        // single window. GroupedDragging is disabled (see setDockOptions), so
+        // floats can't be combined into a tabbed group.
     }
 }
 
