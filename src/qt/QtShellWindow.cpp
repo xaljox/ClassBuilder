@@ -621,7 +621,16 @@ QtShellWindow::DocEntry* QtShellWindow::addDocument(CClassBuilderDoc* doc)
     connect(dock, &QDockWidget::dockLocationChanged, this,
             [deferChrome](Qt::DockWidgetArea){ deferChrome(); });
 
-    addDockWidget(Qt::LeftDockWidgetArea, dock);
+    // TOP area, not LEFT: the layout always reserves one separator strip
+    // (PM_DockWidgetSeparatorExtent) between a populated dock area and the
+    // zero-size central placeholder, on the side where they meet. For a LEFT
+    // dock that is a full-height vertical strip at the window's right edge --
+    // very visible (9 physical px at 225% DPI). For a TOP dock it is a
+    // horizontal strip directly above the status bar, where it reads as
+    // status-bar separation. It also makes startup consistent with the state
+    // after a tear-off + redock (which lands the dock top/bottom): same
+    // structure, same (near-invisible) strip.
+    addDockWidget(Qt::TopDockWidgetArea, dock);
     // Tab onto the newest IN-WINDOW model; tabifying onto a floating dock
     // would add the new model to that floating window instead of the shell.
     for (int i = _entries.size() - 1; i >= 0; --i)
@@ -1189,61 +1198,131 @@ void QtShellWindow::closeEvent(QCloseEvent* e)
     e->accept();
 }
 
+// True when `pos` (shell coords) lies on a dock separator strip with dock
+// content on only ONE side -- the immovable phantom separator against the
+// zero-size central placeholder. Works edge-agnostically (the phantom sits on
+// whichever window edge the layout parked the central boundary: right on
+// initial open, bottom after a redock, ...). A candidate strip is
+// reconstructed from the dock edge `pos` is adjacent to, then classified by
+// the same both-sides test the painting suppression uses
+// (isPhantomSeparatorRect), so hit-test and paint can't disagree. The final
+// outside-the-docks'-union fallback catches corner pixels of the phantom
+// strip that are adjacent to no dock edge -- a REAL separator always lies
+// between two docks, hence inside the union.
+bool QtShellWindow::phantomSeparatorHitTest(const QPoint& pos) const
+{
+    const int ext = style()->pixelMetric(
+        QStyle::PM_DockWidgetSeparatorExtent, nullptr, this);
+
+    int minL = INT_MAX, maxR = INT_MIN, minT = INT_MAX, maxB = INT_MIN;
+    bool any = false;
+    const QList<QDockWidget*> docks = findChildren<QDockWidget*>();
+    for (const QDockWidget* d : docks)
+    {
+        if (!d->isVisible() || d->isFloating())
+            continue;
+        const QRect g = d->geometry();
+        any = true;
+        minL = qMin(minL, g.left());   maxR = qMax(maxR, g.right());
+        minT = qMin(minT, g.top());    maxB = qMax(maxB, g.bottom());
+
+        QRect cand;
+        if      (pos.x() > g.right()  && pos.x() <= g.right() + ext
+              && pos.y() >= g.top()   && pos.y() <= g.bottom())
+            cand = QRect(g.right() + 1, g.top(), ext, g.height());
+        else if (pos.x() <  g.left()  && pos.x() >= g.left() - ext
+              && pos.y() >= g.top()   && pos.y() <= g.bottom())
+            cand = QRect(g.left() - ext, g.top(), ext, g.height());
+        else if (pos.y() > g.bottom() && pos.y() <= g.bottom() + ext
+              && pos.x() >= g.left()  && pos.x() <= g.right())
+            cand = QRect(g.left(), g.bottom() + 1, g.width(), ext);
+        else if (pos.y() <  g.top()   && pos.y() >= g.top() - ext
+              && pos.x() >= g.left()  && pos.x() <= g.right())
+            cand = QRect(g.left(), g.top() - ext, g.width(), ext);
+        else
+            continue;
+        return isPhantomSeparatorRect(this, cand);
+    }
+
+    return any && (pos.x() > maxR || pos.x() < minL ||
+                   pos.y() > maxB || pos.y() < minT);
+}
+
 bool QtShellWindow::event(QEvent* e)
 {
-    // Track "a dock separator is being dragged": presses land on the shell
-    // itself only over separators / empty dock space, and over a separator
-    // the split cursor is showing. ShellSeparatorStyle paints the dragged
-    // separator in the selection accent (consistent with the diagrams).
-    if (e->type() == QEvent::MouseButtonPress
- && static_cast<QMouseEvent*>(e)->button() == Qt::LeftButton
- && testAttribute(Qt::WA_SetCursor))
+    switch (e->type())
     {
-        const Qt::CursorShape shape = cursor().shape();
-        if (shape == Qt::SplitHCursor || shape == Qt::SplitVCursor ||
-            shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor)
+    case QEvent::CursorChange:
+        // The HoverMove case below un-sets the phantom-separator cursor. That
+        // un-set fires a synchronous CursorChange, which QMainWindow answers
+        // by RE-SETTING its adjusted split cursor ("ensure our adjusted
+        // cursor stays visible" in qmainwindow.cpp) -- silently defeating the
+        // un-set. Swallow exactly that one event so the un-set sticks.
+        if (_suppressCursorReadjust)
+            return true;
+        break;
+
+    case QEvent::MouseButtonPress:
+    {
+        QMouseEvent* me = static_cast<QMouseEvent*>(e);
+        // A left press on the phantom separator would start a separator drag
+        // that can never move anything (the central placeholder is pinned at
+        // 0x0) -- the "you think you're resizing and nothing happens" trap.
+        // Swallow it before QMainWindow can startSeparatorMove().
+        if (me->button() == Qt::LeftButton
+            && phantomSeparatorHitTest(me->position().toPoint()))
+            return true;
+
+        // Track "a REAL dock separator is being dragged": presses land on
+        // the shell itself only over separators / empty dock space, and over
+        // a separator the split cursor is showing (the phantom no longer
+        // shows one, so it can't trigger this). ShellSeparatorStyle paints
+        // the dragged separator in the selection accent (consistent with the
+        // diagrams).
+        if (me->button() == Qt::LeftButton && testAttribute(Qt::WA_SetCursor))
         {
-            _separatorDragging = true;
-            update();   // repaint separators: dragged one -> accent
+            const Qt::CursorShape shape = cursor().shape();
+            if (shape == Qt::SplitHCursor || shape == Qt::SplitVCursor ||
+                shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor)
+            {
+                _separatorDragging = true;
+                update();   // repaint separators: dragged one -> accent
+            }
         }
-    }
-    else if (e->type() == QEvent::MouseButtonRelease && _separatorDragging)
-    {
-        _separatorDragging = false;
-        update();       // back to the normal separator colour
+        break;
     }
 
-    const bool handled = QMainWindow::event(e);
+    case QEvent::MouseButtonRelease:
+        if (_separatorDragging)
+        {
+            _separatorDragging = false;
+            update();       // back to the normal separator colour
+        }
+        break;
 
-    if (e->type() == QEvent::HoverMove || e->type() == QEvent::HoverEnter)
+    case QEvent::HoverEnter:
+    case QEvent::HoverMove:
     {
+        const QPoint pos = static_cast<QHoverEvent*>(e)->position().toPoint();
+        const bool handled = QMainWindow::event(e);
         // QMainWindow just flipped a resize cursor if the hover is over ANY
         // dock separator -- including the immovable phantom one against the
-        // central placeholder (ShellSeparatorStyle suppresses its painting).
-        // The phantom strips lie OUTSIDE the union of the docked widgets'
-        // bounds (real separators lie BETWEEN docks); drop the cursor there.
-        if (testAttribute(Qt::WA_SetCursor))
+        // central placeholder (whose painting ShellSeparatorStyle already
+        // suppresses). Drop the cursor there: the strip must read as inert
+        // window edge, not as a grabbable split.
+        if (testAttribute(Qt::WA_SetCursor) && phantomSeparatorHitTest(pos))
         {
-            const QPoint pos =
-                static_cast<QHoverEvent*>(e)->position().toPoint();
-            int minL = INT_MAX, maxR = INT_MIN, minT = INT_MAX, maxB = INT_MIN;
-            bool any = false;
-            const QList<QDockWidget*> docks = findChildren<QDockWidget*>();
-            for (const QDockWidget* d : docks)
-            {
-                if (!d->isVisible() || d->isFloating())
-                    continue;
-                const QRect g = d->geometry();
-                any = true;
-                minL = qMin(minL, g.left());   maxR = qMax(maxR, g.right());
-                minT = qMin(minT, g.top());    maxB = qMax(maxB, g.bottom());
-            }
-            if (any && (pos.x() > maxR || pos.x() < minL ||
-                        pos.y() > maxB || pos.y() < minT))
-                unsetCursor();
+            _suppressCursorReadjust = true;
+            unsetCursor();
+            _suppressCursorReadjust = false;
         }
+        return handled;
     }
-    return handled;
+
+    default:
+        break;
+    }
+    return QMainWindow::event(e);
 }
 
 // ---------------------------------------------------------------------------

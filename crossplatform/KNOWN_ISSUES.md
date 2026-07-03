@@ -5,33 +5,34 @@ fixed**, with the root cause and the *safe* fix approach recorded so no platform
 re-discovers them. When one is fixed, say "fixed in \<commit\>" here rather than
 deleting the entry.
 
-## 1. Phantom dock "split bar" on initial open
+## 1. Phantom dock "split bar" on initial open — **FIXED (Windows-side, 2026-07-03)**
 
-**Symptom:** opening a model shows a dead ~4px separator strip on the window edge
-(right edge first; after a window resize it relocates to the bottom). A manual
-resize clears it. Reproduces on **macOS and Linux**.
+**Fixed in the commit adding this line** (three coordinated fixes; details in the
+commit message + [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md)):
 
-**Cause:** `QtShellWindow` is a dock-only `QMainWindow` with a zero-size central
-placeholder. `QMainWindow` reserves a `PM_DockWidgetSeparatorExtent` (4px)
-separator between the single dock and that placeholder. `ShellSeparatorStyle`
-suppresses the separator's *paint* but not the reserved 4px *gap*, so an unpainted
-strip shows the window background. (Verified by instrumentation: with one model
-the dock is `QRect(0,32 1008x691)` and the separator `QRect(1008,32 4x691)`,
-`liveDocks == 1`.)
+1. **Interactivity killed (shell,** `QtShellWindow` `event()`**):** the phantom no
+   longer shows a resize cursor or accepts drags. Note for anyone touching this:
+   a bare `unsetCursor()` does NOT work — `QMainWindow`'s `CursorChange` handler
+   re-sets its adjusted split cursor synchronously from inside the un-set; the fix
+   swallows exactly that one re-adjust event (`_suppressCursorReadjust`).
+2. **Post-tear-off layout freeze was a Qt 6.11.1 regression** (QTBUG-147209): after
+   floating a dock out, `savedState` stayed valid and `QMainWindowLayout::
+   setGeometry` early-returned forever (remaining dock didn't refit; window resizes
+   ignored — this is what "a manual resize clears it / relocates it" really was).
+   Upstream backport committed as
+   [qt-patches/qtbase-6.11.1-enddrag-savedstate-freeze.patch](qt-patches/qtbase-6.11.1-enddrag-savedstate-freeze.patch)
+   — **macOS/Linux must apply it to `~/Qt-6.11.1-patched` and rebuild QtWidgets.**
+3. **The remaining 4px strip is structural** (qGeomCalc reserves one separator
+   between a populated dock area and the zero-size central placeholder — the
+   center cell counts as non-empty because the placeholder exists, and it must
+   exist or the dock band's maximumSize stays 0 and docks collapse). It cannot be
+   removed, only PLACED: `addDocument` now docks trees into the **TOP** area, so
+   the strip lies above the status bar (reads as chrome) instead of a full-height
+   band at the right edge, and startup matches the post-tear-off+redock state.
 
-**DO NOT** fix by changing `pixelMetric`/`PM_DockWidgetSeparatorExtent`. Returning
-0 when `<2` docks *did* remove the phantom but **broke dragging of a real
-side-by-side split** — committed (`c4408e2`) then **reverted (`1d59d80`)**. The
-separator width is what makes a real split divider grabbable; never zero it.
-
-**Safe fix for next time:** leave the separator *width* at 4 (split-drag
-untouched) and instead (a) add a timing-independent early-out in
-`isPhantomSeparatorRect` — `liveDocks < 2` (visible, non-floating docks) ⇒ phantom,
-since the geometry test misfires before layout settles on initial open; and (b) in
-`ShellSeparatorStyle::drawPrimitive`, **paint** the phantom strip a blending colour
-(try `QPalette::Base`) instead of leaving it unpainted. **Test BOTH** "phantom gone
-on initial open" **and** "side-by-side split still drags" before committing — the
-last attempt shipped without testing the split case, which is how it regressed.
+The old warning stands: **never** zero `PM_DockWidgetSeparatorExtent` (the
+`c4408e2`→`1d59d80` revert) — `QDockAreaLayout` caches `sep` at construction, so a
+dynamic metric desyncs hit-testing from layout and breaks real split drags.
 
 ## 2. Intermittent XWayland clipboard use-after-free crash
 

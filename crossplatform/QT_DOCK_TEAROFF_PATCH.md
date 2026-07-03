@@ -1,15 +1,31 @@
-# Qt float-group tear-off crash — required Qt patch (Windows **and** macOS)
+# Qt dock bugs — required Qt patches (Windows, macOS **and** Linux)
 
-**TL;DR:** Qt **6.11.1** has a crash bug when a floating tabbed dock group
-dissolves down to its last member (the "2→1 tear-off"). It is a bug in Qt's own
-source (`qmainwindowlayout.cpp`), **not** in ClassBuilder, and it is
-**platform-independent** — it bites on Windows and on macOS. The fix is a tiny,
-verbatim backport of the upstream Qt fix. The diff is committed here:
+**TL;DR:** Qt **6.11.1** has TWO platform-independent dock bugs in qtbase, both
+from the same 6.11 dock rework, both **not** in ClassBuilder, both fixed by
+tiny verbatim backports of the upstream fixes. The diffs are committed here:
 
-> **[`docs/qt-patches/qtbase-6.11.1-dockgroup-dissolution.patch`](qt-patches/qtbase-6.11.1-dockgroup-dissolution.patch)**
+> **[`qt-patches/qtbase-6.11.1-dockgroup-dissolution.patch`](qt-patches/qtbase-6.11.1-dockgroup-dissolution.patch)**
+> — crash when a floating tabbed dock group dissolves to its last member
+> (the "2→1 tear-off"); QTBUG-118579 family. Details below.
+>
+> **[`qt-patches/qtbase-6.11.1-enddrag-savedstate-freeze.patch`](qt-patches/qtbase-6.11.1-enddrag-savedstate-freeze.patch)**
+> — ADDED 2026-07-03: after a dock is torn out and left floating, the main
+> window's dock layout FREEZES (remaining docks don't refit; main-window
+> resizes no longer resize the dock area) until something is docked back.
+> Upstream **QTBUG-147209**, a 6.11.1-only regression, fixed upstream for
+> 6.11.2 (commit `e9a22af5ab7f`). Two lines in `qdockwidget.cpp`
+> (`restore(QInternal::KeepSavedState)` → `ClearSavedState` in `startDrag` +
+> `endDrag`). Apply it to the same patched Qt tree, rebuild QtWidgets, done —
+> the full doc header inside the patch file has symptom/root-cause detail.
 
-The Windows static-Qt build at `C:/Qt-static/6.11.1` already has it applied. The
-**macOS** build needs the equivalent (see below).
+The Windows static-Qt build at `C:/Qt-static/6.11.1` has BOTH applied
+(2026-07-03). The **macOS and Linux** patched trees at `~/Qt-6.11.1-patched`
+had only the first at that date — apply the second the same way (by hand: two
+one-word edits) and rebuild/install qtbase (Widgets), then rebuild CB. Both
+patches expire together at Qt ≥ 6.11.2.
+
+The remainder of this doc covers the first (tear-off crash) patch in detail;
+the build/apply recipe per platform applies to both.
 
 ---
 

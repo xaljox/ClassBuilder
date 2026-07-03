@@ -62,9 +62,12 @@ public:
 protected:
     void closeEvent(QCloseEvent* e) override;
 
-    // Drops the resize cursor QMainWindow flips over the PHANTOM dock
-    // separator (the immovable boundary against the zero-size central
-    // placeholder; its painting is suppressed by ShellSeparatorStyle).
+    // Neutralizes the PHANTOM dock separator (the immovable boundary against
+    // the zero-size central placeholder; its painting is suppressed by
+    // ShellSeparatorStyle): drops the resize cursor QMainWindow flips over it,
+    // swallows the CursorChange re-adjust QMainWindow answers that with, and
+    // eats the left-press that would start a drag that can never move
+    // anything. Real separators (docks on both sides) are untouched.
     bool event(QEvent* e) override;
 
     // (Tab tear-off is Qt-native: GroupedDragging in dockOptions lets a tab be
@@ -134,7 +137,18 @@ private:
     QAction* _tbReadSource  = nullptr;
     QAction* _tbWriteSource = nullptr;
 
+    // True when `pos` (shell coords) lies on a dock separator strip with dock
+    // content on only ONE side -- the immovable phantom separator against the
+    // zero-size central placeholder. Real separators (docks both sides) and
+    // all other positions return false. See event().
+    bool phantomSeparatorHitTest(const QPoint& pos) const;
+
     // Left button is down after a press on a dock separator (see
     // separatorDragging() / ShellSeparatorStyle).
     bool _separatorDragging = false;
+
+    // event() is un-setting the phantom-separator cursor: swallow the
+    // CursorChange QMainWindow would answer with (it re-sets its "adjusted"
+    // split cursor from that handler, defeating the un-set).
+    bool _suppressCursorReadjust = false;
 };

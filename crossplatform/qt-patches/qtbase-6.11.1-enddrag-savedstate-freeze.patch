@@ -1,0 +1,63 @@
+Qt 6.11.1 (qtbase) — fix the QMainWindow dock layout FREEZING after a dock is
+torn out and left floating (all platforms).
+
+This is a local backport of the UPSTREAM fix on the qt/qtbase 6.11 branch
+(heading to 6.11.2; also on 6.12/dev) — commit e9a22af5ab7f "QDockWidget:
+Clear saved state in begin / end drag", Fixes: QTBUG-147209. We independently
+root-caused + fixed it the same way, then aligned to Qt's exact form (both
+call sites). DROP this local patch once building against Qt >= 6.11.2.
+
+SYMPTOM (QTBUG-147209 "Undocked QDockWidget prevents QMainWindow contents
+from responding to resize"): drag a dock out of the main window and leave it
+floating. From that moment the dock layout stops responding: the remaining
+dock(s) do not grow into the freed space, and RESIZING THE MAIN WINDOW no
+longer resizes the dock area — a dead zone appears at the window edge, dock
+title-bar buttons fall outside the visible area when the window shrinks.
+Everything snaps back the moment any dock is dropped INTO the layout again.
+
+WHY: QMainWindowLayout::setGeometry() refuses to (re)fit the layout while a
+drag snapshot exists ("if (savedState.isValid() || ...) return;"). The
+snapshot is taken in QMainWindowLayout::unplug() at drag start. The
+drop-into-layout path clears it (animationFinished -> savedState.clear());
+the stay-floating path ran restore(QInternal::KeepSavedState) — never
+clearing it, freezing every subsequent setGeometry().
+
+This is a 6.11.1-ONLY regression: commit 650e2ed26920 (6.11 cherry-pick of
+dev 1047809eb9bd, "Code cleanup in QMainWindowLayout" — a bool->enum
+"bool trap" refactor, landed after v6.11.0) converted the old
+restore(bool keepSavedState = false) DEFAULT-CLEAR call sites to the INVERTED
+restore(QInternal::KeepSavedState). Qt <= 6.11.0 cleared here for years.
+KeepSavedState remains correct for the restore() calls made WHILE a drag is
+in progress (hover leaving a drop zone keeps the reference snapshot); the
+startDrag ctrl-drag and endDrag stay-floating sites are terminal for the
+snapshot and must clear.
+
+JV-confirmed on Windows 11 / Qt 6.11.1 / MSVC x64: after tear-off the
+remaining dock refits and main-window resizes track again; drop-into-layout,
+splits and group dragging unaffected.
+
+Apply to every platform's patched Qt tree (Windows
+Projects\qt-static\qtbase-everywhere-src-6.11.1, macOS/Linux
+~/Qt-6.11.1-patched) and rebuild QtWidgets. Re-apply after any qtbase source
+refresh (< 6.11.2), then rebuild+install. Companion of
+qtbase-6.11.1-dockgroup-dissolution.patch (same 6.11 dock-rework family).
+
+--- a/src/widgets/widgets/qdockwidget.cpp
++++ b/src/widgets/widgets/qdockwidget.cpp
+@@ void QDockWidgetPrivate::startDrag(DragScope scope)
+     if (state->ctrlDrag)
+-        layout->restore(QInternal::KeepSavedState);
++        layout->restore(QInternal::ClearSavedState);
+
+     state->dragging = true;
+@@ void QDockWidgetPrivate::endDrag(EndDragMode mode)
+         if (mode == EndDragMode::Abort || !mwLayout->plug(state->widgetItem)) {
+             if (hasFeature(this, QDockWidget::DockWidgetFloatable)) {
+                 // This QDockWidget will now stay in the floating state.
+                 if (state->ownWidgetItem) {
+                     delete state->widgetItem;
+                     state->widgetItem = nullptr;
+                 }
+-                mwLayout->restore(QInternal::KeepSavedState);
++                mwLayout->restore(QInternal::ClearSavedState);
+                 QDockWidgetLayout *dwLayout = qobject_cast<QDockWidgetLayout*>(layout);
