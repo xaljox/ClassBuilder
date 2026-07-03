@@ -21,7 +21,11 @@
       "Bash(git stash:*)",
       "Bash(git restore:*)",
       "Bash(git remote:*)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(pkill:*)"
     ]
   }
 }
