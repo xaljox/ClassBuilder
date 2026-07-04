@@ -11,6 +11,7 @@
 #include "QtCommandServer.h"  // QTcpServer-based command transport
 #include "QtToolBarIcons.h"   // CB_TOOLBAR_ICON_PX (shared toolbar icon size)
 
+#include <QActionGroup>
 #include <QApplication>
 #include <QChildEvent>
 #include <QCloseEvent>
@@ -27,6 +28,7 @@
 #include <QHoverEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QProcess>
 #include <QProxyStyle>
 #include <QPushButton>
 #include <QSettings>
@@ -174,6 +176,32 @@ static bool isPhantomSeparatorRect(const QMainWindow* mw, const QRect& r)
     return !(before && after);
 }
 
+// True when `dock` currently shares a tab strip with a sibling (docked
+// tab group OR a floating QDockWidgetGroupWindow's own tab bar) -- i.e. its
+// name is ALREADY shown as a tab label, so its own title text would be a
+// redundant duplicate. Mirrors the tabData()-holds-the-QDockWidget* Qt
+// convention wireDockTabBars() already relies on. The title BAR itself is
+// never hidden (see refreshDockTitleBarPolicy -- hiding it via
+// setTitleBarWidget crashed, JV-confirmed 2026-06-19); this only decides
+// whether to paint the text INSIDE it.
+static bool isDockTabbed(const QDockWidget* dock)
+{
+    if (!dock || !dock->parentWidget())
+        return false;
+    const QList<QTabBar*> bars = dock->parentWidget()->findChildren<QTabBar*>();
+    for (QTabBar* bar : bars)
+    {
+        if (!bar->isVisible())
+            continue;
+        for (int i = 0; i < bar->count(); ++i)
+        {
+            if (reinterpret_cast<QDockWidget*>(bar->tabData(i).toULongLong()) == dock)
+                return true;
+        }
+    }
+    return false;
+}
+
 // Paints the QMainWindow dock separators: real ones in an explicit visible
 // colour (the platform default is a near-invisible hairline), the one being
 // DRAGGED in the app selection accent (consistent with the diagrams'
@@ -217,6 +245,46 @@ public:
         if (m == PM_DockWidgetSeparatorExtent)
             return 4;   // the old QSS separator width
         return QProxyStyle::pixelMetric(m, opt, w);
+    }
+
+    void drawControl(ControlElement el, const QStyleOption* opt,
+                      QPainter* p, const QWidget* w) const override
+    {
+        // A STANDALONE (untabbed) dock's native title renders BOLD at the
+        // style's own title font -- heavier/bigger than the SAME name shown as
+        // a tab label the moment that dock gets tabbed with another. Keep the
+        // native chrome (background, float/close buttons) but paint the text
+        // ourselves at the app's plain tab-matching font, so a dock's title
+        // reads the same whether it's standalone or in a tab.
+        if (el == CE_DockWidgetTitle)
+        {
+            if (const auto* dwOpt = qstyleoption_cast<const QStyleOptionDockWidget*>(opt))
+            {
+                QStyleOptionDockWidget blank = *dwOpt;
+                blank.title.clear();
+                QProxyStyle::drawControl(el, &blank, p, w);
+
+                // Tabbed: the tab label already shows this name right above --
+                // leave the bar textless (still there, still draggable/closable,
+                // just not a duplicate caption).
+                const bool tabbed = isDockTabbed(qobject_cast<const QDockWidget*>(w));
+                if (!tabbed && !dwOpt->title.isEmpty())
+                {
+                    QFont f = QApplication::font();
+                    f.setBold(false);
+                    const int pad = 8;
+                    const QRect textRect = dwOpt->rect.adjusted(pad, 0, -pad, 0);
+                    p->save();
+                    p->setFont(f);
+                    p->setPen(dwOpt->palette.color(QPalette::WindowText));
+                    p->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
+                        QFontMetrics(f).elidedText(dwOpt->title, Qt::ElideRight, textRect.width()));
+                    p->restore();
+                }
+                return;
+            }
+        }
+        QProxyStyle::drawControl(el, opt, p, w);
     }
 
     int styleHint(StyleHint h, const QStyleOption* opt, const QWidget* w,
@@ -474,6 +542,25 @@ void QtShellWindow::buildMenus()
         _actZoomOut->setEnabled(on);
         _actZoomFull->setEnabled(on);
     });
+
+    // UI Scale: whole-app Qt scale factor (QT_SCALE_FACTOR, applied in
+    // QtApp.cpp's Qt_EnsureApplication -- BEFORE QApplication exists, so a
+    // change here can only take effect on the next launch). Distinct from the
+    // Zoom actions above, which scale just the active diagram canvas.
+    view->addSeparator();
+    QMenu* uiScale = view->addMenu("UI &Scale");
+    auto* scaleGroup = new QActionGroup(uiScale);
+    scaleGroup->setExclusive(true);
+    const double currentScale =
+        QSettings("ClassBuilder", "ClassBuilder").value("shell/uiScale", 1.0).toDouble();
+    for (double s : { 1.0, 1.25, 1.5, 1.75, 2.0 })
+    {
+        QAction* act = uiScale->addAction(QString("%1%").arg(qRound(s * 100)));
+        act->setCheckable(true);
+        act->setChecked(s == currentScale);
+        scaleGroup->addAction(act);
+        connect(act, &QAction::triggered, this, [this, s] { applyUiScale(s); });
+    }
 
     // --- Help ----------------------------------------------------------------
     QMenu* help = menuBar()->addMenu("&Help");
@@ -1284,6 +1371,29 @@ void QtShellWindow::closeEvent(QCloseEvent* e)
     while (!_entries.isEmpty())                 // also closes the floating
         destroyEntry(_entries.last());          // diagram windows per doc
     e->accept();
+}
+
+void QtShellWindow::applyUiScale(double scale)
+{
+    QSettings settings("ClassBuilder", "ClassBuilder");
+    if (scale == settings.value("shell/uiScale", 1.0).toDouble())
+        return;   // unchanged -- e.g. re-clicking the already-checked entry
+    settings.setValue("shell/uiScale", scale);
+
+    const auto reply = QMessageBox::question(this, "Restart Required",
+        QString("The new UI scale (%1%) takes effect after restarting ClassBuilder.\n\n"
+                "Restart now?").arg(qRound(scale * 100)),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (reply != QMessageBox::Yes)
+        return;
+
+    // Relaunch only once the shell actually finishes closing -- closeEvent's
+    // maybeSave() prompts can still cancel the shutdown (unsaved changes), in
+    // which case aboutToQuit never fires and nothing relaunches.
+    connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] {
+        QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
+    });
+    close();
 }
 
 // True when `pos` (shell coords) lies on a dock separator strip with dock

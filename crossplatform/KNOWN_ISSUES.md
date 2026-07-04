@@ -84,6 +84,45 @@ fix, backport it like the dissolution + endDrag patches, then restore
 `GroupedDragging`. Expires at Qt ≥ 6.11.2 if that clears it. Until then the
 GUI-crash net emergency-saves open models, so a crash loses no work.
 
+## 4. Dock title bar: redundant/oversized text vs its own tab label — FIXED (Linux, 2026-07-04)
+
+**Symptom:** a standalone/floating dock's title bar (e.g. a diagram window,
+`CD: <name>`) renders **bold**, at the native style's own dock-title font --
+visibly bigger/heavier than the exact same name shown as a tab label the moment
+that dock gets tabbed with another. Because the title bar is *never* hidden
+(see #1's sibling note and "Never call `setTitleBarWidget()`" in
+`QtShellWindow.cpp`), a tabbed dock shows the name **twice**: once small in the
+tab, once bold/bigger in its own still-painted title bar.
+
+**Root cause:** CB deliberately never hides or swaps a dock's title bar
+(`setTitleBarWidget()` crashed on tear-off, JV-confirmed 2026-06-19), so the bar
+is *always* painted, tabbed or not. The native `QStyle` paints
+`CE_DockWidgetTitle` bold at its own title font regardless of what font is set
+on the dock widget itself -- setting `dock->setFont(...)` alone does not
+override that.
+
+**Fix (`QtShellWindow.cpp`, `ShellSeparatorStyle::drawControl` + the new
+`isDockTabbed()` helper):** intercept `CE_DockWidgetTitle` painting only --
+delegate the background/float/close-button chrome to the base style with the
+title text blanked, then draw the text ourselves: at the app's plain
+(non-bold) font matching the tab label when the dock is standalone/floating,
+or **no text at all** when `isDockTabbed()` finds a sibling `QTabBar` whose
+`tabData()` points at this dock (same Qt convention `wireDockTabBars()` already
+relies on for the tab close-cross) -- the tab already names it. The bar itself
+stays present, draggable, and closable in both cases; no `setTitleBarWidget()`
+call anywhere, so this doesn't touch the crash path above.
+
+Verified on Linux across all three sibling states this file's working rule
+calls for: tabbed, standalone/floating, and side-by-side split.
+
+**Needs verification on Windows and macOS** -- native dock-title
+bold/font conventions differ per platform style (Vista/Fusion on Windows, Aqua
+on macOS); confirm the plain-font standalone title and the blanked tabbed title
+both still read correctly there before calling this fully cross-platform-closed.
+See also the new manual UI-scale feature in
+[PORTING_LINUX.md](PORTING_LINUX.md#manual-ui-scale-view--ui-scale-menu),
+which is likewise untested outside Linux.
+
 ## Working rule this file encodes
 
 UI/layout changes have non-obvious sibling states (single / tabbed / side-by-side

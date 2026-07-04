@@ -13,9 +13,11 @@
 #include "CbPainter_QFontMetrics.h"    // the headless measure backend
 
 #include <QApplication>
+#include <QByteArray>
 #include <QDialog>
 #include <QEvent>
 #include <QIcon>
+#include <QSettings>
 #include <QString>
 #include <QWidget>
 #ifndef _WIN32   // macOS + Linux: file-open event + button-font filter use these
@@ -269,6 +271,33 @@ void Qt_EnsureApplication()
 {
     if (qApp)
         return;
+
+    // Whole-app UI scale (QtShellWindow's View > UI Scale menu): Qt only reads
+    // QT_SCALE_FACTOR at QApplication construction, so the persisted choice has
+    // to land in the environment HERE -- there is no later, in-process way to
+    // rescale an already-built widget tree. QSettings works fine with no
+    // QApplication yet (explicit org/app name form).
+    {
+        const double scale =
+            QSettings("ClassBuilder", "ClassBuilder").value("shell/uiScale", 1.0).toDouble();
+        if (scale != 1.0)
+        {
+            qputenv("QT_SCALE_FACTOR", QByteArray::number(scale, 'g', 3));
+
+            // QT_SCALE_FACTOR only rescales what Qt itself paints -- the X11/
+            // Xcursor pointer theme is a separate, fixed-pixel-size resource
+            // (XCURSOR_SIZE) that libXcursor reads independent of Qt, so the
+            // cursor renders at its normal native size and looks shrunk the
+            // moment it enters a CB window sitting next to now-1.5x content.
+            // Scale it to match, off whatever base size is already set (falls
+            // back to Xcursor's own default, 24, if unset). This only touches
+            // OUR process's environment, not the rest of the desktop. No-op on
+            // Windows/macOS -- neither reads XCURSOR_SIZE.
+            const int baseCursor = qEnvironmentVariableIntValue("XCURSOR_SIZE") > 0
+                ? qEnvironmentVariableIntValue("XCURSOR_SIZE") : 24;
+            qputenv("XCURSOR_SIZE", QByteArray::number(qRound(baseCursor * scale)));
+        }
+    }
 
     static int   argc    = 1;
     static char  argv0[] = "ClassBuilder";

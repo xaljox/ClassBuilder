@@ -104,6 +104,7 @@ private:
     void buildToolBar();
     void updateToolBarEnables();
     void buildStatusBar();
+    void applyUiScale(double scale);             // persist + offer restart-now
 
     CClassBuilderDoc* activeDoc() const;         // null when no model open
     DocEntry* addDocument(CClassBuilderDoc* doc);// wrap a loaded doc in dock+tree

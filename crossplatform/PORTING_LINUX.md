@@ -67,6 +67,47 @@ The command server is TCP `127.0.0.1:51777` on non-Windows. One JSON line
 file first — `open_doc` dedups by path) to exercise tabs/splits. See
 [../tools/PIPE_API.md](../tools/PIPE_API.md).
 
+## Manual UI scale (View > UI Scale menu)
+
+Added 2026-07-04 for HiDPI monitors run at native resolution (e.g. a 4K panel
+that's too small unscaled and too blurry at a lower non-native mode). Persists a
+factor (`QSettings` key `shell/uiScale`) applied as `QT_SCALE_FACTOR` in
+`QtApp.cpp`'s `Qt_EnsureApplication()` -- **before** `QApplication` is
+constructed, since Qt only reads it at that point; changing it in the menu
+saves the setting and offers a restart (self-relaunch via `QProcess`), it can't
+apply live to the running window tree.
+
+Two things this does NOT reach, both Linux/X11-specific and worth knowing before
+re-debugging "the scale looks wrong" on another distro/WM:
+
+- **The X11/Xcursor pointer theme.** `QT_SCALE_FACTOR` is a software scale Qt
+  applies to its own painting only; the cursor is a fixed-pixel-size resource
+  (`XCURSOR_SIZE`) loaded by `libXcursor` independent of Qt, so without a
+  companion fix the pointer renders at native size and looks shrunk the moment
+  it enters a scaled CB window. `Qt_EnsureApplication()` also scales
+  `XCURSOR_SIZE` (off whatever base value is already in the environment,
+  default 24) in the same block, process-local only -- doesn't touch the rest
+  of the desktop. No-op on Windows/macOS (neither reads that var).
+- **The window manager's own title bar.** Under xcb/XWayland (see "Running"
+  above), the title bar showing "\<file\> - ClassBuilder" is painted entirely by
+  the WM/compositor (labwc, GNOME/Mutter, etc.) -- it is NOT Qt, so
+  `QT_SCALE_FACTOR` cannot touch its font size, no matter how it looks relative
+  to CB's own (now-scaled) menu/tab text. If it reads as redundant/annoying next
+  to CB's own tab label, that's a **machine-local desktop config fix**, not a CB
+  one -- e.g. on labwc: `~/.config/labwc/rc.xml` → `<theme><titlebar><showTitle>
+  no</showTitle></titlebar>`, then `labwc --reconfigure` (or `pkill -HUP labwc`).
+  This does NOT retroactively repaint already-open windows -- only newly-mapped
+  ones pick up a theme reload, which reads as "the fix didn't work" if you're
+  still looking at a window opened before the reload. Not something to chase in
+  this repo; the equivalent GNOME/KDE knob will differ by WM.
+
+**Verify on other distros/WMs**: XCURSOR_SIZE handling and WM decoration
+behaviour are compositor-specific -- confirm both the cursor and the (separate,
+CB-side) dock-title-bar consistency fix in
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md#4-dock-title-bar-redundantoversized-text-vs-its-own-tab-label--fixed-linux-2026-07-04)
+still look right on GNOME/KDE, and on Windows/macOS where the whole scale
+feature is new and untested.
+
 ## Line endings
 
 `.gitattributes` pins **CRLF** in the working tree on every platform, Linux
