@@ -260,6 +260,25 @@ public:
         {
             if (const auto* dwOpt = qstyleoption_cast<const QStyleOptionDockWidget*>(opt))
             {
+                const bool tabbed = isDockTabbed(qobject_cast<const QDockWidget*>(w));
+#ifdef _WIN32
+                // Seamless notebook merge (JV 2026-07-04): the SELECTED tab
+                // above this bar is painted in QPalette::Window with no
+                // bottom edge (wireDockTabBars QSS); when this dock is
+                // TABBED, paint its title bar as that same flat colour --
+                // no native panel, so no edge line between tab and bar: the
+                // tab flows seamlessly into the pane it belongs to. The
+                // float/close buttons are child widgets and paint themselves
+                // on top. Windows-only: the mac/linux native styles already
+                // merge tab and title bar (and Linux verified the native
+                // path below).
+                if (tabbed)
+                {
+                    p->fillRect(dwOpt->rect, QApplication::palette().color(
+                                    QPalette::Active, QPalette::Window));
+                    return;
+                }
+#endif
                 QStyleOptionDockWidget blank = *dwOpt;
                 blank.title.clear();
                 QProxyStyle::drawControl(el, &blank, p, w);
@@ -267,7 +286,6 @@ public:
                 // Tabbed: the tab label already shows this name right above --
                 // leave the bar textless (still there, still draggable/closable,
                 // just not a duplicate caption).
-                const bool tabbed = isDockTabbed(qobject_cast<const QDockWidget*>(w));
                 if (!tabbed && !dwOpt->title.isEmpty())
                 {
                     QFont f = QApplication::font();
@@ -324,9 +342,10 @@ QtShellWindow::QtShellWindow()
     setWindowTitle("ClassBuilder");
     resize(480, 720);
 
-    // Model trees + diagrams live in dock tabs (close cross per tab); per-dock
-    // title bars are hidden while TABBED (refreshDockChrome), shown when a pane
-    // is alone/split/floating.
+    // Model trees + diagrams live in dock tabs (native tabs, no per-tab
+    // cross); every dock keeps its default title bar at all times (close +
+    // float buttons -- refreshDockChrome never hides or swaps it), which is
+    // also what closes a tabbed pane.
     // Qt 6.11.1: forming a FLOATING dock tab-GROUP (GroupedDragging) crashes
     // intermittently -- a use-after-free in QMainWindowLayout::animationFinished ->
     // QWidget::setParent() on a freed dock. It surfaces FAR more readily on
@@ -699,13 +718,14 @@ QtShellWindow::DocEntry* QtShellWindow::addDocument(CClassBuilderDoc* doc)
     dock->onCloseRequested = [this, entry] { closeEntry(entry); };
     entry->dock = dock;
 
-    // Chrome is managed centrally by refreshDockChrome: hidden per-dock title
-    // bar when TABBED (the tab is the handle), default draggable title bar when
-    // ALONE in a split or FLOATING. NO force-tabify any more -- a tree dropped
-    // on a left/right edge is ALLOWED to split side-by-side (two views next to
-    // each other, to drag model items between them), and a lone/split pane keeps
-    // a title-bar handle so it stays movable/closable. Deferred so the swap runs
-    // after the layout transition (a synchronous swap mid-signal raced it bald).
+    // Chrome is managed centrally by refreshDockChrome: every dock keeps its
+    // default title bar at all times (never hidden/swapped -- see the
+    // setTitleBarWidget crash note there); ShellSeparatorStyle blanks the
+    // title TEXT while tabbed (the tab is the caption). NO force-tabify any
+    // more -- a tree dropped on a left/right edge is ALLOWED to split
+    // side-by-side (two views next to each other, to drag model items
+    // between them). Deferred so the refresh runs after the layout
+    // transition (a synchronous pass mid-signal raced the layout state).
     auto deferChrome = [this] {
         QMetaObject::invokeMethod(this, [this] {
             refreshDockChrome();
@@ -768,9 +788,8 @@ QtShellWindow::DocEntry* QtShellWindow::addDocument(CClassBuilderDoc* doc)
 void QtShellWindow::wireDockTabBars()
 {
     // QMainWindow creates internal QTabBars for tabified docks lazily; give
-    // every new one close crosses and route the cross to the model-close
-    // flow. tabData() holds the QDockWidget* (long-standing Qt behaviour;
-    // unmatched data just means an unrelated tab bar -- ignored).
+    // every new one the shared dock-tab treatment (left-packed native tabs +
+    // the proxy-style selected marker on Windows; see the loop body).
     //
     // Wire BOTH the main-window dock tab bars (direct children of the shell)
     // AND the ones inside floating dock groups (children of the top-level
@@ -810,67 +829,43 @@ void QtShellWindow::wireDockTabBars()
         bar->setElideMode(Qt::ElideRight);
         // Pack tabs from the LEFT (macOS' native layout centres them).
         bar->setExpanding(false);
+        // No per-tab close cross on any platform: a tabbed model/diagram
+        // closes via its dock's TITLE-BAR close button, reliably present
+        // everywhere since the always-painted title-bar pass (KNOWN_ISSUES
+        // #4). macOS/Linux tabs render native: their styles already draw the
+        // classic notebook look (selected tab merges with the title bar
+        // below it; unselected tabs recessed behind it with a base line).
 #ifdef _WIN32
-        // A dock tab has no close button of its own (default QTabBar, every
-        // platform) -- you normally close a tabbed model via the dock's TITLE-BAR
-        // close button. On Windows that title-bar button is INCONSISTENTLY present
-        // (sometimes shown, sometimes not), so the title bar can't be relied on to
-        // close a tab; add a per-tab close cross to GUARANTEE closability. (It is
-        // NOT that Windows tabs lack a close the others have -- it's the title-bar
-        // inconsistency that forces the cross here.) Windows' native style also
-        // barely distinguishes the selected tab (text dim only), so override the
-        // look too: selected-tab styling (accent top edge, bold, grey block;
-        // unselected stay white). Colours from the APP palette -- palette(...) refs
-        // inside QSS resolve to QSS defaults, not the theme.
-        bar->setTabsClosable(true);
+        // Windows' style does NOT merge: it painted white bordered boxes on
+        // the grey title-bar strip, with the selected tab barely marked
+        // (text a shade dimmer). Rebuild the notebook look the other
+        // platforms get natively (JV 2026-07-04): the SELECTED tab takes the
+        // title bar's own colour and has no bottom edge, so tab and bar read
+        // as one piece; UNSELECTED tabs are a step darker, sit 3px lower
+        // ("behind"), and the pane edge line runs under them. Colours from
+        // the APP palette -- palette(...) refs inside QSS resolve to QSS
+        // defaults, not the theme.
         const QPalette appPal = QApplication::palette();
-        const QString selBg   = appPal.color(QPalette::Active, QPalette::Window)
-                                    .darker(112).name();
-        const QString unselBg = appPal.color(QPalette::Active, QPalette::Base).name();
-        const QString accent  = appPal.color(QPalette::Active, QPalette::Highlight).name();
+        const QColor  winCol  = appPal.color(QPalette::Active, QPalette::Window);
+        const QString selBg   = winCol.name();               // == title-bar strip
+        const QString unselBg = winCol.darker(110).name();   // recessed
         const QString mid     = appPal.color(QPalette::Active, QPalette::Mid).name();
+        bar->setDrawBase(false);   // no style-drawn base line under the row
         bar->setStyleSheet(QString(
-            "QTabBar::tab { padding: 5px 12px; border: 1px solid %1;"
-            "  border-bottom: none; background: %2; }"
-            "QTabBar::tab:selected { background: %3;"
-            "  border-top: 3px solid %4; font-weight: bold; }"
-            "QTabBar::tab:!selected { margin-top: 3px; }")
-            .arg(mid, unselBg, selBg, accent));
-        // A stylesheet makes the bar use QStyleSheetStyle which re-centres tabs;
-        // route it through ShellSeparatorStyle so SH_TabBar_Alignment (AlignLeft)
-        // wins and tabs pack from the left.
-        bar->setStyle(style());
-        connect(bar, &QTabBar::tabCloseRequested, this, [this, bar](int index) {
-            const auto dockPtr =
-                reinterpret_cast<QDockWidget*>(bar->tabData(index).toULongLong());
-            for (DocEntry* entry : _entries)
-            {
-                if (entry->dock == dockPtr)
-                {
-                    closeEntry(entry);
-                    return;
-                }
-            }
-            // Diagram dock (not a model tree): close it. WA_DeleteOnClose deletes
-            // the dock + view, which tears down the diagram's ViewModel.
-            if (dockPtr && _diagramDocks.contains(dockPtr))
-                dockPtr->close();
-        });
-#else
-        // macOS/Linux: keep the NATIVE tab style -- no QSS, no per-tab close cross.
-        // A tab has no close button of its own here either, but the dock's TITLE-BAR
-        // close button IS consistently present on these platforms, so it reliably
-        // closes a tabbed model (the Windows title-bar inconsistency that forces the
-        // per-tab cross doesn't occur here), and the native selected-tab highlight is
-        // clear enough. Only force LEFT alignment: macOS centres tabs natively. Route
-        // the bar through the shell's
-        // ShellSeparatorStyle -- a thin proxy over the platform style whose only
-        // effect here is SH_TabBar_Alignment = AlignLeft on macOS; its other
-        // overrides are gated to the shell widget, so the tabs still render fully
-        // native, just packed from the left. (The float-group style switch was
-        // ruled out as the crash cause -- native tabs crashed identically.)
-        bar->setStyle(style());
+            "QTabBar::tab { padding: 4px 12px;"
+            "  border: 1px solid %1; border-bottom: none;"
+            "  border-top-left-radius: 4px; border-top-right-radius: 4px;"
+            "  background: %2; margin-top: 3px; }"
+            "QTabBar::tab:!selected { border-bottom: 1px solid %1; }"
+            "QTabBar::tab:selected { background: %3; margin-top: 0px;"
+            "  border-bottom: none; }")
+            .arg(mid, unselBg, selBg));
 #endif
+        // Route the bar through the shell's ShellSeparatorStyle -- a thin
+        // proxy over the platform style whose only tab-bar effect is
+        // SH_TabBar_Alignment (AlignLeft on macOS), so tabs pack from the
+        // left everywhere (a QSS otherwise re-centres them there).
+        bar->setStyle(style());
         // No event filter: dragging a tab off the row floats that dock as a
         // single window. GroupedDragging is disabled (see setDockOptions), so
         // floats can't be combined into a tabbed group.
