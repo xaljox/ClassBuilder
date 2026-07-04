@@ -186,19 +186,28 @@ static bool isPhantomSeparatorRect(const QMainWindow* mw, const QRect& r)
 // whether to paint the text INSIDE it.
 static bool isDockTabbed(const QDockWidget* dock)
 {
-    if (!dock || !dock->parentWidget())
+    if (!dock)
         return false;
-    const QList<QTabBar*> bars = dock->parentWidget()->findChildren<QTabBar*>();
-    for (QTabBar* bar : bars)
-    {
-        if (!bar->isVisible())
-            continue;
-        for (int i = 0; i < bar->count(); ++i)
-        {
-            if (reinterpret_cast<QDockWidget*>(bar->tabData(i).toULongLong()) == dock)
-                return true;
-        }
-    }
+
+    // Ask the LAYOUT, not the tab-bar widgets: after the second-to-last tab
+    // is dragged out, QMainWindowLayout keeps the leftover pooled QTabBar
+    // "visible" at full size yet paints it nowhere (occluded/parked), so any
+    // widget-based scan (visibility, geometry, tabData) mis-reports the
+    // remaining dock as still-tabbed and its title text never came back
+    // (JV 2026-07-04, diagnosed via paint log + pixel captures).
+    // tabifiedDockWidgets() reads the dock layout state itself: non-empty
+    // exactly when this dock currently shares a tab strip with a sibling.
+    if (const QMainWindow* mw = qobject_cast<const QMainWindow*>(dock->parentWidget()))
+        return !mw->tabifiedDockWidgets(const_cast<QDockWidget*>(dock)).isEmpty();
+
+    // Not parented to the QMainWindow: dock inside a floating tab-group
+    // window (QDockWidgetGroupWindow -- unreachable while GroupedDragging is
+    // disabled, but keep it correct). The group's own tab bar names every
+    // member, so a member never needs title text.
+    const QWidget* host = dock->parentWidget();
+    if (host && qstrcmp(host->metaObject()->className(),
+                        "QDockWidgetGroupWindow") == 0)
+        return true;
     return false;
 }
 
@@ -280,24 +289,24 @@ public:
 #ifdef _WIN32
                 // Seamless notebook merge (JV 2026-07-04): the SELECTED tab
                 // above this bar is painted in QPalette::Window with no
-                // bottom edge (wireDockTabBars QSS); when this dock is
-                // TABBED, paint its title bar as that same flat colour --
-                // no native panel, so no edge line between tab and bar: the
-                // tab flows seamlessly into the pane it belongs to. The
-                // float/close buttons are child widgets and paint themselves
-                // on top. Windows-only: the mac/linux native styles already
-                // merge tab and title bar (and Linux verified the native
-                // path below).
-                if (tabbed)
-                {
-                    p->fillRect(dwOpt->rect, QApplication::palette().color(
-                                    QPalette::Active, QPalette::Window));
-                    return;
-                }
-#endif
+                // bottom edge (wireDockTabBars QSS); paint the title bar as
+                // that same flat colour -- ALWAYS, tabbed or not, so a
+                // dock's bar doesn't change colour when its tab strip comes
+                // and goes (native panel grey vs our flat fill read as two
+                // different bars). No native panel means no edge line
+                // either: a tab flows seamlessly into the pane it belongs
+                // to. The float/close buttons are child widgets and paint
+                // themselves on top. Text only when NOT tabbed (the tab is
+                // the caption otherwise). Windows-only: mac/linux native
+                // styles already merge tab and title bar (Linux verified
+                // the native path below).
+                p->fillRect(dwOpt->rect, QApplication::palette().color(
+                                QPalette::Active, QPalette::Window));
+#else
                 QStyleOptionDockWidget blank = *dwOpt;
                 blank.title.clear();
                 QProxyStyle::drawControl(el, &blank, p, w);
+#endif
 
                 // Tabbed: the tab label already shows this name right above --
                 // leave the bar textless (still there, still draggable/closable,
@@ -842,6 +851,9 @@ void QtShellWindow::wireDockTabBars()
         if (bar->property("cbDocTabsWired").toBool())
             continue;
         bar->setProperty("cbDocTabsWired", true);
+        // The bar's Show/Hide flips isDockTabbed() -- watch it so the dock
+        // title text repaints at exactly that moment (see eventFilter).
+        bar->installEventFilter(this);
         bar->setElideMode(Qt::ElideRight);
         // Pack tabs from the LEFT (macOS' native layout centres them).
         bar->setExpanding(false);
@@ -897,6 +909,10 @@ void QtShellWindow::scheduleWireDockTabBars()
     QMetaObject::invokeMethod(this, [this] {
         _wireTabBarsPending = false;
         wireDockTabBars();
+        // Also refresh the dock chrome: a tab bar appearing/disappearing is
+        // exactly what flips isDockTabbed(), and the title-bar text must
+        // repaint with it (refreshDockChrome update()s every managed dock).
+        refreshDockChrome();
     }, Qt::QueuedConnection);
 }
 
@@ -919,6 +935,21 @@ bool QtShellWindow::eventFilter(QObject* obj, QEvent* e)
     // a tab bar born directly inside an existing group window never touches
     // the shell's childEvent, so watch the group's own ChildAdded too.
     if (e->type() == QEvent::ChildAdded)
+        scheduleWireDockTabBars();
+    // Installed on every wired dock TAB BAR: its Show/Hide is the settle
+    // point that flips isDockTabbed() -- e.g. dragging the second-to-last
+    // tab out hides the bar only when the drag ENDS (endDrag applyState),
+    // long after the dock signals fired at drag START, so no dock signal
+    // fires for the REMAINING dock and its blanked title text lingered.
+    // Schedule the deferred chrome pass (wire + refreshDockChrome repaint)
+    // at exactly that flip.
+    // Resize matters as much as Show/Hide: dragging the second-to-last tab
+    // out doesn't hide the leftover bar, QMainWindowLayout COLLAPSES it to
+    // zero size (still visible()==true) -- isDockTabbed's geometry check
+    // flips on exactly that resize, so repaint the dock titles then.
+    else if ((e->type() == QEvent::Show || e->type() == QEvent::Hide
+              || e->type() == QEvent::Resize)
+             && obj->property("cbDocTabsWired").toBool())
         scheduleWireDockTabBars();
     return QMainWindow::eventFilter(obj, e);
 }
@@ -1028,6 +1059,17 @@ void QtShellWindow::refreshDockChrome()
         // reparentToMainWindow -- savedState.clear().)
         const QDockWidget::DockWidgetFeatures f = d->features();
         d->setFeatures(f | QDockWidget::DockWidgetFloatable);
+
+        // Repaint so the title-bar TEXT tracks the tabbed state (painted by
+        // ShellSeparatorStyle via isDockTabbed): when the second-to-last tab
+        // is dragged out, the REMAINING dock loses its tab bar but nothing
+        // repainted its title -- the blanked text lingered until some later
+        // transition happened to repaint it (JV 2026-07-04). This refresh
+        // already runs (deferred) on every dock layout transition, so an
+        // unconditional update() here keeps every managed dock's title
+        // current in both directions (text back when untabbed, blanked when
+        // tabbed).
+        d->update();
     }
 }
 
