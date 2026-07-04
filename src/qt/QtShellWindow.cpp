@@ -29,6 +29,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QProxyStyle>
 #include <QPushButton>
 #include <QSettings>
@@ -1445,7 +1446,24 @@ void QtShellWindow::applyUiScale(double scale)
     // maybeSave() prompts can still cancel the shutdown (unsaved changes), in
     // which case aboutToQuit never fires and nothing relaunches.
     connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] {
-        QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
+        // Relaunch with the UI-scale env vars STRIPPED. The plain
+        // startDetached(program, args) hands the child THIS process's
+        // environment, which still carries the QT_SCALE_FACTOR (and, on Linux,
+        // XCURSOR_SIZE) we qputenv'd at our own startup. The child's startup
+        // only SETS QT_SCALE_FACTOR when the new scale != 100%, never clears it
+        // -- so a 150%->100% change relaunched still at 150% (the inherited
+        // factor survived), fixed only by a fresh launch with a clean env.
+        // XCURSOR_SIZE likewise compounded across successive scale changes,
+        // since its "base" is read back from the same inherited variable.
+        // Remove both so the child recomputes deterministically from the
+        // shell/uiScale setting, exactly like a Finder/desktop launch.
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.remove(QStringLiteral("QT_SCALE_FACTOR"));
+        env.remove(QStringLiteral("XCURSOR_SIZE"));
+        QProcess relaunch;
+        relaunch.setProgram(QCoreApplication::applicationFilePath());
+        relaunch.setProcessEnvironment(env);
+        relaunch.startDetached();
     });
     close();
 }
