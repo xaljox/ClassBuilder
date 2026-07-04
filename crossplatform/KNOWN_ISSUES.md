@@ -115,11 +115,22 @@ call anywhere, so this doesn't touch the crash path above.
 Verified on Linux across all three sibling states this file's working rule
 calls for: tabbed, standalone/floating, and side-by-side split.
 
-**Needs verification on Windows and macOS** -- native dock-title
-bold/font conventions differ per platform style (Vista/Fusion on Windows, Aqua
-on macOS); confirm the plain-font standalone title and the blanked tabbed title
-both still read correctly there before calling this fully cross-platform-closed.
-See also the new manual UI-scale feature in
+**Windows: verified and EXTENDED (2026-07-04, commit `f395d4f`).** The blanked
+tabbed title exposed that Windows' own tab rendering never connects the
+selected tab to the bar below it (white bordered tab on a grey strip with its
+own edge line). Windows now hand-renders the notebook look the other
+platforms get natively — JV's rule: **the selected tab must merge seamlessly
+(same colour, NO separating line) into the pane below; that's what shows tab
+and window belong together.** Both sides of the seam are owned Windows-only:
+the dock-tab QSS (selected = `QPalette::Window`, open bottom; unselected a
+step darker, 3px lower, edge line underneath) + a flat colour-matched
+`CE_DockWidgetTitle` fill for TABBED docks. Per-tab close crosses are gone on
+all platforms (the always-present title-bar close button closes a tabbed
+pane).
+
+**macOS still to verify** -- confirm the plain-font standalone title and the
+blanked tabbed title both read correctly under Aqua before calling this fully
+cross-platform-closed. See also the new manual UI-scale feature in
 [PORTING_LINUX.md](PORTING_LINUX.md#manual-ui-scale-view--ui-scale-menu),
 which is likewise untested outside Linux.
 

@@ -236,6 +236,22 @@ public:
             }
             return;
         }
+#ifdef _WIN32
+        // Dock tab rows (wireDockTabBars): the pane's top edge line across
+        // the WHOLE bar -- also behind/right of the last tab, like the other
+        // platforms' native base. The unselected tabs' QSS bottom border
+        // aligns with it; the SELECTED tab is drawn after the base and
+        // covers it, keeping the seamless tab->pane merge.
+        if (pe == PE_FrameTabBarBase && w
+            && w->property("cbDocTabsWired").toBool())
+        {
+            const QRect r = opt->rect;
+            p->fillRect(QRect(r.left(), r.bottom(), r.width(), 1),
+                        QApplication::palette().color(QPalette::Active,
+                                                      QPalette::Mid));
+            return;
+        }
+#endif
         QProxyStyle::drawPrimitive(pe, opt, p, w);
     }
 
@@ -850,7 +866,8 @@ void QtShellWindow::wireDockTabBars()
         const QString selBg   = winCol.name();               // == title-bar strip
         const QString unselBg = winCol.darker(110).name();   // recessed
         const QString mid     = appPal.color(QPalette::Active, QPalette::Mid).name();
-        bar->setDrawBase(false);   // no style-drawn base line under the row
+        bar->setDrawBase(true);    // base = the pane edge line across the row
+                                   // (drawn by ShellSeparatorStyle, 1px mid)
         bar->setStyleSheet(QString(
             "QTabBar::tab { padding: 4px 12px;"
             "  border: 1px solid %1; border-bottom: none;"
