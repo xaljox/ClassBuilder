@@ -319,6 +319,14 @@ void Qt_EnsureApplication()
     // setWindowIcon on the QApplication applies to every top-level window.
     qApp->setWindowIcon(QIcon(QStringLiteral(":/classbuilder.png")));
 
+    // Wayland (GNOME/Ubuntu) ignores setWindowIcon for the dock/taskbar -- it
+    // binds a running window to a .desktop file by app-id, not the window's own
+    // icon. Set the desktop file name so the compositor resolves our installed
+    // launcher (classbuilder.desktop) and shows ITS icon + groups the window
+    // under it. Must match the .desktop basename (and its StartupWMClass). No
+    // effect on Windows/macOS, harmless on X11.
+    QGuiApplication::setDesktopFileName(QStringLiteral("classbuilder"));
+
     // Backstop for an AV that escapes the notify() SEH (a fault outside event
     // dispatch). Installed AFTER the app so neither Qt nor the CRT overrides it.
     // Windows-only (SEH); macOS/Linux run without this net.
