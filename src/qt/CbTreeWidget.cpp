@@ -54,6 +54,21 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
     sheet += "QTreeView::item:hover:!selected {"
              "  background: rgba(10, 77, 168, 0.10);"   // accent #0A4DA8 @ ~10%
              "}";
+    // macOS' native item-view selection paints the FULL saturated system accent
+    // with white text (a focused-table look). Next to it, the native notebook
+    // TAB selection is a soft, light accent tint -- so the two highlights read
+    // as two different blues. Match the tree to the lighter tab/source-list
+    // convention: a translucent accent fill with the normal (dark) text kept.
+    // Derived from the LIVE system accent (QPalette::Highlight), so it tracks
+    // the user's Appearance accent instead of hardcoding blue. rgba() over the
+    // base gives the same soft tint in light and dark mode. (Windows/Linux keep
+    // their native saturated selection -- this is macOS-only.)
+    const QColor acc = QApplication::palette().color(QPalette::Active, QPalette::Highlight);
+    sheet += QString("QTreeView::item:selected {"
+                     "  background: rgba(%1, %2, %3, 0.28);"
+                     "  color: palette(text);"
+                     "}")
+                 .arg(acc.red()).arg(acc.green()).arg(acc.blue());
 #endif
     setStyleSheet(sheet);
 
@@ -209,11 +224,26 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // widget's own style/palette and sampling the pixel it actually painted.
     QColor triColour  = accent;
     QColor connColour = lineColour;
+#ifdef __APPLE__
+    // The base view paints the saturated native selection across the WHOLE row,
+    // including this branch/indent gutter, before drawBranches runs -- so the
+    // gutter kept the dark accent while the item columns took the light tint
+    // from the ::item:selected QSS, splitting the row into two blues. Repaint
+    // the gutter with the SAME light tint so the selected row is one colour.
+    // rgba(accent,0.28) over Base == blend(Base, accent, 0.28); use the solid
+    // form here since we're filling opaquely over the already-drawn selection.
+    // No chrome flip on macOS: the gutter is light now, so the accent triangle
+    // and connectors stay visible without swapping to HighlightedText.
+    if (selectionModel() && selectionModel()->isSelected(index))
+        painter->fillRect(rect, blend(
+            appPal.color(QPalette::Active, QPalette::Base), accent, 0.28));
+#else
     if (selectionModel() && selectionModel()->isSelected(index) && selectionChromeShouldFlip())
     {
         triColour  = appPal.color(QPalette::Active, QPalette::HighlightedText);
         connColour = triColour;
     }
+#endif
 
     // Walk root..item; record, per level, whether that node has a sibling
     // below it. hasNext.last() is the item itself; size-1 == its depth.
