@@ -138,6 +138,13 @@ int Destructor::OnAddArgument(bool checkOnly)
 
 int Destructor::OnDelete(bool checkOnly)
 {//@CODE_986
+    // A destructor on a normal class is fixed and can not be deleted. On a pure
+    // external class the destructor is only a reference stub, so allow it to be
+    // stripped down like any ordinary method (delete/confirm via Method::OnDelete).
+    BaseClass* baseClass = GetBaseClass();
+    if (baseClass && baseClass->IsExternClass() && !baseClass->IsClass())
+        return Method::OnDelete(checkOnly);
+
     return 0;
 }//@CODE_986
 
