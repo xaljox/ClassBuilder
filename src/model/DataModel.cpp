@@ -2,15 +2,11 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          DataModel.cpp
-* Creation date: June 25, 2026 19:48
+* Creation date: July 12, 2026 21:59
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'DataModel'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
-* June 25, 2026 19:48 JV
-*     Added method 'SetCrlf'
-*     Added method 'GetCrlf'
-*     Updated member '_crlf'
 *
 * Copyright 2026, Jimmy Venema
 * All rights are reserved. Reproduction in whole or part is prohibited

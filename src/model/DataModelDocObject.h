@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          DataModelDocObject.h
-* Creation date: June 25, 2026 19:48
+* Creation date: July 12, 2026 21:59
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'DataModelDocObject'
 *
@@ -31,13 +31,6 @@ class DataModelDocObject
     RELATION_MULTI_OWNED_PASSIVE(DataModelDoc, DataModelDoc, DataModelDocObject, DataModelDocObject)
 
 //@START_USER2
-    // Model entities are pointer-managed and relational; a default member-wise
-    // copy would duplicate relation links (corrupting the two-sided lists). Delete
-    // copy so any accidental value-copy / `*a = *b` is a COMPILE ERROR -- use a
-    // named value-only copy (e.g. CopyValuesFrom) instead. Propagates to every
-    // derived class (their implicit copy ops become deleted too).
-    DataModelDocObject(const DataModelDocObject&)            = delete;
-    DataModelDocObject& operator=(const DataModelDocObject&) = delete;
 //@END_USER2
 
     friend class DataModelDoc;
@@ -71,6 +64,7 @@ protected:
 public:
     DataModelDocObject(DataModelDoc* pDataModelDoc);
     DataModelDocObject(DataModelDocObject* pOld);
+    DataModelDocObject(const DataModelDocObject& rDataModelDocObject) = delete;
     virtual ~DataModelDocObject();
     void CopyState(DataModelDocObject* pDataModelDocObject);
     virtual void Delete();
@@ -87,6 +81,7 @@ public:
     virtual void OnUndoRedoChanging(DataModelDocObject* pNewState);
     virtual void OnUndoRedoRemoved();
     virtual void OnUndoRedoRemoving();
+    DataModelDocObject& operator =(const DataModelDocObject& rDataModelDocObject) = delete;
     int ReplaceInStr(CbString& str, const CbString& oldString,
                      const CbString& newString, bool saveState = true);
     virtual void ReplaceInX(const CbString& oldString,

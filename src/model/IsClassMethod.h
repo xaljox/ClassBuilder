@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          IsClassMethod.h
-* Creation date: June 25, 2026 19:48
+* Creation date: July 12, 2026 21:59
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'IsClassMethod'
 *
