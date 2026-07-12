@@ -11,7 +11,10 @@
 
 #include <QFile>
 #include <QImage>
+#include <QPainter>
 #include <QPixmap>
+#include <QPointF>
+#include <QPolygonF>
 #include <QString>
 #include <QVector>
 
@@ -153,4 +156,52 @@ QIcon Qt_ToolBarIcon(int glyph)
     if (glyph < 0 || glyph >= g.size())
         return QIcon();
     return g[glyph];
+}
+
+QIcon Qt_AddStarBadge(const QIcon& base)
+{
+    if (base.isNull())
+        return base;
+
+    // The 4-point starburst, in the tb_add_*.svg 16-unit coordinate space
+    // (same path/colours as those SVGs), so the badge is pixel-identical to
+    // the stars on the Add-Class / Add-Member / ... buttons beside it.
+    static const double kStar[8][2] = {
+        {3.1, 0.4}, {3.9, 2.3}, {5.8, 3.1}, {3.9, 3.9},
+        {3.1, 5.8}, {2.3, 3.9}, {0.4, 3.1}, {2.3, 2.3},
+    };
+
+    QIcon out;
+    // Render at the sizes the view toolbars actually ask for (incl. 2x retina),
+    // matching the tb glyphs' explicit-pixmap set.
+    for (int s : {16, 20, 24, 32, 40, 48})
+    {
+        const double u = s / 16.0;                 // svg unit -> device px
+        const int inner = qRound(0.72 * s);        // shrunk base glyph
+        const int off   = qRound(4.5 * u);         // translate(4.5,4.5)
+
+        QImage img(s, s, QImage::Format_ARGB32_Premultiplied);
+        img.fill(Qt::transparent);
+        QPainter p(&img);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+
+        const QPixmap basePx = base.pixmap(QSize(inner, inner));
+        if (!basePx.isNull())
+            p.drawPixmap(off, off, basePx);
+
+        QPolygonF star;
+        for (const auto& pt : kStar)
+            star << QPointF(pt[0] * u, pt[1] * u);
+        p.setPen(QPen(QColor(0x8A, 0x6D, 0x00), 0.8 * u));
+        p.setBrush(QColor(0xF5, 0xC4, 0x00));
+        p.drawPolygon(star);
+        p.end();
+
+        out.addPixmap(QPixmap::fromImage(img));
+#ifdef __APPLE__
+        out.addPixmap(QPixmap::fromImage(makeDisabledGlyph(img)), QIcon::Disabled);
+#endif
+    }
+    return out;
 }

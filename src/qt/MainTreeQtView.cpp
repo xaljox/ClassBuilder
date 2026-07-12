@@ -467,7 +467,8 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     };
 
     // Same MFC toolbar-strip glyphs the diagrams use (Qt_ToolBarIcon); Actor has
-    // no strip glyph so it keeps its tree-node icon.
+    // no strip/tb glyph, so it reuses its model icon with the shared "add" star
+    // badged on (Qt_AddStarBadge) to match its Add-* siblings.
     addTb(Qt_ToolBarIcon(TG_ADD_CLASS),       "Class",       "Add a class",           TreeAction::AddClass);
     addTb(Qt_ToolBarIcon(TG_ADD_INHERIT),     "Inheritance", "Add an inheritance",    TreeAction::AddInherit);
     addTb(Qt_ToolBarIcon(TG_ADD_RELATION),    "Relation",    "Add a relation",        TreeAction::AddRelation);
@@ -480,7 +481,7 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     addTb(Qt_ToolBarIcon(TG_ADD_ISCLASS),     "IsClass Methods", "Add IsClass methods", TreeAction::AddIsClass);
     toolBar->addSeparator();
     addTb(Qt_ToolBarIcon(TG_ADD_TYPE),        "Type",        "Add a type",            TreeAction::AddType);
-    addTb(Qt_ModelIcon(ICON_ACTOR),           "Actor",       "Add an actor",          TreeAction::AddActor);
+    addTb(Qt_AddStarBadge(Qt_ModelIcon(ICON_ACTOR)), "Actor", "Add an actor",        TreeAction::AddActor);
     toolBar->addSeparator();
     addTb(Qt_ToolBarIcon(TG_ADD_CLASSDIAGRAM),    "Class Diagram",    "Add a class diagram",    TreeAction::AddClassDiagram);
     addTb(Qt_ToolBarIcon(TG_ADD_SEQUENCEDIAGRAM), "Sequence Diagram", "Add a sequence diagram", TreeAction::AddSequenceDiagram);

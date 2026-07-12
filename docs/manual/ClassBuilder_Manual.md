@@ -592,7 +592,7 @@ Notes attach to other shapes with connection lines whose points are **positional
 
 - **Key + drag** (the fastest way): hold a key, then drag from one class to another — the cursor becomes a crosshair, a dashed line follows the drag, and the target class highlights:
   - **R** — Relation (dialog opens on drop; `Cancel` creates nothing)
-  - **I** — Inheritance (drag **from derived to base**)
+  - **I** — Inheritance (drag **from base to derived**)
   - **D** — Dependency
   - **O** — Relation (Diagram Only)
   - One gesture per key press; `Esc` cancels mid-drag.

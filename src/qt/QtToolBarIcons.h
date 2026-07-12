@@ -37,3 +37,11 @@ enum ToolGlyph {
 
 // QIcon for one toolbar tile. Null QIcon for an out-of-range index.
 QIcon Qt_ToolBarIcon(int glyph);
+
+// Stamp the yellow "add/new" star badge -- the same top-left starburst baked
+// into every tb_add_*.svg toolbar glyph -- onto an arbitrary base icon, for an
+// Add-something toolbar button that has no dedicated toolbar glyph and must
+// reuse its model icon (Add Actor: there is only actor.svg, no tb_add_actor).
+// The base is shrunk toward the bottom-right just as the tb_add_*.svg do
+// (translate 4.5, scale 0.72 within the 16px box) so it matches its siblings.
+QIcon Qt_AddStarBadge(const QIcon& base);
