@@ -7,12 +7,13 @@ toc-depth: 2
 ---
 
 <!-- ============================================================== -->
-<!-- FROZEN AUTHORING SOURCE — DO NOT REGENERATE THE DOCX FROM THIS -->
-<!-- ClassBuilder_Manual.docx is the MASTER document as of          -->
-<!-- 2026-07-02: it is edited directly in Word (screenshots, style).-->
-<!-- Regenerating from this .md would silently destroy those edits. -->
-<!-- If a large generated addition is ever needed, produce a NEW    -->
-<!-- file (e.g. Manual_addition.docx) and merge it by hand in Word. -->
+<!-- AUTHORING SOURCE. JV 2026-07-12: iterate HERE and regenerate   -->
+<!-- the .docx from this .md for as long as JV has not edited the   -->
+<!-- .docx in Word himself — he will say so explicitly when that    -->
+<!-- starts. FROM THAT MOMENT the .docx is the master: regenerating -->
+<!-- would silently destroy his Word edits (screenshots, styling);  -->
+<!-- large additions then go into a NEW file (e.g.                  -->
+<!-- Manual_addition.docx) merged by hand in Word.                  -->
 <!-- ============================================================== -->
 
 
@@ -308,7 +309,15 @@ public:
 #endif
 ```
 
-The two `RELATION_MULTI_OWNED_PASSIVE` macros are Cell's memberships in its Row's and Column's lists — the link pointers (`_refRow/_prevRow/_nextRow`, `_refColumn/_prevColumn/_nextColumn`) become members *of the Cell itself*. The `.cpp` contains the constructors/destructor with your bodies, and a protected block (`//{{AFX DO NOT EDIT ...`) with the generated relation and serialize machinery.
+The two `RELATION_MULTI_OWNED_PASSIVE` macros are Cell's memberships in its Row's and Column's lists — the link pointers (`_refRow/_prevRow/_nextRow`, `_refColumn/_prevColumn/_nextColumn`) become members *of the Cell itself*. The `.cpp` contains the constructors/destructor with your bodies, followed by the generated relation and serialize machinery. That machinery sits between a pair of guard comments:
+
+```cpp
+//{{AFX DO NOT EDIT CODE BELOW THIS LINE !!!
+    ... generated relation / serialize implementations ...
+//}}AFX DO NOT EDIT CODE ABOVE THIS LINE !!!
+```
+
+The guards mean exactly what they say: everything between them is regenerated on every **Write Source**, so a hand edit there is lost — your code belongs in the user sections and `//@CODE` bodies (chapter 11 lists every editable region).
 
 ## Step 9 — compile and run
 
@@ -340,7 +349,7 @@ delete pRow;                        // cascade: row's cells leave the columns to
 
 // save -> destroy -> reload (Zstd-compressed archive, chapter 13)
 {
-    std::ofstream raw("matrix.cbz", std::ios::binary);
+    std::ofstream raw("matrix.dat", std::ios::binary);
     CbZstdOutBuf zbuf(raw);
     std::ostream zos(&zbuf);
     CbArchive ar(zos);
@@ -349,13 +358,15 @@ delete pRow;                        // cascade: row's cells leave the columns to
 delete pMatrix;
 Matrix* pLoaded = new Matrix();     // serialize ctor: empty shell
 {
-    std::ifstream raw("matrix.cbz", std::ios::binary);
+    std::ifstream raw("matrix.dat", std::ios::binary);
     CbZstdInBuf zbuf(raw);
     std::istream zis(&zbuf);
     CbArchive ar(zis);
     pLoaded->Serialize(ar);
 }
 ```
+
+The data file's extension is yours to choose (`.dat` here) — just avoid `.cbz`, which is the extension of ClassBuilder's own model files and typically associated with the application.
 
 Compiled with the generated files + runtime headers (here with GCC; MSVC works identically):
 
@@ -396,10 +407,12 @@ Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to
 | **File** | New... (`Ctrl+N`) · Open... (`Ctrl+O`) · Close Model (`Ctrl+W`) · Save (`Ctrl+S`) · Save As... · Save Source... · Read Source... · Delete Source · Exit |
 | **Edit** | Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) |
 | **Project** | Settings... · Add Serialize... · Refresh Object IDs |
-| **View** | New Window · Zoom In (`Ctrl++`) · Zoom Out (`Ctrl+-`) · Zoom Full |
+| **View** | New Window · Zoom In (`Ctrl++`) · Zoom Out (`Ctrl+-`) · Zoom Full · UI Scale ▸ 100% / 125% / 150% / 175% / 200% |
 | **Help** | About ClassBuilder... |
 
 *Save Source / Read Source* are the code-generation round trip (chapter 11). *New Window* opens a second full tree of the active model. The zoom items act on the active diagram view.
+
+**UI Scale** enlarges the whole application — text, icons, dialogs — independently of the operating system's display scaling: useful on a monitor whose system scaling you don't want to change, or when ClassBuilder alone should be bigger. It is a per-machine setting (stored per user, not in the model) and takes effect after a restart — picking a scale offers to restart ClassBuilder right away. Not to be confused with the Zoom items, which magnify only the active diagram canvas.
 
 ## The main toolbar
 
@@ -419,9 +432,9 @@ Undo/Redo are deliberately **not** on the main bar: with several models open the
 
 Every view — model trees, class diagrams, sequence diagrams, scoped sub-window trees — lives in the same docking system:
 
-- Views of one model **tab** together by default; the tab is the drag handle.
-- Drag a tab off its row to **float** the view as its own window; drag it back to re-dock (drop indicators show split vs. tab targets).
-- Any pane can be **split** horizontally/vertically by dropping a view on a pane edge.
+- A model's **tree** opens docked in the main window; each further model becomes a **tab** next to it (the tab is its drag handle).
+- A **diagram** view opens **floating** by default. From there, drag it wherever you want it: drop it on another pane's tab row to form a tabbed group, on a pane edge to **split** (side by side with the tree or another diagram), or leave it floating (drop indicators show split vs. tab targets while dragging).
+- The same drags work in reverse: any docked pane can be dragged out to float again.
 - Closing a model's tab closes the model (with a save prompt when modified).
 
 ## Platforms and keys
@@ -435,7 +448,7 @@ One binary behavior set on Windows, macOS and Linux, with these platform notes:
 
 # Reference: the main tree view
 
-The tree is the master view of a model: every element, in its structure. Multiple models open side by side as tabs; trees and diagram views dock, tab, split and float freely.
+The tree is the master view of a model: every element of the model, shown in its structure. Several models can be open at the same time — each model's tree gets its own tab in the main window — and like every other view it can also be split off or floated (chapter 5.3).
 
 ## What the tree shows
 
