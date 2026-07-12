@@ -177,7 +177,7 @@ Choose **Serialize** support and document class `Matrix` (chapter 13 explains wh
 
 In the tree, right-click the model node ▸ `Add ▸ Class` (or `Ctrl+Shift+C`), and create `Row`, `Column`, `Cell` — each with Serialize on, which auto-inherits them from `MatrixObject`.
 
-> **[FIGURE]** *The Class dialog for "Row": Class Name, Source/Include File fields, the Properties group (Replace / Dll Export / Serialize / Struct / Relation Macros Last), Member Prefix, Note. Caption: "The Class dialog. With Serialize ticked, the class inherits the model's document-object root automatically."*
+![The Class dialog. With Serialize ticked, the class inherits the model's document-object root automatically.](images/Row_class.png)
 
 ## Step 3 — add members
 
