@@ -261,13 +261,19 @@ function SourceDoc([string]$arrow)
 $arrow
 "@
 }
+# Direction arrows sized to READ at toolbar size (a small arrow shrank to a
+# green dot -- JV 2026-07-12): a chunky filled arrow over the document's
+# lower half, with a thin white halo to lift it off the doc edge. The
+# document IS the C++ source, so READ points OUT of it (source -> model) and
+# WRITE points INTO it (model -> source) -- JV. Arrow in the same blue as
+# the C++ label keeps the glyph calm and two-tone.
 Save-Tb 'read_source' (SourceDoc @"
-  <path d=`"M11 11.4 H14.2`" stroke=`"$($P.ctorFill)`" stroke-width=`"1.8`"/>
-  <polygon points=`"9.4,11.4 12,9.6 12,13.2`" fill=`"$($P.ctorFill)`"/>
+  <path d=`"M15.6 11.4 L11.6 7.8 V9.9 H7.4 V12.9 H11.6 V15 Z`"
+        fill=`"$($P.blueFill)`" stroke=`"#FFFFFF`" stroke-width=`"0.9`" stroke-linejoin=`"round`"/>
 "@)
 Save-Tb 'save_source' (SourceDoc @"
-  <path d=`"M9.6 11.4 H12.8`" stroke=`"$($P.ctorFill)`" stroke-width=`"1.8`"/>
-  <polygon points=`"14.4,11.4 11.8,9.6 11.8,13.2`" fill=`"$($P.ctorFill)`"/>
+  <path d=`"M7.2 11.4 L11.2 7.8 V9.9 H15.4 V12.9 H11.2 V15 Z`"
+        fill=`"$($P.blueFill)`" stroke=`"#FFFFFF`" stroke-width=`"0.9`" stroke-linejoin=`"round`"/>
 "@)
 
 Write-Output "toolbar SVGs generated into $outDir"
