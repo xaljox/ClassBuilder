@@ -183,7 +183,9 @@ In the tree, right-click the model node ▸ `Add ▸ Class` (or `Ctrl+Shift+C`),
 
 Right-click `Row` ▸ `Add ▸ Member` (`Ctrl+Shift+B`): type `int`, name `id` — **bare name, no underscore**: the class's member prefix (default `_`) is added at generation time, so the emitted member is `_id`. Set access *private* and Get method *Public*: a `GetId()` getter is generated (and stays in sync if you retype the member). Repeat for `Column` (`id`, same settings) and `Cell` (`value` of type `CString`, public, no getter).
 
-> **[FIGURE]** *The Member dialog for Row.id: Type combo, Name, the type-property checkboxes (Const/Reference/Pointer/Array/Bit Field...), Access radio group, Get/Set method groups, Initial Value, Serialize checkbox, Note. Caption: "The Member dialog. Getter/setter generation and the serialize flag are per-member choices."*
+The model's format **version** needs no member and no code: it is the *Version* field in the DataModel dialog (visible in the Step 1 figure). ClassBuilder handles the rest invisibly — the generated document `Serialize` writes the version into every save and uses it when reading older files back; chapter 13 shows how that supports evolving the model.
+
+![The Member dialog. Getter/setter generation and the serialize flag are per-member choices.](images/Row_id.png)
 
 ## Step 4 — add the relations
 
@@ -198,7 +200,7 @@ Right-click `Matrix` ▸ `Add ▸ Relation` (`Ctrl+Shift+R`) and create, all of 
 
 That double ownership of `Cell` is deliberate — the runtime supports one object in any number of intrusive lists (chapter 12).
 
-> **[FIGURE]** *The Relation dialog for Row→Cell: From/To class combos and role names, Association Type radio group (Single / Multi / Static Multi), Association Properties (Aggregation / Critical / Filter), Implementation group (Standard / Value Tree / AVL Tree, Unique). Caption: "A relation: kind, ownership, thread-safety, and container implementation are all declared here — the code is generated."*
+![A relation: kind, ownership, thread-safety, and container implementation are all declared here — the code is generated.](images/Row_Cell.png)
 
 ## Step 5 — constructors, with real code in the bodies
 
@@ -214,11 +216,9 @@ while (++iColumn)
 }
 ```
 
-`Column`'s constructor mirrors it (one Cell per existing Row) — the symmetry means Rows and Columns can be added in any order later and the cell grid stays complete. `Cell`'s constructor just takes its two owners plus the value; its `ConstructorInclude(pRow, pColumn)` splices it into **both** lists. `Matrix(int rows, int columns)` creates the grid:
+`Column`'s constructor mirrors it (one Cell per existing Row) — the symmetry means Rows and Columns can be added in any order later and the cell grid stays complete. `Cell`'s constructor just takes its two owners plus the value; its `ConstructorInclude(pRow, pColumn)` splices it into **both** lists. The constructor `Matrix(int rows, int columns)` creates the grid:
 
 ```cpp
-_version = 2;    // model version written into every save (chapter 13)
-
 for (int c = 0; c < columns; c++)
 {
     (void)new Column(this, c);
@@ -235,6 +235,8 @@ Note what is *absent*: no container declarations, no push_back, no bookkeeping. 
 ## Step 6 — a find method
 
 Right-click the `Matrix→Row` relation ▸ add a **Find Method** on member `id`. The generated `FindRow(int id)` iterates the relation and compares — and if the relation used a tree implementation, the same dialog generates the fast tree lookup instead (chapter 12.7):
+
+![The Find Method dialog on the Matrix→Row relation: the argument map on the left pairs the method's arguments with the members to compare — here `->GetId()`. Behind it the generated `Matrix::FindRow` in its code window, and the method in the tree under the class's Relation methods.](images/Matrix_Row_FindId.png)
 
 ```cpp
 Row* Matrix::FindRow(int id)
@@ -1222,18 +1224,18 @@ Real-world ratio on model files is roughly **8–9×**; the quick start's whole 
 
 The scheme is *write everything, gate the reads*:
 
-- The **document** has an `int _version` member, stored first. Set it (constructor initialization) to the model's current schema version; bump it when the schema grows. On load it is read back and published to every class (`_objectVersion`).
-- Every **member** carries a version (member dialog). Store side writes members unconditionally; load side wraps them in `if (memberVersion <= _objectVersion)`.
+- The **document version** is the model's schema version — the *Version* field in the DataModel dialog, and that field is the only place you see or touch it. Everything else is generated and invisible: the document writes the version into every save, reads it back before anything else on load, and publishes it to every class (`_objectVersion`).
+- Every **member** is stamped with the version at which it was added — automatically, as (current document version + 1); the Member dialog shows the stamp. Store side writes members unconditionally; load side wraps them in `if (memberVersion <= _objectVersion)`.
 
 Adding a field to a shipped schema, correctly:
 
-1. Add the member; set its **version to (current document version + 1)**.
-2. Bump the document version (the `_version` initialization) to the same number.
+1. Add the member — ClassBuilder stamps it **(current document version + 1)** by itself.
+2. Raise *Version* in the DataModel dialog to that same number.
 3. Regenerate.
 
-Old files (smaller stored `_version`) skip the new field's read and keep the member's initial value; new files read it. **The failure mode to respect:** if the new member's version gate is wrong (e.g. left at a value old files already satisfy), load consumes bytes that were never written — the stream misaligns and the *next* object's class tag is garbage → `CB_ARCHIVE_BAD_STREAM`. If an old file must gain a field retroactively, load it with the *older binary*, save (now written with the field), then upgrade.
+Old files (written with a smaller version) skip the new field's read and keep the member's initial value; new files read it. **The failure mode to respect:** if the new member's version stamp is wrong (e.g. lowered by hand in the Member dialog to a value old files already satisfy), load consumes bytes that were never written — the stream misaligns and the *next* object's class tag is garbage → `CB_ARCHIVE_BAD_STREAM`. If an old file must gain a field retroactively, load it with the *older binary*, save (now written with the field), then upgrade.
 
-The **Compact Version** button (Project Settings) renumbers a long version history down to the minimal equivalent scheme (max used + 1) — cosmetic, but keeps gates readable. Only compact when files older than the compacted scheme no longer need to load.
+The **Compact Version** button (next to the *Version* field in the DataModel dialog) renumbers a long version history down to the minimal equivalent scheme (max used + 1) — cosmetic, but keeps gates readable. Only compact when files older than the compacted scheme no longer need to load.
 
 ## Rules and properties
 
@@ -1417,7 +1419,7 @@ Inspect and edit:
     "methods":[{"id":313,"name":"Cell","args":[...]}, ...]}}
 
 {"cmd":"set_method_body","params":{"class":"Matrix","id":317,
-  "body":"    ConstructorInclude();\r\n\r\n    // Put in your own code\r\n    _version = 2;\r\n    ..."}}
+  "body":"    ConstructorInclude();\r\n\r\n    // Put in your own code\r\n    for (int c = 0; c < columns; c++)\r\n    ..."}}
 ```
 
 Generate sources and export a figure:
