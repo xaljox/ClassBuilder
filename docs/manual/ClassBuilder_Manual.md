@@ -488,7 +488,7 @@ Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Met
 
 ![The tree toolbar, in the order of the table above: the Add buttons, then Delete, Filters, Find/Next, and the per-view Undo/Redo.](images/Tree_Toolbar.png)
 
-The element icons speak one visual language, shared with the diagrams and the toolbar. The diamond colour is the *kind*: cyan member, magenta method, green constructor, red destructor. Access is an overlay: a key marks protected, a padlock private (public is bare). A light tint means declared without code yet; a mid tint marks an inline body. All icons are drawn from SVG, with the legacy `.ico` set as fallback.
+The element icons speak one visual language, shared with the diagrams and the toolbar. The diamond colour is the *kind*: cyan member, magenta method, green constructor, red destructor. Access is an overlay: a key marks protected, a padlock private (public is bare). The fill tells the body state: full colour = code in the `.cpp`, a darker shade = inline, and a hollow white core = no code written yet (the rim keeps the full or darker shade, so the body place stays readable). `virtual` and `= delete` are not on the icon: the tree paints those keywords in magenta in the signature text itself. All icons are drawn from SVG, with the legacy `.ico` set as fallback.
 
 ## The context menu
 
@@ -511,9 +511,9 @@ Right-click any node (an unselected node is selected first). The full menu, top 
 
 ## Filters
 
-**Filters...** opens the access/phase filter panel: check which access levels (public/protected/private, per element kind) and which phases are visible. Filtered nodes disappear from the tree *and* the diagrams — useful to show a design-level view of an implementation-heavy model.
+**Filters...** opens the access/phase filter panel: check which access levels (public/protected/private, per element kind) and which phases are visible. The filter is **per tree view**: filtered nodes disappear from that tree only. Diagrams are unaffected — what a diagram shows is its own explicit choice (Select Classes and the per-class display options).
 
-> **[FIGURE]** *The Filters dialog with the phase checkboxes (Analysis...Complete) and per-kind access checkboxes. Caption: "Tree filters: what you hide here is hidden in every view."*
+> **[FIGURE]** *The Filters dialog with the phase checkboxes (Analysis...Complete) and per-kind access checkboxes. Caption: "Tree filters: what you hide here is hidden in this tree view — diagrams keep their own selection."*
 
 ## Delete Multiple
 

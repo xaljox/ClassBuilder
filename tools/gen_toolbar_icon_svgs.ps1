@@ -112,9 +112,9 @@ Save-Tb 'add_type'            (AddGlyph $typeGlyph)
 
 # add_virtuals / add_isclass: FOUR method diamonds in a 2x2 -- four reads as
 # "multiple methods" where two could pass for a pair (JV 2026-07-12).
-# Virtuals take the LIGHT method tint -- the same colour the tree paints
-# declared-only (empty) methods, so tree and toolbar agree; IsClass methods
-# take the full method magenta.
+# Virtuals take the LIGHT method tint purely to keep the button distinct
+# from add_isclass (full magenta); the tree marks virtual on the `virtual`
+# keyword, not on the icon.
 $methodLight = '#F29FEA'
 # The 2x2 itself is rotated 45 degrees like the diamonds (JV): the four nest
 # top/right/bottom/left of centre, each set slightly apart so they read as

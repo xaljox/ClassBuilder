@@ -1541,11 +1541,21 @@ void Method::ReplaceInX(const CbString& oldString, const CbString& newString)
 
 void Method::SetIcon()
 {//@CODE_809
+    // The icon encodes the body state: hollow core = untouched (no code
+    // yet), darker tint = inline, full = code in the .cpp. An untouched
+    // inline method combines both: hollow core in the darker rim. Virtual
+    // is NOT on the icon -- the tree paints the `virtual` keyword in
+    // magenta (SignatureKeywordDelegate), JV 2026-07-12.
     int offset = _access;
 	if (GetBaseClass()->IsClass())
 	{
 		if (GetUntouched())
 		{
+			if (GetInline() && !IsConstructor() && !IsDestructor())
+			{
+				Gti::SetIcon(ICON_PUBLIC_EMPTY_INLINE_METHOD + _access);
+				return;
+			}
 			offset += EMPTY_OFFSET;
 		}
 		else if (GetInline())

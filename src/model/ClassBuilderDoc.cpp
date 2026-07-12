@@ -338,6 +338,15 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
         // a freshly loaded document as current. (The legacy CBD->CBZ
         // version-migration fixups live in ClassBuilderStatic.exe.)
         m_impl->dataModelDoc._objectVersion = INT_MAX;
+        // The icon index is a serialized cache; recompute it so an icon-scheme
+        // change (e.g. light tint = virtual, 2026-07-12) reaches models saved
+        // under the old scheme. Only methods have a state-dependent icon.
+        DataModelDoc::GtiIterator iGti(&m_impl->dataModelDoc);
+        while (++iGti)
+        {
+            if (iGti->IsMethod())
+                static_cast<Method*>(iGti.Get())->SetIcon();
+        }
     }
     catch (int code)
     {

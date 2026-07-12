@@ -82,6 +82,9 @@ const char* const kIconFiles[] = {
     "private_empty_method.ico",       // 64
     "sequencediagram.ico",            // 65
     "actor.ico",                      // 66
+    "public_empty_inline_method.ico",    // 67 (SVG-only; no legacy .ico)
+    "protected_empty_inline_method.ico", // 68
+    "private_empty_inline_method.ico",   // 69
 };
 const int kIconCount = int(sizeof(kIconFiles) / sizeof(kIconFiles[0]));
 

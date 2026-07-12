@@ -555,6 +555,13 @@ class CbViewLock;
 #define ICON_SEQUENCEDIAGRAM                65
 #define ICON_ACTOR                          66
 
+// Untouched INLINE method: hollow white core like the empty icons, but the
+// rim in the darker inline shade -- body place (inline) picks the rim
+// colour, the untouched state picks the hollow core (JV 2026-07-12).
+#define ICON_PUBLIC_EMPTY_INLINE_METHOD     67
+#define ICON_PROTECTED_EMPTY_INLINE_METHOD  68
+#define ICON_PRIVATE_EMPTY_INLINE_METHOD    69
+
 inline CbString WrapArguments(CbString line, int maxLen = 80)
 {
     if (line.GetLength() <= maxLen)

@@ -49,11 +49,13 @@ function Save-Svg([string]$name, [string]$body)
 # ---- diamond family --------------------------------------------------------
 # Diamond upper-right (same spot public/protected/private, so rows align);
 # the visibility modifier sits lower-left.
-# variant fills: plain = full colour; inline = mid tint; empty = light tint.
+# Variant fills (JV 2026-07-12, final scheme): the icon encodes the BODY
+# state only -- plain = full colour (code in the .cpp), inline = DARKER
+# shade (like the legacy icons), untouched = hollow white core in a thick
+# full-colour rim. Virtual is NOT on the icon: the tree paints the
+# `virtual` keyword in magenta (SignatureKeywordDelegate).
 # Flat tints, no checker: the legacy white/colour dither read as speckle in
-# the tree -- JV 2026-07-12: "egale lichte kleur ipv gespikkeld". The same
-# light tint is reused by the toolbar (tb_add_virtuals) so tree and toolbar
-# agree.
+# the tree -- JV 2026-07-12: "egale lichte kleur ipv gespikkeld".
 function DiamondBody([string]$fill, [string]$edge, [string]$variant, [string]$uid)
 {
     $d = 'M10.5 1.9 L15.1 6.5 L10.5 11.1 L5.9 6.5 Z'
@@ -76,10 +78,10 @@ $lockGlyph = @"
 "@
 
 $kinds = @(
-    @{ key = 'member';      fill = $P.memberFill; mid = '#7FD9E7'; light = '#B8ECF4'; edge = $P.memberEdge },
-    @{ key = 'method';      fill = $P.methodFill; mid = '#EE6FE2'; light = '#F29FEA'; edge = $P.methodEdge },
-    @{ key = 'constructor'; fill = $P.ctorFill;   mid = '#8BCE90'; light = '#BEE5C1'; edge = $P.ctorEdge },
-    @{ key = 'destructor';  fill = $P.dtorFill;   mid = '#F08A86'; light = '#F7BDBA'; edge = $P.dtorEdge }
+    @{ key = 'member';      fill = $P.memberFill; dark = '#1F93AE'; edge = $P.memberEdge },
+    @{ key = 'method';      fill = $P.methodFill; dark = '#A61E9C'; edge = $P.methodEdge },
+    @{ key = 'constructor'; fill = $P.ctorFill;   dark = '#327D38'; edge = $P.ctorEdge },
+    @{ key = 'destructor';  fill = $P.dtorFill;   dark = '#A32F2A'; edge = $P.dtorEdge }
 )
 $visList = @('public', 'protected', 'private')
 
@@ -93,13 +95,18 @@ foreach ($k in $kinds)
 
         # plain
         Save-Svg "${vis}_$($k.key)" ((DiamondBody $k.fill $k.edge 'plain' '') + "`n" + $mod)
-        # inline (no inline_member exists; ctor/dtor/method only) -> mid tint
+        # inline (no inline_member exists; ctor/dtor/method only) -> darker
+        # shade, like the legacy icon set
         if ($k.key -ne 'member') {
-            Save-Svg "${vis}_inline_$($k.key)" ((DiamondBody $k.mid $k.edge 'inline' 'i') + "`n" + $mod)
+            Save-Svg "${vis}_inline_$($k.key)" ((DiamondBody $k.dark $k.edge 'inline' 'i') + "`n" + $mod)
         }
-        # empty (methods only) -> light tint
+        # untouched (methods only) -> hollow: thick rim, small white core,
+        # same outer silhouette so tree rows stay aligned. Rim colour keeps
+        # the body place: full rim = .cpp, dark rim = inline.
         if ($k.key -eq 'method') {
-            Save-Svg "${vis}_empty_method" ((DiamondBody $k.light $k.edge 'empty' 'e') + "`n" + $mod)
+            $core = "  <path d=`"M10.5 4.7 L12.3 6.5 L10.5 8.3 L8.7 6.5 Z`" fill=`"#FFFFFF`"/>"
+            Save-Svg "${vis}_empty_method" ((DiamondBody $k.fill $k.edge 'empty' 'e') + "`n" + $core + "`n" + $mod)
+            Save-Svg "${vis}_empty_inline_method" ((DiamondBody $k.dark $k.edge 'emptyi' 'ei') + "`n" + $core + "`n" + $mod)
         }
     }
 }

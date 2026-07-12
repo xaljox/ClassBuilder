@@ -253,10 +253,14 @@ std::vector<Gti*> sortedChildren(Gti* pGti)
 
 } // namespace
 
-// Paints the trailing " = delete" of a signature in a muted red so deleted
-// methods/constructors stand out in the tree, WITHOUT tinting the rest of the
-// row. Anything without that suffix paints exactly as the default delegate.
-class DeleteSuffixDelegate : public QStyledItemDelegate
+// Recolours two signature fragments WITHOUT tinting the rest of the row:
+// a trailing " = delete" (deleted methods/constructors) and a leading
+// "virtual" keyword -- both in the SAME magenta, so standout keywords on a
+// tree line always carry one colour (JV 2026-07-12: the magenta reads
+// better than the old dark-red delete suffix; virtual moved off the icon
+// into the keyword). Anything without those fragments paints exactly as
+// the default delegate.
+class SignatureKeywordDelegate : public QStyledItemDelegate
 {
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
@@ -265,22 +269,23 @@ protected:
     void paint(QPainter* painter, const QStyleOptionViewItem& option,
                const QModelIndex& index) const override
     {
-        static const QString kDelete = QStringLiteral(" = delete");
+        static const QString kDelete  = QStringLiteral(" = delete");
+        static const QString kVirtual = QStringLiteral("virtual ");
+        static const QColor  kKeywordColor(196, 32, 186);
         const QString text = index.data(Qt::DisplayRole).toString();
-        if (!text.endsWith(kDelete))
-        {
-            QStyledItemDelegate::paint(painter, option, index);
-            return;
-        }
+        const bool hasDelete  = text.endsWith(kDelete);
+        const bool hasVirtual = text.startsWith(kVirtual);
 
         // Let the default delegate paint the whole row first -- the correct
         // themed base-text colour, selection background and icon in EVERY state
         // (selected / inactive / hover). The tree's stylesheet makes those
         // colours unreliable to reproduce by hand (opt.palette and even
         // qApp's palette disagree with what the stylesheet actually draws --
-        // white text on a light selection), so don't try. This also draws the
-        // " = delete" suffix in the normal colour; we recolour just that next.
+        // white text on a light selection), so don't try. The fragments are
+        // drawn in the normal colour too; we recolour just those next.
         QStyledItemDelegate::paint(painter, option, index);
+        if (!hasDelete && !hasVirtual)
+            return;
 
         QStyleOptionViewItem opt(option);
         initStyleOption(&opt, index);
@@ -289,30 +294,46 @@ protected:
         const QRect textRect =
             style->subElementRect(QStyle::SE_ItemViewItemText, &opt, opt.widget);
         // Qt's item delegates inset the text by exactly this margin; match it so
-        // the recoloured suffix lands precisely over the already-drawn one.
+        // the recoloured fragment lands precisely over the already-drawn one.
         const int textMargin =
             style->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, opt.widget) + 1;
-        const QString base = text.left(text.length() - kDelete.length());
         const QFontMetrics fm(opt.font);
-        const int suffixLeft = textRect.left() + textMargin + fm.horizontalAdvance(base);
-        if (suffixLeft >= textRect.right())
-            return;   // suffix elided/clipped -- leave the default paint as-is
 
-        const QRect delRect(suffixLeft, textRect.top(),
-                            textRect.right() - suffixLeft, textRect.height());
+        // Repaint the row background over `rect` (text suppressed), then draw
+        // `fragment` there in `color` -- readable on both the plain row and
+        // the light selection highlight.
+        auto recolour = [&](const QRect& rect, const QString& fragment,
+                            const QColor& color) {
+            painter->save();
+            painter->setClipRect(rect);
+            QStyleOptionViewItem bgOpt(opt);
+            bgOpt.text.clear();
+            style->drawControl(QStyle::CE_ItemViewItem, &bgOpt, painter, bgOpt.widget);
+            painter->setFont(opt.font);
+            painter->setPen(color);
+            painter->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, fragment);
+            painter->restore();
+        };
 
-        painter->save();
-        painter->setClipRect(delRect);
-        // Cover the normal-colour suffix by re-drawing the row background there
-        // (text suppressed), then draw the suffix in a darker red -- readable on
-        // both the plain row and the light selection highlight.
-        QStyleOptionViewItem bgOpt(opt);
-        bgOpt.text.clear();
-        style->drawControl(QStyle::CE_ItemViewItem, &bgOpt, painter, bgOpt.widget);
-        painter->setFont(opt.font);
-        painter->setPen(QColor(170, 0, 0));
-        painter->drawText(delRect, Qt::AlignLeft | Qt::AlignVCenter, kDelete);
-        painter->restore();
+        if (hasDelete)
+        {
+            const QString base = text.left(text.length() - kDelete.length());
+            const int suffixLeft =
+                textRect.left() + textMargin + fm.horizontalAdvance(base);
+            if (suffixLeft < textRect.right())   // else elided -- leave as-is
+                recolour(QRect(suffixLeft, textRect.top(),
+                               textRect.right() - suffixLeft, textRect.height()),
+                         kDelete, kKeywordColor);
+        }
+
+        if (hasVirtual)
+        {
+            const int kwLeft  = textRect.left() + textMargin;
+            const int kwWidth = fm.horizontalAdvance(QStringLiteral("virtual"));
+            if (kwLeft + kwWidth <= textRect.right())
+                recolour(QRect(kwLeft, textRect.top(), kwWidth, textRect.height()),
+                         QStringLiteral("virtual"), kKeywordColor);
+        }
     }
 };
 
@@ -368,7 +389,7 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
 {
     _tree->setColumnCount(1);
     _tree->setHeaderHidden(true);
-    _tree->setItemDelegate(new DeleteSuffixDelegate(_tree));
+    _tree->setItemDelegate(new SignatureKeywordDelegate(_tree));
     // Icon size is set centrally in CbTreeWidget (shared by every tree); capture
     // it as the single-glyph base (rebuild() widens it to two when a phase
     // marker is shown).
