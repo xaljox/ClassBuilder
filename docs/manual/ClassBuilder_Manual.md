@@ -432,7 +432,7 @@ Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to
 
 Undo/Redo are deliberately **not** on the main bar: with several models open they would be ambiguous. They live on each view's own toolbar (tree and diagrams), and always act on *that view's* model.
 
-> **[FIGURE: Main toolbar]** — cropped strip of the main window toolbar (New / Open / Save / Read Source / Write Source).
+![The main toolbar: New, Open, Save, then Read Source and Write Source.](images/Main_Toolbar.png)
 
 ## Docking
 
@@ -472,10 +472,10 @@ Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `
 | Add Member | `Ctrl+Shift+B` | member diamond |
 | Add Method | `Ctrl+Shift+M` | method diamond |
 | Add Constructor | `Ctrl+Shift+U` | constructor diamond |
-| Add Argument | `Ctrl+Shift+A` | argument |
+| Add Type | `Ctrl+Shift+Y` | type block |
 | Add Virtual Methods | `Ctrl+Shift+V` | paired diamonds |
 | Add IsClass Methods | `Ctrl+Shift+S` | paired diamonds (Is) |
-| Add Type | `Ctrl+Shift+Y` | type block |
+| Add Argument | `Ctrl+Shift+A` | argument |
 | Add Actor | `Ctrl+Shift+T` | stick figure |
 | Add Class Diagram | — | class-diagram thumbnail |
 | Add Sequence Diagram | — | sequence-diagram thumbnail |
@@ -486,7 +486,7 @@ Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `
 
 Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Meta Group** `Ctrl+Shift+P`, **External Class** `Ctrl+Shift+E` (X was unavailable — it is an OS hotkey).
 
-> **[FIGURE: Tree toolbar]** — cropped strip of the tree toolbar, wide enough to label each button in the caption.
+![The tree toolbar, in the order of the table above: the Add buttons, then Delete, Filters, Find/Next, and the per-view Undo/Redo.](images/Tree_Toolbar.png)
 
 The element icons themselves (class, member, method, relation...) encode access as color variants (public/protected/private) and state (inline, empty-body); they are the same icons used in the diagrams, drawn from SVG with the legacy `.ico` set as fallback.
 
