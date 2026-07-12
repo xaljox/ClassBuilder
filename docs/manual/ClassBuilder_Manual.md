@@ -511,15 +511,15 @@ Right-click any node (an unselected node is selected first). The full menu, top 
 
 ## Filters
 
-**Filters...** opens the access/phase filter panel: check which access levels (public/protected/private, per element kind) and which phases are visible. The filter is **per tree view**: filtered nodes disappear from that tree only. Diagrams are unaffected — what a diagram shows is its own explicit choice (Select Classes and the per-class display options).
+**Filters...** opens the filter panel: per element kind, choose what stays visible — access levels and static/non-static for members and methods, relation kinds (inheritance, multi/single, aggregation/association), classes with or without a constructor, and (with Phase Support on) the phases. The filter is **per tree view**: filtered nodes disappear from that tree only. Diagrams are unaffected — what a diagram shows is its own explicit choice (Select Classes and the per-class display options).
 
-> **[FIGURE]** *The Filters dialog with the phase checkboxes (Analysis...Complete) and per-kind access checkboxes. Caption: "Tree filters: what you hide here is hidden in this tree view — diagrams keep their own selection."*
+![Tree filters: what you hide here is hidden in this tree view — diagrams keep their own selection. The Phases group greys out when the model has no Phase Support.](images/Tree_filter.png)
 
 ## Delete Multiple
 
 `Delete Multiple...` shows a checkbox tree scoped to the clicked node, with type filters and Select All — tick everything to remove and delete it as **one undo step**. The fastest way to clean up an imported or experimental model.
 
-> **[FIGURE]** *The Delete Multiple dialog over a class subtree with several members and methods checked. Caption: "Bulk delete: one dialog, one undo step."*
+![Bulk delete: the Show checkboxes narrow the tree by kind, ticking a parent includes its contents, and the whole deletion is a single undo step.](images/Delete_Multiple.png)
 
 ## Drag, and copy-drag
 
