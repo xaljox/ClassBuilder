@@ -488,7 +488,7 @@ Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Met
 
 ![The tree toolbar, in the order of the table above: the Add buttons, then Delete, Filters, Find/Next, and the per-view Undo/Redo.](images/Tree_Toolbar.png)
 
-The element icons themselves (class, member, method, relation...) encode access as color variants (public/protected/private) and state (inline, empty-body); they are the same icons used in the diagrams, drawn from SVG with the legacy `.ico` set as fallback.
+The element icons speak one visual language, shared with the diagrams and the toolbar. The diamond colour is the *kind*: cyan member, magenta method, green constructor, red destructor. Access is an overlay: a key marks protected, a padlock private (public is bare). A light tint means declared without code yet; a mid tint marks an inline body. All icons are drawn from SVG, with the legacy `.ico` set as fallback.
 
 ## The context menu
 
