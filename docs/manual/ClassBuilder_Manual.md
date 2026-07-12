@@ -439,8 +439,8 @@ Undo/Redo are deliberately **not** on the main bar: with several models open the
 Every view — model trees, class diagrams, sequence diagrams, scoped sub-window trees — lives in the same docking system:
 
 - A model's **tree** opens docked in the main window; each further model becomes a **tab** next to it (the tab is its drag handle).
-- A **diagram** view opens **floating** by default. From there, drag it wherever you want it: drop it on another pane's tab row to form a tabbed group, on a pane edge to **split** (side by side with the tree or another diagram), or leave it floating (drop indicators show split vs. tab targets while dragging).
-- The same drags work in reverse: any docked pane can be dragged out to float again.
+- A **diagram** view opens **floating** by default. Drag it onto the main window to place it: drop it on a pane's tab row to add it as a **tab**, or on a pane edge to **split** (side by side with the tree or another diagram) — drop indicators show the targets while dragging.
+- The same drag works in reverse: any docked pane can be dragged out to float again. A floating window always holds a **single view**: tabbing and splitting happen inside the main window only.
 - Closing a model's tab closes the model (with a save prompt when modified).
 
 ## Platforms and keys
