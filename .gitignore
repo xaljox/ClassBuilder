@@ -43,3 +43,4 @@ CMakeUserPresets.json
 # Generated source emitted next to the throwaway test model (models/test/Matrix.CBZ)
 models/test/*.cpp
 models/test/*.h
+~$*
