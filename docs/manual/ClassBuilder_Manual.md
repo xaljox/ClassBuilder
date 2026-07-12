@@ -260,7 +260,11 @@ Right-click the model node ▸ `Add ▸ Class Diagram`, name it *Matrix Overview
 
 ![The Matrix Overview class diagram as exported by ClassBuilder (Export SVG). Diamonds mark owned (aggregation) relations; 1/* are the multiplicities.](images/cd-matrix-overview.svg)
 
-![A class-diagram view opens as a dockable window over the shell — dock it, tab it, or float it.](images/cd-view.png)
+![A diagram view opens **floating** over the shell — this is the initial state of every diagram view.](images/cd-view.png)
+
+![The same view **docked**: drag it onto an edge of the main window and the tree and the diagram sit side by side.](images/Docked.png)
+
+![Or **tabbed**: drop it onto the tree's tab bar and the views share the full window, one tab each.](images/Tabbed.png)
 
 ## Step 8 — generate the source
 
