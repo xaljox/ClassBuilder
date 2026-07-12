@@ -848,7 +848,14 @@ void MainTreeQtView::addGtiRecursive(Gti* pGti, QTreeWidgetItem* parent)
         QPainter p(&pm);
         const QIcon phaseIcon = Qt_PhaseIcon(pGti->GetPhase());
         if (!phaseIcon.isNull())
-            p.drawPixmap(QPoint(0, 0), phaseIcon.pixmap(QSize(w, h), dpr));
+        {
+            // At full cell size the phase marker dominates the row (JV
+            // 2026-07-12) -- draw it at 70% in its slot, centred.
+            const int pw = qRound(w * 0.70);
+            const int ph = qRound(h * 0.70);
+            p.drawPixmap(QPoint((w - pw) / 2, (h - ph) / 2),
+                         phaseIcon.pixmap(QSize(pw, ph), dpr));
+        }
         p.drawPixmap(QPoint(w, 0), typeIcon.pixmap(QSize(w, h), dpr));
         p.end();
         item->setIcon(0, QIcon(pm));
