@@ -262,7 +262,7 @@ Right-click the model node ▸ `Add ▸ Class Diagram`, name it *Matrix Overview
 
 ![A diagram view opens **floating** over the shell — this is the initial state of every diagram view.](images/cd-view.png)
 
-![The same view **docked**: drag it onto an edge of the main window and the tree and the diagram sit side by side.](images/Docked.png)
+![The same view **docked**: drag it onto an edge of the main window — here the right edge, giving the usual tree-beside-diagram split; the top and bottom edges split horizontally the same way.](images/Docked.png)
 
 ![Or **tabbed**: drop it onto the tree's tab bar and the views share the full window, one tab each.](images/Tabbed.png)
 
