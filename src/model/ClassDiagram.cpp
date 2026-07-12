@@ -386,11 +386,25 @@ CbPoint ClassDiagram::FindFreeShapePlacement()
 
 CbRect ClassDiagram::GetBoundingRect()
 {//@CODE_35257
+    // Union only what Draw() paints: top-level shapes (member/method rows are
+    // painted by their ClassShape inside its rect, but sit in this list too
+    // with sub-rects that can go stale) and no hidden connections. Anything
+    // never drawn must not stretch the tight SVG-export crop.
     CbRect rect(0, 0, 0, 0);
-    
-    ClassDiagramShapeIterator iClassDiagramShape(this);
+
+    ClassDiagramShapeIterator iClassDiagramShape(this, &ClassDiagramShape::DrawDirect);
     while (++iClassDiagramShape)
     {
+        ConnectionShape* pConnectionShape = iClassDiagramShape->GetConnectionShape();
+        if (pConnectionShape)
+        {
+            if (pConnectionShape->GetHidden())
+                continue;
+            // A connection paints its segments, not its stored _rect -- the
+            // rect can be stale without ever showing. Sync it first.
+            pConnectionShape->RecalculateRect();
+        }
+
         rect *= iClassDiagramShape->GetBoundingRect();
     }
 
