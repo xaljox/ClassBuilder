@@ -236,7 +236,7 @@ Note what is *absent*: no container declarations, no push_back, no bookkeeping. 
 
 Right-click the `Matrix→Row` relation ▸ add a **Find Method** on member `id`. The generated `FindRow(int id)` iterates the relation and compares — and if the relation used a tree implementation, the same dialog generates the fast tree lookup instead (chapter 12.7):
 
-![The Find Method dialog on the Matrix→Row relation: the argument map on the left pairs the method's arguments with the members to compare — here `->GetId()`. Behind it the generated `Matrix::FindRow` in its code window, and the method in the tree under the class's Relation methods.](images/Matrix_Row_FindId.png)
+![The Find Method dialog on the Matrix→Row relation: the argument map pairs the method's arguments with the members to compare — here `->GetId()`. In the tree behind it, the generated method lands under the class's *Relation methods* folder.](images/Matrix_Row_FindId.png)
 
 ```cpp
 Row* Matrix::FindRow(int id)
