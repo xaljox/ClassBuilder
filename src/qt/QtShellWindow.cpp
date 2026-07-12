@@ -38,6 +38,7 @@
 #include <QStatusBar>
 #include <QTabBar>
 #include <QToolBar>
+#include <QToolButton>
 #include <QWindow>
 
 #include <functional>
@@ -670,12 +671,21 @@ void QtShellWindow::buildToolBar()
         updateToolBarEnables();
     });
     tb->addSeparator();
-    _tbReadSource = tb->addAction("Read Source", this, [this] {
+    // Read/Write Source keep their TEXT (the two most-used buttons) and now
+    // carry the C++-document glyphs beside it (tb_read_source/tb_save_source
+    // SVGs; per-button TextBesideIcon -- the toolbar default would drop the
+    // text once an icon is set).
+    _tbReadSource = tb->addAction(Qt_ToolBarIcon(TG_READ_SOURCE),
+                                  "Read Source", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->FileReadSource();
     });
-    _tbWriteSource = tb->addAction("Write Source", this, [this] {
+    _tbWriteSource = tb->addAction(Qt_ToolBarIcon(TG_SAVE_SOURCE),
+                                   "Write Source", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->FileSaveSource();
     });
+    for (QAction* a : { _tbReadSource, _tbWriteSource })
+        if (QToolButton* btn = qobject_cast<QToolButton*>(tb->widgetForAction(a)))
+            btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
     _tbNew->setToolTip("New model (Ctrl+N)");
     _tbOpen->setToolTip("Open model (Ctrl+O)");
