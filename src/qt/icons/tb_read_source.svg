@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <path d="M2.5 1.2 H9 L11.8 4 V14.8 H2.5 Z" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M9 1.2 V4 H11.8" fill="none" stroke="#3C4043" stroke-width="1.2" stroke-linejoin="round"/>
+  <text x="4" y="9.4" font-family="Arial" font-size="5.2" font-weight="bold" fill="#3D6BE5">C++</text>
+  <path d="M11 11.4 H14.2" stroke="#47B34F" stroke-width="1.8"/>
+  <polygon points="9.4,11.4 12,9.6 12,13.2" fill="#47B34F"/>
+</svg>

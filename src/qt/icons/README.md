@@ -9,6 +9,31 @@ glyph at a time** — add a single `.svg`, rebuild, and only that icon goes vect
 | **Model / tree icons** | tree node rows + the tree's Add buttons reuse a few | `ClassBuilder/res/<name>.ico` (one file per glyph) | `<name>.svg` (same base name) | `qt/QtModelIcons.cpp` |
 | **Toolbar glyphs** | the main / diagram / tree **toolbars** (Add Class, Add Note, Add Lifeline, Delete, zoom, …) | `ClassBuilder/res/Toolbar.bmp` — a 34-tile 16×16 **strip** | `tb_<name>.svg` | `qt/QtToolBarIcons.cpp` |
 
+## The full SVG sets are GENERATED — edit the generators, not the files
+
+Both sets were redrawn as SVG in one pass (2026-07-12, JV-approved). Every
+`.svg` here **except** the hand-made `tb_edit_undo.svg` / `tb_edit_redo.svg`
+comes out of a deterministic generator — change the design there and re-run;
+don't hand-edit the outputs:
+
+- `tools/gen_model_icon_svgs.ps1` — the 66 model/tree glyphs. Keeps the legacy
+  visual language (diamond colour = kind, key/lock = protected/private, tint =
+  code-not-yet-filled-in/inline, relation arrow colour/thickness/heads, folder
+  tab accents incl. the mixed-group magenta→cyan ribbon, `[T][N]` argument,
+  phase letter discs).
+- `tools/gen_toolbar_icon_svgs.ps1` — the 34 toolbar glyphs (Add buttons =
+  gold star + the matching model glyph; file/edit/zoom as one-ink outlines).
+
+CMake auto-globs `src/qt/icons/*.svg` into the `/icons` resource prefix
+(`qt_add_resources` in the root CMakeLists) — new files need **no** .qrc edit.
+
+**⚠ QSvgRenderer is SVG *Tiny*:** it silently **ignores `clipPath`** (a
+clipped accent renders as its unclipped rect — learned the hard way: the
+folder-tab accent painted a full-width blob in-app while looking perfect in a
+browser), `<pattern>` is unsupported, and `<text>` support is partial. Draw
+explicit paths; **verify icon changes in the running app**, not (only) in a
+browser.
+
 ## Toolbar glyphs — the "new" toolbar buttons
 
 The toolbar icons were never individual files: they live as tiles inside the one
