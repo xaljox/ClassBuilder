@@ -80,8 +80,8 @@ A **model** (document) is the unit you open, edit and save — one `.cbz` file. 
 - **Extern classes** — classes that exist *outside* the model (`CbObject`, `CbArchive`, library types, your own hand-written classes). They can be inherited from and referenced, but no code is generated for them.
 - **Types** — non-class types usable for members/arguments (`int`, `void`, plus any you add: `CString`, enums, typedefs with their declaration text).
 - **Relations** — directed, named links between two classes (chapter 12).
-- **Inheritance** edges, with virtual/access modifiers.
-- **Groups** — folders (ClassGroups inside the model or inside MetaGroups) to organize large models; purely organizational.
+- **Inheritances** — which class inherits from which, each with its access (public/protected/private) and optional `virtual` modifier.
+- **Groups** — folders that organize a model, at three levels. *Inside a class*, a group collects members and/or methods — the coloured bar on its folder icon tells what is inside: cyan for members, magenta for methods, both colours for a mix. *Above the classes*, a ClassGroup collects classes that belong together. *At the top level*, next to the model root, a MetaGroup collects ClassGroups. Groups are purely organizational — they do not change the generated code.
 - **Class diagrams** and **sequence diagrams** — graphical views onto the model.
 - **Actors** — external parties that appear on sequence diagrams.
 - **Project settings** — output naming, prefixes, indentation, comment headers, serialize/undo options, phase support.
@@ -166,7 +166,7 @@ This chapter builds a complete model, generates the code, compiles it with a sma
 
 `File ▸ New...` opens the new-model wizard.
 
-> **[FIGURE]** *The New Model wizard: model name "Matrix", master include file "Matrix.h", the Serialize checkbox ticked and Document class name "Matrix". Caption: "Creating a serialize-enabled model. The Serialize choice is one-off — it cannot be changed later."*
+![Creating a serialize-enabled model: DataModel name "Matrix", master include file "MatrixInclude.h", document class "Matrix". The master include cannot be named Matrix.h — the Matrix class itself generates that file. Tick Serialize here: it is a one-off choice, made at creation — in the Project ▸ Settings dialog of an existing model the checkbox shows locked.](images/New_DataModel.png)
 
 Choose **Serialize** support and document class `Matrix` (chapter 13 explains what is scaffolded: an extern `CbObject`, the document class `Matrix`, the polymorphic root `MatrixObject`, and the relation between them). Two rules to know now:
 
@@ -1399,7 +1399,7 @@ print(cb("list_classes"))
 Build a model from nothing (the quick start, scripted — see `tools/build_matrix_model.ps1` for the full version):
 
 ```json
-{"cmd":"new_model_serialize","params":{"name":"Matrix","document_class":"Matrix","h_file":"Matrix.h"}}
+{"cmd":"new_model_serialize","params":{"name":"Matrix","document_class":"Matrix","h_file":"MatrixInclude.h"}}
 {"cmd":"add_class","params":{"name":"Row","serialize":true}}
 {"cmd":"add_member","params":{"class":"Row","name":"id","type":"int","access":"private","getter":"public"}}
 {"cmd":"add_relation","params":{"from_class":"Row","to_class":"Cell","kind":"multi","owned":true}}
