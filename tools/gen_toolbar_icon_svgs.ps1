@@ -110,21 +110,31 @@ Save-Tb 'add_sequencediagram' (AddGlyph $sequencediagramGlyph)
 Save-Tb 'add_argument'        (AddGlyph $argumentGlyph)
 Save-Tb 'add_type'            (AddGlyph $typeGlyph)
 
-# add_virtuals / add_isclass: two method diamonds. Virtuals take the LIGHT
-# method tint -- the same colour the tree paints declared-only (empty)
-# methods, so tree and toolbar agree; IsClass methods take the full method
-# magenta (JV 2026-07-12: the old outline-only difference was too subtle).
+# add_virtuals / add_isclass: FOUR method diamonds in a 2x2 -- four reads as
+# "multiple methods" where two could pass for a pair (JV 2026-07-12).
+# Virtuals take the LIGHT method tint -- the same colour the tree paints
+# declared-only (empty) methods, so tree and toolbar agree; IsClass methods
+# take the full method magenta.
 $methodLight = '#F29FEA'
-$twoDiamonds = @"
-    <path d=`"M5 0.6 L9.4 5 L5 9.4 L0.6 5 Z`" fill=`"$methodLight`" stroke=`"$($P.methodEdge)`" stroke-width=`"1.2`" stroke-linejoin=`"round`"/>
-    <path d=`"M11 6.6 L15.4 11 L11 15.4 L6.6 11 Z`" fill=`"$methodLight`" stroke=`"$($P.methodEdge)`" stroke-width=`"1.2`" stroke-linejoin=`"round`"/>
-"@
-Save-Tb 'add_virtuals' (AddGlyph $twoDiamonds)
-$twoDiamondsIs = @"
-    <path d=`"M5 0.6 L9.4 5 L5 9.4 L0.6 5 Z`" fill=`"$($P.methodFill)`" stroke=`"$($P.methodEdge)`" stroke-width=`"1.2`" stroke-linejoin=`"round`"/>
-    <path d=`"M11 6.6 L15.4 11 L11 15.4 L6.6 11 Z`" fill=`"$($P.methodFill)`" stroke=`"$($P.methodEdge)`" stroke-width=`"1.2`" stroke-linejoin=`"round`"/>
-"@
-Save-Tb 'add_isclass' (AddGlyph $twoDiamondsIs)
+# The 2x2 itself is rotated 45 degrees like the diamonds (JV): the four nest
+# top/right/bottom/left of centre, each set slightly apart so they read as
+# four separate diamonds (centre offset > radius = the gap).
+function FourDiamonds([string]$fill)
+{
+    $b = @()
+    $r = 3.2; $d = 4.7
+    foreach ($c in @(@(8, (8 - $d)), @((8 + $d), 8), @(8, (8 + $d)), @((8 - $d), 8)))
+    {
+        $x = $c[0]; $y = $c[1]
+        $b += "    <path d=`"M$x $($y-$r) L$($x+$r) $y L$x $($y+$r) L$($x-$r) $y Z`" fill=`"$fill`" stroke=`"$($P.methodEdge)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>"
+    }
+    return ($b -join "`n")
+}
+# Larger wrapper than the stock AddGlyph: the rotated composite leaves its
+# upper-left corner empty, so it can sit closer to the add star and take
+# more of the tile (JV 2026-07-12).
+Save-Tb 'add_virtuals' ($star + "  <g transform=`"translate(3.0 3.0) scale(0.79)`">`n" + (FourDiamonds $methodLight) + "`n  </g>")
+Save-Tb 'add_isclass'  ($star + "  <g transform=`"translate(3.0 3.0) scale(0.79)`">`n" + (FourDiamonds $P.methodFill) + "`n  </g>")
 
 # add_relation: like the inheritance glyph, but with the aggregation diamond
 # directly under the class box (the marker starts at the top -- JV 2026-07-12)
