@@ -502,7 +502,7 @@ The element icons speak one visual language, shared with the diagrams and the to
 | ![](../../src/qt/icons/classdiagram.svg) | class diagram | ![](../../src/qt/icons/sequencediagram.svg) | sequence diagram |
 | ![](../../src/qt/icons/actor.svg) | actor | ![](../../src/qt/icons/membermethodgroup.svg) | group (folder) |
 
-The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
+The extern class's **dashed outline** marks it as defined outside the model — the class diagrams draw extern-class boxes dashed for the same reason. The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
 
 **Members and methods** — the diamond colour is the *kind*:
 
