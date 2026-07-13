@@ -681,7 +681,7 @@ In order: **Add Class**, **Add Note** (both arm placement) · **Add Inheritance*
 
 `Open` · `Edit Attributes` · `Delete` · `Add ▸` (all of the above) · `Edit User Sections...` · `Edit Exception Specification...` · `Edit/Assign Context...` · `Change Line/Text Color...` · `Color Templates ▸` · `Auto Width` · `Show Method Arguments` · `Show Relation Names` · `Hide` / `Show Hidden` · `Select Classes...` · `Select Members & Methods...` · `Optimize Placement` · `Align ▸` · `Reorder Members & Methods...` · `Inherits From...` / `Inherited By...`.
 
-> **[FIGURE: Class-diagram context menu]** — the context menu open on a selected class shape, with the Add submenu expanded.
+![](images/Class_diagram_context_menu.png)
 
 ## Canvas keys
 
