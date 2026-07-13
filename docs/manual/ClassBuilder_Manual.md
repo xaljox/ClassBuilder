@@ -260,11 +260,17 @@ Right-click the model node ▸ `Add ▸ Class Diagram`, name it *Matrix Overview
 
 ![The Matrix Overview class diagram as exported by ClassBuilder (Export SVG). Diamonds mark owned (aggregation) relations; 1/* are the multiplicities.](images/cd-matrix-overview.svg)
 
-![A diagram view opens **floating** over the shell — this is the initial state of every diagram view.](images/cd-view.png)
+![](images/cd-view.png)
 
-![The same view **docked**: drag it onto an edge of the main window — here the right edge, giving the usual tree-beside-diagram split; the top and bottom edges split horizontally the same way.](images/Docked.png)
+A diagram view opens **floating** over the shell — this is the initial state of every diagram view.
 
-![Or **tabbed**: drop it onto the tree's tab bar and the views share the full window, one tab each.](images/Tabbed.png)
+![](images/Docked.png)
+
+The same view **docked**: drag it onto an edge of the main window — here the right edge, giving the usual tree-beside-diagram split; the top and bottom edges split horizontally the same way.
+
+![](images/Tabbed.png)
+
+Or **tabbed**: drop it onto the tree's tab bar and the views share the full window, one tab each.
 
 ## Step 8 — generate the source
 
@@ -965,9 +971,13 @@ Controls **which individual members and methods are visible** on a class shape. 
 
 The same class can show different features on different diagrams.
 
-![One class selected: the per-class picker, titled with the class name.](images/Select_MM_Class.png)
+![](images/Select_MM_Class.png)
 
-![Nothing selected: the diagram-wide tree.](images/Select_MM_CD.png)
+One class selected: the per-class picker, titled with the class name.
+
+![](images/Select_MM_CD.png)
+
+Nothing selected: the diagram-wide tree.
 
 ## Reorder Members & Methods
 
@@ -1046,13 +1056,21 @@ The generation twin of Read Source: **Save Modifications** (only classes changed
 
 Three generators of one family: `Add ▸ Virtual Methods` (`Ctrl+Shift+V`) and `Add ▸ IsClass Methods` (`Ctrl+Shift+S`) in the tree, Wrap Member Methods from a member's context menu. **Virtual Methods** exists in two situations:
 
-![On a **class**: the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click.](images/Add_Virtual_Class.png)
+![](images/Add_Virtual_Class.png)
 
-![On a **virtual method** of a base class it works top-down: the derived classes that do not override it yet — tick them and each receives the override with an empty body to fill in.](images/Add_Virtual_Method.png)
+On a **class**: the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click.
 
-![**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value). With **Filter** enabled on a multi relation, these IsX predicates are exactly what the filter iterator takes (chapter 12.6).](images/Add_IsClass.png)
+![](images/Add_Virtual_Method.png)
 
-![**Wrap Member Methods**, on a member whose type is a class: pick methods of the member's class and forwarding wrappers are generated on the containing class — the classic "expose the embedded object's interface" chore.](images/Wrap_Member_Methods.png)
+On a **virtual method** of a base class it works top-down: the derived classes that do not override it yet — tick them and each receives the override with an empty body to fill in.
+
+![](images/Add_IsClass.png)
+
+**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value). With **Filter** enabled on a multi relation, these IsX predicates are exactly what the filter iterator takes (chapter 12.6).
+
+![](images/Wrap_Member_Methods.png)
+
+**Wrap Member Methods**, on a member whose type is a class: pick methods of the member's class and forwarding wrappers are generated on the containing class — the classic "expose the embedded object's interface" chore.
 
 ## User Sections / Code dialogs
 
@@ -1060,13 +1078,21 @@ The six per-class user sections and the method-body editor both embed the code e
 
 The user-section editor pins the `//@START_USER`/`//@END_USER` marker bands above and below your text.
 
-![`Edit User Sections` shows all six regions of the class — three in the `.h`, three in the `.cpp` — in one dialog.](images/User_Sections.png)
+![](images/User_Sections.png)
 
-![The `Edit Section ▸` submenu jumps straight to one section.](images/Edit_US_Context_Menu.png)
+`Edit User Sections` shows all six regions of the class — three in the `.h`, three in the `.cpp` — in one dialog.
 
-![One section in its own editor.](images/Edit_User_Section.png)
+![](images/Edit_US_Context_Menu.png)
 
-![The method-body editor edits exactly the text between the `@CODE` markers.](images/Code_Editor_Method.png)
+The `Edit Section ▸` submenu jumps straight to one section:
+
+![](images/Edit_User_Section.png)
+
+One section in its own editor.
+
+![](images/Code_Editor_Method.png)
+
+The method-body editor edits exactly the text between the `@CODE` markers.
 
 The constructor's two-pane variant — initializer list above the body, divided by a splitter — has its own section in the next chapter.
 
@@ -1074,13 +1100,21 @@ The constructor's two-pane variant — initializer list above the body, divided 
 
 Launched **from the code editor** (method/constructor code dialogs, `Insert` menu), these insert correct code instead of making you type it. There are four, each with its own dialog: the **Iterator Wizard**, the **Type Variable Wizard**, the **Variable→Method() Wizard** and **Similar Lines**.
 
-![**Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.](images/Iterator_Wizzard.png)
+![](images/Iterator_Wizzard.png)
 
-![**Type Variable Wizard** — declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.](images/Type_Variable_Wizzard.png)
+**Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.
 
-![**Variable→Method() Wizard** — pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.](images/Variable-Method_Wizzard.png)
+![](images/Type_Variable_Wizzard.png)
 
-![**Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.](images/Similar_Lines_Wizzard.png)
+**Type Variable Wizard** — declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.
+
+![](images/Variable-Method_Wizzard.png)
+
+**Variable→Method() Wizard** — pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.
+
+![](images/Similar_Lines_Wizzard.png)
+
+**Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.
 
 
 # Reference: the code editor
