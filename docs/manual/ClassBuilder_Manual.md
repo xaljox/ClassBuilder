@@ -595,7 +595,7 @@ A class diagram shows selected classes as UML boxes with their inheritances, rel
 - **Class box**: name, then members / methods (which access levels appear is a per-diagram setting; which individual features appear is per-shape via `Select Members & Methods...`).
 - **Inheritance**: triangle-headed arrow to the base.
 - **Relation**: line with a **diamond on the owner side when owned** (aggregation); multiplicities `1`/`*` at the ends; the role names optionally shown (`Show Relation Names`).
-- **Dependency**: dashed arrow with a name and a stereotype (`<<uses>>`-style) — a modeled "uses" link that affects only includes/forward declarations in the generated code, not object structure.
+- **Dependency**: dashed arrow with a name and a stereotype (`<<uses>>`-style) — a documentation-only "uses" link; like Relation (Diagram Only), it changes nothing in the generated code.
 - **Relation (Diagram Only)**: looks like a relation but exists **only in the drawing** — nothing is added to the model and nothing is generated. Use it for documentation-only connections.
 - **Notes**: free-text boxes, attachable by connection points to other shapes.
 
@@ -850,13 +850,13 @@ Chapter 12 is the background; the dialog fields:
 
 ![](images/Find_Method_Dialog.png)
 
-Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the body is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
+Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the code body, is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
 
 ## Dependency
 
 ![](images/Dependency_Dialog.png)
 
-**Client Class** (the user) and **Supplier Class** (the used), the **Stereotype** text drawn between `<< >>` guillemets on the dashed arrow, and a **Name**. A dependency is modeled — it affects the include/forward-declaration emission for the client — but adds no members or relation code.
+**Client Class** (the user) and **Supplier Class** (the used), the **Stereotype** text drawn between `<< >>` guillemets on the dashed arrow, and a **Name**. Like Relation (Diagram Only), a dependency is drawing-only: nothing enters the model's code generation.
 
 ## Relation (Diagram Only)
 
