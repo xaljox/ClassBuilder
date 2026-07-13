@@ -976,13 +976,13 @@ Adds the full serialization scaffolding to an existing model that was created wi
 
 ## Read Source
 
-> **[FIGURE: Read source files dialog]** — the dialog titled "Read source files".
+![](images/Read_Source_Files.png)
 
 Non-modal progress dialog for source read-back: log pane, progress bar, **Read Modifications** (changed files only) vs **Read All**.
 
 ## Save Source
 
-> **[FIGURE: Save source files dialog]** — the dialog titled "Save source files".
+![](images/Save_Source_Files.png)
 
 The generation twin of Read Source: **Save Modifications** (only classes changed since the last write) vs **Save All**, a log pane — and the **Author & Note** field, whose text is stamped into each rewritten file's *Modifications* change log (the `@INSERT_MODIFICATIONS` block in the header comment). That is where the author initials next to each change line in generated headers come from.
 
