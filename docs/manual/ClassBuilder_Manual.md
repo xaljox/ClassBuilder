@@ -739,8 +739,9 @@ Three context-menu layout commands (each one undo step):
 
 - **Toolbar**: Add Lifeline, Add Note, Add Class (placement/dialog) · Delete · Undo / Redo · Zoom In / Out / Fit · Export SVG.
 
-> **[FIGURE: Sequence-diagram toolbar]** — cropped strip of the SD toolbar.
-> **[FIGURE: Sequence-diagram context menu]** — the context menu open on an activation, with the Add submenu expanded.
+![](images/SD_toolbar.png)
+
+![](images/SD_context_menu.png)
 - **Colors**: per-shape `Change Line/Text Color...`, plus the document-wide **Color Templates ▸** for the sequence-diagram defaults (lifeline, activation, signal and note line/text colors) — same mechanism as in class diagrams.
 - **Zoom & pan**: identical to class diagrams (`Ctrl`+wheel anchored at the cursor, `Ctrl+=`/`Ctrl+-`, Fit via toolbar or `Ctrl+0`, pan with plain scroll / middle-drag / scrollbars, pinch on trackpads).
 
