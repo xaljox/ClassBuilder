@@ -770,7 +770,7 @@ Every dialog, what it edits, and the fields that need explanation. (All dialogs 
 
 **Screenshot convention.** Every section below starts with a marker of the form **[FIGURE: *Title* dialog]**, where *Title* is the exact text in the dialog's **title bar** — capture that dialog (preferably filled with Matrix-model content) and insert the screenshot at the marker.
 
-The dialog is shown in the quick start (4.2).
+![](images/Class_Dialog.png)
 
 > **[FIGURE]** *One screenshot per dialog in this chapter, captured on Windows at 100% scale with realistic content from the Matrix model. Captions are given per dialog below.*
 
@@ -782,13 +782,13 @@ Name; **Source File** / **Include File** (output paths); **Template** (+ declara
 
 ## External Class
 
-> **[FIGURE: Extern Class dialog]** — the dialog titled "Extern Class".
+![](images/Extern_Class_Dialog.png)
 
 Name, template declaration/reference, **Struct**, **Suppress forward declaration** (for types that must not be forward-declared, e.g. typedefs), member prefix (used when generated code calls its getters/setters).
 
 ## Member
 
-The dialog is shown in the quick start (4.3).
+![](images/Member_Dialog.png)
 
 Type (searchable combo of all model types) + name (bare, no prefix); template reference for templated types; type shape: **Const, Mutable, Reference, Pointer, Pointer/Pointer, Const Pointer, Array [size], Bit Field [bits]**; **Serialize** (include in the generated `Serialize` body — with the member's *version*, chapter 13); **Delete** (emit `= delete`); access + **Static**; **Get method / Set method** (see below); **Initial Value** (becomes the constructor-initializer expression); Note.
 
@@ -796,7 +796,7 @@ Type (searchable combo of all model types) + name (bare, no prefix); template re
 
 ## Method
 
-> **[FIGURE: Method dialog]** — the dialog titled "Method".
+![](images/Method_Dialog.png)
 
 Return type + shape; name (combo remembers names used elsewhere — pick `Serialize` and the tool knows the convention); access + **Static**; **Virtual**, **Pure** (`= 0`), **Declare** / **Implement** (whether to emit the declaration and/or an implementation body — declare-only for hand-implemented specials), **Inline**, **Const**, **= delete**, **Dll Export**, **Calling Convention** (`__cdecl`, `__stdcall`, ... or free text); Note (emitted as the `@NOTE` comment above the method).
 
@@ -806,8 +806,9 @@ Return type + shape; name (combo remembers names used elsewhere — pick `Serial
 
 ## Constructor / Destructor
 
-> **[FIGURE: Constructor dialog]** — the dialog titled "Constructor".
-> **[FIGURE: Destructor dialog]** — the dialog titled "Destructor".
+![](images/Constructor_Dialog.png)
+
+![](images/Destructor_Dialog.png)
 
 Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention — plus the derived-arguments behaviour of chapter 4.5. Destructor: the same minus Explicit, plus **Virtual / Pure**.
 
@@ -815,19 +816,19 @@ The constructor's derived argument list and initializer list **re-derive automat
 
 ## Exception Specification
 
-> **[FIGURE: Exception Specification dialog]** — the dialog titled "Exception Specification".
+![](images/Exception_Specification_Dialog.png)
 
 Per method (context menu ▸ *Edit Exception Specification*): a master checkbox *"Method has an exception specification (throw clause)"*, and a two-list builder — pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add**/**Remove** them to compose the emitted `throw(...)` clause.
 
 ## Argument
 
-> **[FIGURE: Argument dialog]** — the dialog titled "Argument".
+![](images/Argument_Dialog.png)
 
 Type + shape (const/ref/pointer/array), name, **Default Value**, note. Reorder arguments by drag in the tree.
 
 ## Inheritance
 
-> **[FIGURE: Inherit dialog]** — the dialog titled "Inherit".
+![](images/Inherit_Dialog.png)
 
 Base class combo (Classes + Extern Classes), access (public/protected/private), **Virtual** inheritance, template reference (inherit `Base<int>`), note.
 
@@ -837,7 +838,7 @@ The **Base Classes / Derived Classes** context-menu items open read-only browser
 
 ## Relation
 
-The dialog is shown in the quick start (4.4).
+![](images/Relation_Dialog.png)
 
 Chapter 12 is the background; the dialog fields:
 
@@ -848,7 +849,7 @@ Chapter 12 is the background; the dialog fields:
 
 ## Find Method (on a relation)
 
-The dialog is shown in the quick start (4.6).
+![](images/Find_Method_Dialog.png)
 
 Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the body is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
 
@@ -903,7 +904,7 @@ Name, page size/orientation/scale, multi-page layout (1–16 pages), caption, no
 
 ## Sequence Diagram
 
-The dialog itself is shown in the sequence-diagram chapter (8.1).
+![](images/SD_Dialog.png)
 
 Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, `a.a.a`, `A.A.A`); **Message Name** options (argument types, argument names, scope). Per-message overrides exist on each signal's own dialog.
 
