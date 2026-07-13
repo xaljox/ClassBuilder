@@ -1151,11 +1151,13 @@ The `Insert` menu (also on the editor's right-click menu) carries the control-fl
 
 ## The constructor editor
 
-The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space — drag it to give either side more room. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
+The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space; the initial division is a best guess from how many lines each part has — the init pane fits its content (never below a few lines, never above 70% of the height) and the body takes the rest. Drag the splitter to change it. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
 
 ![](images/Constructor_Code_Editor.png)
 
-## Where it appears
+## Where the editor appears
+
+Everything in this chapter — indent behaviour, snippets, wizards — applies wherever the editor is embedded. The hosts, and the exact text each one edits:
 
 | Dialog | Edits |
 |-------------------------------|-----------------------------------------------|
