@@ -916,7 +916,7 @@ Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, 
 
 ## Select Classes
 
-> **[FIGURE: Select Classes dialog]** — opened from a class diagram's context menu.
+![](images/Select_Classes_Dialog.png)
 
 A checkbox list of **every class in the model**: tick to place a class on this diagram, untick to remove its shape. The bulk way to (re)compose a diagram — newly ticked classes are placed on free grid positions (run `Optimize Placement` afterwards).
 
@@ -929,14 +929,15 @@ Controls **which individual members and methods are visible** on a class shape (
 
 The same class can show different features on different diagrams.
 
-> **[FIGURE: Select Members & Methods — one class selected]** — the per-class picker, titled with the class name.
-> **[FIGURE: Select Members & Methods — nothing selected]** — the diagram-wide tree.
+![One class selected: the per-class picker, titled with the class name.](images/Select_MM_Class.png)
+
+![Nothing selected: the diagram-wide tree.](images/Select_MM_CD.png)
 
 ## Reorder Members & Methods
 
-> **[FIGURE: Reorder Members & Methods dialog]** — opened from the class-diagram context menu.
+![](images/Reorder_MM_Class.png)
 
-Reorders a class's members and methods by drag in a list — the same operation as row-dragging inside the class shape (chapter 7), convenient for long lists. The order is **model order**: it changes declaration order in the generated file.
+Reorders a class's members and methods with the **Move Up / Move Down** buttons. On the diagram itself the same reorder is a direct row-drag inside the class shape (chapter 7); the dialog is the button-driven variant, convenient for long lists. The order is **model order**: it changes declaration order in the generated file.
 
 ## Signal (message)
 
