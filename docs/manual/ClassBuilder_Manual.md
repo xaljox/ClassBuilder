@@ -770,7 +770,7 @@ Every dialog, what it edits, and the fields that need explanation. (All dialogs 
 
 **Screenshot convention.** Every section below starts with a marker of the form **[FIGURE: *Title* dialog]**, where *Title* is the exact text in the dialog's **title bar** — capture that dialog (preferably filled with Matrix-model content) and insert the screenshot at the marker.
 
-> **[FIGURE: Class dialog]** — the dialog titled "Class".
+The dialog is shown in the quick start (4.2).
 
 > **[FIGURE]** *One screenshot per dialog in this chapter, captured on Windows at 100% scale with realistic content from the Matrix model. Captions are given per dialog below.*
 
@@ -788,7 +788,7 @@ Name, template declaration/reference, **Struct**, **Suppress forward declaration
 
 ## Member
 
-> **[FIGURE: Member dialog]** — the dialog titled "Member".
+The dialog is shown in the quick start (4.3).
 
 Type (searchable combo of all model types) + name (bare, no prefix); template reference for templated types; type shape: **Const, Mutable, Reference, Pointer, Pointer/Pointer, Const Pointer, Array [size], Bit Field [bits]**; **Serialize** (include in the generated `Serialize` body — with the member's *version*, chapter 13); **Delete** (emit `= delete`); access + **Static**; **Get method / Set method** (see below); **Initial Value** (becomes the constructor-initializer expression); Note.
 
@@ -837,7 +837,7 @@ The **Base Classes / Derived Classes** context-menu items open read-only browser
 
 ## Relation
 
-> **[FIGURE: Relation dialog]** — the dialog titled "Relation".
+The dialog is shown in the quick start (4.4).
 
 Chapter 12 is the background; the dialog fields:
 
@@ -848,7 +848,7 @@ Chapter 12 is the background; the dialog fields:
 
 ## Find Method (on a relation)
 
-> **[FIGURE: Find Method dialog]** — the find-method creation dialog, opened from a multi relation.
+The dialog is shown in the quick start (4.6).
 
 Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the body is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
 
@@ -1409,7 +1409,7 @@ reply:    {"ok":true,"result":{...}}      or      {"ok":false,"error":"<message>
 
 Commands execute on the GUI thread against the **live model** — every mutation follows the same code path as the corresponding GUI action, including undo recording and view refresh. You *watch* the model change while a script drives it.
 
-This is a first-class interface, not an afterthought: it is how bulk migrations are done on ClassBuilder's own model, and it is deliberately friendly to **AI systems** — an AI agent that can open a TCP socket can inspect and refactor a live model conversationally (`list_commands` gives it the full vocabulary to discover). Most of this manual's figures and its whole quick-start model were produced through this interface. The commands have grown on need — when a workflow needs a missing command, adding one is routine (there can be gaps; `list_commands` on your build is the ground truth). The complete per-command reference with all parameters lives in **`tools/PIPE_API.md`**; below is the map plus worked examples.
+This is a first-class interface, not an afterthought: it is how bulk migrations are done on ClassBuilder's own model, and it is deliberately friendly to **AI systems** — an AI agent that can open a TCP socket can inspect and refactor a live model conversationally (`list_commands` gives it the full vocabulary to discover). The quick-start model and the diagram exports in this manual were produced through this interface. The commands have grown on need — when a workflow needs a missing command, adding one is routine (there can be gaps; `list_commands` on your build is the ground truth). The complete per-command reference with all parameters lives in **`tools/PIPE_API.md`**; below is the map plus worked examples.
 
 ## Connecting
 
@@ -1448,7 +1448,7 @@ print(cb("list_classes"))
 | Groups | `add_meta_group`, `add_class_group`, `list_groups`, `move_class`, `move_class_group`, in-class member/method groups |
 | Class diagrams | `add_class_diagram` (with classes + auto-place), `add_class_to_diagram`, `show_class_members/methods/features`, `auto_place_diagram` |
 | Sequence diagrams | `add_actor`, `add_sequence_diagram`, `add_actor_lifeline`, `add_class_lifeline`, `add_root_child_activation`, `add_child_activation`, `add_signal`, signal setters, `optimize_placement`, `space_lifelines`, **`add_call_trace`** (generate a whole SD from a method's call tree) |
-| Diagram views | `open_diagram` (open the GUI view), `export_diagram_svg` (vector export — this manual's diagram figures) |
+| Diagram views | `open_diagram` (open the GUI view), `export_diagram_svg` (vector export, tight-cropped on request) |
 | Source | `write_source` (regenerate files + save the model), `read_source` (fold disk edits back in) |
 
 ## Worked examples (real requests)
@@ -1483,7 +1483,7 @@ Generate sources and export a figure:
 {"cmd":"write_source","params":{"modified_only":false}}
 → {"ok":true,"result":{"modified_only":false,"warnings":0,"errors":0}}
 
-{"cmd":"export_diagram_svg","params":{"diagram":"Matrix Overview","path":"docs/images/cd.svg"}}
+{"cmd":"export_diagram_svg","params":{"diagram":"Matrix Overview","path":"docs/images/cd.svg","tight":true,"margin":50}}
 → {"ok":true,"result":{"diagram":"Matrix Overview","kind":"class_diagram","path":"docs/images/cd.svg"}}
 ```
 
