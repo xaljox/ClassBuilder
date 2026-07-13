@@ -1015,7 +1015,11 @@ Two related dialogs share this ground: **Edit Attributes on the model node** ope
 
 ![The DataModel dialog — Edit Attributes on the model node.](images/Datamodel_Dialog.png)
 
-Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version — chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` — two buttons each open an editor for the template (placeholders for file name, date, author, purpose; the `@INSERT_MODIFICATIONS` marker keeps a per-file change log), applied to the header comment of every generated file of that kind; **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF).
+Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version — chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` — two buttons each open an editor for the template, applied to the header comment of every generated file of that kind (see below); **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF).
+
+![](images/Comment_Header.png)
+
+The comment-header editor — the same editor serves the `.h` and the `.cpp` template. The text is free-form; the placeholders (file name, date, author, purpose) are filled in per generated file, and the `@INSERT_MODIFICATIONS(* )` marker is where each Write Source stamps its change-log line (the *Author & Note* text of the Save Source dialog).
 
 ![Project Settings — Project ▸ Settings...](images/Project_Settings_Dialog.png)
 
