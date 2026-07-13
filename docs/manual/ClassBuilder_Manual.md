@@ -885,7 +885,7 @@ Name + note. (MemberAndMethodGroups — in-class folders — are created from th
 
 ## Context — define and assign
 
-> **[FIGURE: Edit Context dialog]** — the context-declaration editor, opened on the model node.
+![](images/Edit_Context.png)
 
 A **context** is a named wrapper of free-form text: for every element assigned to it, the text you define is emitted *before* and *after* the generated declaration (`.h`) and implementation (`.cpp`). Wrapping classes or methods in `#ifdef`/`#endif` to compile them in or out of a build is one common use — but any bracketing text works: `#pragma` push/pop pairs, compiler-specific attributes, warning suppressions. Two dialogs:
 
@@ -894,7 +894,7 @@ A **context** is a named wrapper of free-form text: for every element assigned t
 
 Typical use: feature flags (`FEATURE_X`), platform sections, debug-only helpers, or pragma/warning brackets — modeled once, consistently emitted, instead of hand-maintained preprocessor text scattered through user regions.
 
-> **[FIGURE: Assign Context dialog]** — on a class: assigned list left, available declarations right, Add/Remove between. Caption: "Contexts wrap the generated code of assigned elements in the bracketing text you define."
+![Contexts wrap the generated code of assigned elements in the bracketing text you define.](images/Assign_Context.png)
 
 ## Actor
 
