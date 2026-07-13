@@ -986,7 +986,7 @@ Non-modal progress dialog for source read-back: log pane, progress bar, **Read M
 
 The generation twin of Read Source: **Save Modifications** (only classes changed since the last write) vs **Save All**, a log pane — and the **Author & Note** field, whose text is stamped into each rewritten file's *Modifications* change log (the `@INSERT_MODIFICATIONS` block in the header comment). That is where the author initials next to each change line in generated headers come from.
 
-## Virtual Methods / IsClass Methods
+## Virtual Methods / IsClass Methods / Wrap Member Methods
 
 
 Two generators, both on the `Add ▸` menu. **Virtual Methods** exists in two situations. On a **class**, it lists the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click:
