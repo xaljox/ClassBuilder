@@ -1009,7 +1009,7 @@ On a **virtual method** of a base class, it works top-down: it lists the derived
 
 ![](images/Edit_User_Section.png)
 
-> **[FIGURE: Method code editor]** — the method-body editor on a Matrix constructor body.
+![](images/Code_Editor_Method.png)
 
 The six per-class user sections and the method-body editor both embed the code editor — see the next chapter. The body editor edits exactly the text between the `@CODE` markers; the user-section editor pins the `//@START_USER`/`//@END_USER` marker bands above and below your text.
 
@@ -1023,7 +1023,7 @@ Launched **from the code editor** (method/constructor code dialogs), these inser
 - **Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.
 - **Wrap Member Methods** — for a member whose type is a class: pick methods of that class and forwarding wrappers are generated on the containing class (the classic "expose the embedded object's interface" chore, generated).
 
-> **[FIGURE: Iterator Wizard dialog]** — the iterator-insertion wizard, opened from the code editor.
+![](images/Iterator_Wizzard.png)
 > **[FIGURE: Type Variable Wizard dialog]** — the local-variable declaration wizard.
 > **[FIGURE: Variable->Method() Wizard dialog]** — the call-insertion wizard.
 > **[FIGURE: Similar Lines dialog]** — the similar-lines browser.
