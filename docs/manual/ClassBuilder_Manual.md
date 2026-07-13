@@ -68,7 +68,7 @@ This manual writes every shortcut in **one notation only — the Windows/Linux f
 
 Two things make this safe to rely on: ClassBuilder's menus and tooltips always display the binding that is active **on your platform** (they are authoritative when in doubt), and mouse gestures (click, drag, wheel, middle-drag) are identical everywhere.
 
-> **Figures.** Screenshots in this manual show ClassBuilder on Windows 11. Diagram figures are SVG exports produced by ClassBuilder itself (via `export_diagram_svg`, chapter 16). Where a figure is not yet captured, a boxed **[FIGURE]** note describes exactly what to capture and the intended caption.
+> **Figures.** Screenshots in this manual show ClassBuilder on Windows 11. Diagram figures are SVG exports produced by ClassBuilder itself (via `export_diagram_svg`, chapter 16).
 
 # Concepts and terminology
 
