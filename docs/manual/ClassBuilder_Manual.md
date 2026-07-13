@@ -920,17 +920,17 @@ Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, 
 
 A checkbox list of **every class in the model**: tick to place a class on this diagram, untick to remove its shape. The bulk way to (re)compose a diagram — newly ticked classes are placed on free grid positions (run `Optimize Placement` afterwards).
 
-## Select Members & Methods / Class Shape
+## Select Members & Methods
 
 Controls **which individual members and methods are visible** on a class shape (within what the diagram's access-level flags allow). The context-menu action comes in two tastes, depending on the selection:
 
-- **One class selected**: the **Class Shape** dialog — two checkbox lists, the class's members and methods, each with Select All / Unselect All; ticked items are shown on *this* shape. (`Open` / `Edit Attributes` on a class shape is something else: it opens the ordinary Class dialog of 9.1, exactly as in the tree.)
+- **One class selected**: a per-class picker, titled with the class name — two checkbox lists, the class's members and methods, each with Select All / Unselect All; ticked items are shown on *this* shape. (`Open` / `Edit Attributes` on a class shape is something else: it opens the ordinary Class dialog of 9.1, exactly as in the tree.)
 - **Nothing selected**: the **diagram-wide picker** — a checkbox tree of every class shape with its members and methods beneath; OK/**Apply** commit, Cancel rolls everything back.
 
 The same class can show different features on different diagrams.
 
-> **[FIGURE: Class Shape dialog]** — one class selected.
-> **[FIGURE: Select Members & Methods dialog]** — nothing selected: the diagram-wide tree.
+> **[FIGURE: Select Members & Methods — one class selected]** — the per-class picker, titled with the class name.
+> **[FIGURE: Select Members & Methods — nothing selected]** — the diagram-wide tree.
 
 ## Reorder Members & Methods
 
