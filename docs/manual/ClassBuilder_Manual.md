@@ -802,9 +802,9 @@ Return type + shape; name (combo remembers names used elsewhere — pick `Serial
 
 ## Constructor / Destructor
 
-![](images/Constructor_Dialog.png)
+![The Constructor dialog.](images/Constructor_Dialog.png)
 
-![](images/Destructor_Dialog.png)
+![The Destructor dialog.](images/Destructor_Dialog.png)
 
 Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention — plus the derived-arguments behaviour of chapter 4.5. Destructor: the same minus Explicit, plus **Virtual / Pure**.
 
@@ -947,9 +947,9 @@ Name (the displayed call), label/guard (`[...]` — the `*` clause conventionall
 
 ## LifeLine / Note dialogs
 
-![](images/Lifeline_Dialog.png)
+![The LifeLine dialog.](images/Lifeline_Dialog.png)
 
-![](images/Note_Dialog.png)
+![The Note dialog.](images/Note_Dialog.png)
 
 LifeLine: the represented class/actor, auto-width. Note (both diagram kinds): text, font height, and "force to all" (apply the size everywhere).
 
@@ -957,8 +957,9 @@ LifeLine: the represented class/actor, auto-width. Note (both diagram kinds): te
 
 Two related dialogs share this ground: **Edit Attributes on the model node** opens the "DataModel" dialog (the model's structural properties), while **Project ▸ Settings...** opens "Project Settings" (working preferences: the **Undo stack** depth, **Additional Allowed** identifier characters, **Comment Initial Code**, and the Method Name / Similar Lines lists). The fields below are described together.
 
-![](images/Datamodel_Dialog.png)
-![](images/Project_Settings_Dialog.png)
+![The DataModel dialog — Edit Attributes on the model node.](images/Datamodel_Dialog.png)
+
+![Project Settings — Project ▸ Settings...](images/Project_Settings_Dialog.png)
 
 Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version — chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` (with placeholders for file name, date, author, purpose — the `@INSERT_MODIFICATIONS` marker keeps a per-file change log); **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF); **Undo stack** depth — **default 10** steps, raise it here if you want deeper undo history; **Additional Allowed** identifier characters; **Comment Initial Code** (the TODO line seeded into new method bodies); Method Name List / Similar Lines List (name suggestions and the similar-lines tool's pattern list).
 
@@ -989,21 +990,15 @@ The generation twin of Read Source: **Save Modifications** (only classes changed
 ## Virtual Methods / IsClass Methods / Wrap Member Methods
 
 
-Two generators, both on the `Add ▸` menu. **Virtual Methods** exists in two situations. On a **class**, it lists the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click:
+Three generators of one family, all on the `Add ▸` menu. **Virtual Methods** exists in two situations:
 
-![](images/Add_Virtual_Class.png)
+![On a **class**: the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click.](images/Add_Virtual_Class.png)
 
-On a **virtual method** of a base class, it works top-down: it lists the derived classes that do not override the method yet — tick them and each receives the override with an empty body to fill in:
+![On a **virtual method** of a base class it works top-down: the derived classes that do not override it yet — tick them and each receives the override with an empty body to fill in.](images/Add_Virtual_Method.png)
 
-![](images/Add_Virtual_Method.png)
+![**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value).](images/Add_IsClass.png)
 
-**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value):
-
-![](images/Add_IsClass.png)
-
-A third generator of the same family lives on a **member whose type is a class** (with methods): **Wrap Member Methods** picks methods of the member's class and generates forwarding wrappers on the containing class — the classic "expose the embedded object's interface" chore:
-
-![](images/Wrap_Member_Methods.png)
+![**Wrap Member Methods**, on a member whose type is a class: pick methods of the member's class and forwarding wrappers are generated on the containing class — the classic "expose the embedded object's interface" chore.](images/Wrap_Member_Methods.png)
 
 ## User Sections / Code dialogs
 
