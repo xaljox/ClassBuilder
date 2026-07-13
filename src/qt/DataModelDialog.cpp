@@ -62,6 +62,13 @@ DataModelDialog::DataModelDialog(DataModel* pDataModel,
 {
     _ui->setupUi(this);
 
+    // The Comment Header group holds only two narrow buttons; without a
+    // minimum the box shrinks below its own title and clips it. Derive the
+    // minimum from the title text so it survives any font / UI scale.
+    _ui->groupCommentHeader->setMinimumWidth(
+        _ui->groupCommentHeader->fontMetrics().horizontalAdvance(
+            _ui->groupCommentHeader->title()) + 24);
+
     // --- controls <- model -------------------------------------------------
     _ui->lineEditName->setText(toQ(_pDataModel->GetName()));
     _ui->lineEditFile->setText(toQ(_pDataModel->GetHFile()));
