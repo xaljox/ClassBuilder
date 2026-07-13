@@ -804,11 +804,11 @@ Return type + shape; name (combo remembers names used elsewhere — pick `Serial
 
 ![The Constructor dialog.](images/Constructor_Dialog.png)
 
+Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention — plus the derived-arguments behaviour of chapter 4.5. The derived argument list and initializer list **re-derive automatically** when the class structure changes — adding/removing a member or changing a base updates the constructor's arguments and its `_x(value)` initializer entries (from each member's *Initial Value*). If you edit an initializer by hand in the constructor dialog, your text wins until the next structural change re-derives that entry.
+
 ![The Destructor dialog.](images/Destructor_Dialog.png)
 
-Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention — plus the derived-arguments behaviour of chapter 4.5. Destructor: the same minus Explicit, plus **Virtual / Pure**.
-
-The constructor's derived argument list and initializer list **re-derive automatically** when the class structure changes — adding/removing a member or changing a base updates the constructor's arguments and its `_x(value)` initializer entries (from each member's *Initial Value*). If you edit an initializer by hand in the constructor dialog, your text wins until the next structural change re-derives that entry.
+Destructor: the same options minus Explicit, plus **Virtual / Pure**.
 
 ## Exception Specification
 
