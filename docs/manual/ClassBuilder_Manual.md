@@ -870,6 +870,13 @@ The drawing-only counterpart of the Relation dialog: both ends get a **Class**, 
 
 Name, serialize mapping (**None** or **Int** — how the unknown type is streamed), and the **Declaration** text block: the actual `typedef`/`enum`/`struct` C++ text that gets emitted into the master include.
 
+With Serialize on, a serialized member of such a type must be streamable: map the type to **Int** when it converts to an integer. When it cannot (mapping **None**), supply the two stream operators for the type yourself — for example in `StdAfx.h` or a user section:
+
+```cpp
+CbArchive& operator <<(CbArchive& archive, const TypeName& typeName);
+CbArchive& operator >>(CbArchive& archive, TypeName& typeName);
+```
+
 ## Group / Meta Group
 
 ![](images/Group_Dialog.png)
