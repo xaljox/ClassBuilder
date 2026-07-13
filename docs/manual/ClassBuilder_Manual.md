@@ -964,7 +964,7 @@ Model name; **Master Include File**; **Namespace** (wrap all generated code); **
 
 ## Add Serialization to project
 
-> **[FIGURE: Add Serialization to project dialog]** — Project ▸ Add Serialize...
+![](images/Add_Serialize.png)
 
 Adds the full serialization scaffolding to an existing model that was created without it: you supply the **Document Class Name**, and the wizard creates the `CbObject` extern, the document class, the document-object root, their relation, and the `SerializeMembersOnly` machinery (chapter 13.1). One-way — once a model has Serialize, it keeps it.
 
@@ -988,15 +988,28 @@ The generation twin of Read Source: **Save Modifications** (only classes changed
 
 ## Virtual Methods / IsClass Methods
 
-> **[FIGURE: Virtual Methods dialog]** — the override picker.
-> **[FIGURE: IsClass Methods dialog]** — the type-predicate generator.
 
-Two generators: *Virtual Methods* lists every virtual of the base classes so you can add overrides with matching signatures in one click. *IsClass Methods* adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value).
+Two generators, both on the `Add ▸` menu. **Virtual Methods** exists in two situations. On a **class**, it lists the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click:
+
+![](images/Add_Virtual_Class.png)
+
+On a **method**, it works the other way around: it offers the base classes that do not carry the method yet, and pushes the virtual declaration *up* into the ones you tick:
+
+![](images/Add_Virtual_Method.png)
+
+**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value):
+
+![](images/Add_IsClass.png)
 
 ## User Sections / Code dialogs
 
+![Edit User Sections shows all six regions of the class — three in the `.h`, three in the `.cpp` — in one dialog.](images/User_Sections.png)
+
+![The `Edit Section ▸` submenu jumps straight to one section.](images/Edit_US_Context_Menu.png)
+
+![](images/Edit_User_Section.png)
+
 > **[FIGURE: Method code editor]** — the method-body editor on a Matrix constructor body.
-> **[FIGURE: User Sections editor]** — one of the six per-class user sections.
 
 The six per-class user sections and the method-body editor both embed the code editor — see the next chapter. The body editor edits exactly the text between the `@CODE` markers; the user-section editor pins the `//@START_USER`/`//@END_USER` marker bands above and below your text.
 
