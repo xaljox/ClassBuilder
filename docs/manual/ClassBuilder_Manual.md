@@ -993,7 +993,7 @@ Two generators, both on the `Add ▸` menu. **Virtual Methods** exists in two si
 
 ![](images/Add_Virtual_Class.png)
 
-On a **method**, it works the other way around: it offers the base classes that do not carry the method yet, and pushes the virtual declaration *up* into the ones you tick:
+On a **virtual method** of a base class, it works top-down: it lists the derived classes that do not override the method yet — tick them and the override is pushed down into each:
 
 ![](images/Add_Virtual_Method.png)
 
