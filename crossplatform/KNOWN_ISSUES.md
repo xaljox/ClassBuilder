@@ -175,21 +175,26 @@ limitation the forced-`xcb` guard exists for.
 **Bonus:** a pure Xorg session has no XWayland X-selection bridge, so it should also
 sidestep **item 2** (the intermittent XWayland clipboard use-after-free crash).
 
-**Future / optional — NOT needed to fix this:** mutter (GNOME's compositor) **>= 47**
-adds the `xwayland-native-scaling` experimental feature, which renders XWayland
-clients at native resolution. That would buy exactly one thing: the ability to run a
-**Wayland desktop session** while CB (still on `xcb`) renders sharp. The Xorg session
-above already gives sharp icons *and* draggable floats, so this is a convenience, not
-a fix — don't upgrade the box for CB's sake.
+**The Xorg session is INTERIM — GNOME is retiring the X11 session** (removal landed
+around GNOME 49). So on a newer GNOME this fix can simply disappear, and the blur
+returns. The durable replacement needs **no CB change**: mutter **>= 47** adds the
+`xwayland-native-scaling` experimental feature, which renders XWayland clients at
+native resolution — so a **Wayland session** gives Qt/xcb DPR 2 (sharp) while XWayland
+still supplies the X11 window semantics CB's floating docks need. It is **off by
+default**, so after such an upgrade the blur looks like a regression when it is really
+one line:
 
-Mechanically it needs a **distro release upgrade**, not an `apt upgrade`: within an
-Ubuntu release GNOME stays on its shipped major and only gets point updates, so 24.04
-is capped at mutter **46.x** (`apt policy libmutter-14-0` → candidate 46.2; no
-`libmutter-15/16` exists in the archive at all — the package name encodes the major:
-`libmutter-14-0` *is* mutter 46). Accordingly GNOME 46's
-`org.gnome.mutter experimental-features` schema offers only `scale-monitor-framebuffer`,
-`kms-modifiers`, `autoclose-xwayland`, `variable-refresh-rate`,
-`x11-randr-fractional-scaling` — no `xwayland-native-scaling`.
+```
+gsettings set org.gnome.mutter experimental-features \
+    "['scale-monitor-framebuffer', 'xwayland-native-scaling']"
+```
+
+Not available on GNOME/mutter **46** (this box): its `experimental-features` schema
+offers only `scale-monitor-framebuffer`, `kms-modifiers`, `autoclose-xwayland`,
+`variable-refresh-rate`, `x11-randr-fractional-scaling`. And it cannot be had via
+`apt` — within an Ubuntu release GNOME stays on its shipped major, so 24.04 is capped
+at mutter **46.x** (the package name encodes the major: `libmutter-14-0` *is* mutter
+46; no `libmutter-15/16` exists in the archive). It takes a distro release upgrade.
 
 ## Working rule this file encodes
 
