@@ -553,6 +553,8 @@ Right-click any node (an unselected node is selected first). The full menu, top 
 11. **New Sub Window** — a second, *scoped* tree rooted at this node, as its own dockable view.
 12. **Delete Multiple...** — bulk delete (below).
 
+Which entries are enabled follows from the clicked node — the same gate as the toolbar buttons. Below, the menu on a class, with the Add submenu open:
+
 ![](images/Tree_context_menu.png)
 
 ## Filters
@@ -741,9 +743,12 @@ Three context-menu layout commands (each one undo step):
 
 ![](images/SD_toolbar.png)
 
-![](images/SD_context_menu.png)
 - **Colors**: per-shape `Change Line/Text Color...`, plus the document-wide **Color Templates ▸** for the sequence-diagram defaults (lifeline, activation, signal and note line/text colors) — same mechanism as in class diagrams.
 - **Zoom & pan**: identical to class diagrams (`Ctrl`+wheel anchored at the cursor, `Ctrl+=`/`Ctrl+-`, Fit via toolbar or `Ctrl+0`, pan with plain scroll / middle-drag / scrollbars, pinch on trackpads).
+
+The context menu serves the whole canvas; entries enable per selection, exactly like the toolbar buttons. With nothing selected, the placement and diagram-level actions are what remains:
+
+![](images/SD_context_menu.png)
 
 ## Canvas keys
 
