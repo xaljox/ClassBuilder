@@ -1072,7 +1072,7 @@ The constructor's two-pane variant — initializer list above the body, divided 
 
 ## Code-editing helper wizards
 
-Launched **from the code editor** (method/constructor code dialogs, `Insert` menu), these insert correct code instead of making you type it.
+Launched **from the code editor** (method/constructor code dialogs, `Insert` menu), these insert correct code instead of making you type it. There are four, each with its own dialog: the **Iterator Wizard**, the **Type Variable Wizard**, the **Variable→Method() Wizard** and **Similar Lines**.
 
 ![**Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.](images/Iterator_Wizzard.png)
 
