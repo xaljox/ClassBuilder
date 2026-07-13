@@ -812,9 +812,11 @@ Destructor: the same options minus Explicit, plus **Virtual / Pure**.
 
 ## Exception Specification
 
+Per method: context menu ▸ *Edit Exception Specification*.
+
 ![](images/Exception_Specification_Dialog.png)
 
-Per method (context menu ▸ *Edit Exception Specification*): a master checkbox *"Method has an exception specification (throw clause)"*, and a two-list builder — pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add**/**Remove** them to compose the emitted `throw(...)` clause.
+A master checkbox *"Method has an exception specification (throw clause)"*, and a two-list builder — pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add**/**Remove** them to compose the emitted `throw(...)` clause.
 
 ## Argument
 
@@ -848,9 +850,11 @@ Chapter 12 is the background; the dialog fields:
 
 ## Find Method (on a relation)
 
+Created on a **multi relation**: context menu of the relation node.
+
 ![](images/Find_Method_Dialog.png)
 
-Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the code body, is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
+The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the code body, is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
 
 ## Dependency
 
@@ -916,6 +920,8 @@ Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, 
 
 ## Select Classes
 
+From the class diagram's context menu.
+
 ![](images/Select_Classes_Dialog.png)
 
 A checkbox list of **every class in the model**: tick to place a class on this diagram, untick to remove its shape. The bulk way to (re)compose a diagram — newly ticked classes are placed on free grid positions (run `Optimize Placement` afterwards).
@@ -934,6 +940,8 @@ The same class can show different features on different diagrams.
 ![Nothing selected: the diagram-wide tree.](images/Select_MM_CD.png)
 
 ## Reorder Members & Methods
+
+From the class-diagram context menu, on a selected class.
 
 ![](images/Reorder_MM_Class.png)
 
