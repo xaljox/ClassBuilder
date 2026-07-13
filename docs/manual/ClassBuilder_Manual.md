@@ -592,7 +592,7 @@ A class diagram shows selected classes as UML boxes with their inheritances, rel
 
 ## Reading the diagram
 
-- **Class box**: name, then members / methods (which access levels appear is a per-diagram setting; which individual features appear is per-shape via `Select Members & Methods...`).
+- **Class box**: name, then members / methods. The diagram's auto-add setting (its dialog) decides which access levels appear when a class is *first placed*; after that, which individual features appear is per-shape via `Select Members & Methods...`.
 - **Inheritance**: triangle-headed arrow to the base.
 - **Relation**: line with a **diamond on the owner side when owned** (aggregation); multiplicities `1`/`*` at the ends; the role names optionally shown (`Show Relation Names`).
 - **Dependency**: dashed arrow with a name and a stereotype (`<<uses>>`-style) — a documentation-only "uses" link; like Relation (Diagram Only), it changes nothing in the generated code.
@@ -922,7 +922,7 @@ A checkbox list of **every class in the model**: tick to place a class on this d
 
 ## Select Members & Methods
 
-Controls **which individual members and methods are visible** on a class shape (within what the diagram's access-level flags allow). The context-menu action comes in two tastes, depending on the selection:
+Controls **which individual members and methods are visible** on a class shape. (The diagram's auto-add flags only seed the initial set when a class is placed — they put no limit on what you pick here.) The context-menu action comes in two tastes, depending on the selection:
 
 - **One class selected**: a per-class picker, titled with the class name — two checkbox lists, the class's members and methods, each with Select All / Unselect All; ticked items are shown on *this* shape. (`Open` / `Edit Attributes` on a class shape is something else: it opens the ordinary Class dialog of 9.1, exactly as in the tree.)
 - **Nothing selected**: the **diagram-wide picker** — a checkbox tree of every class shape with its members and methods beneath; OK/**Apply** commit, Cancel rolls everything back.
