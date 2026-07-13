@@ -675,7 +675,7 @@ Zoom ranges from 0.1× to 32×; the status bar's X/Y fields track the model coor
 
 In order: **Add Class**, **Add Note** (both arm placement) · **Add Inheritance**, **Add Relation**, **Add Relation (Diagram Only)**, **Add Dependency** (enabled per selection) · **Add Member / Method / Constructor / Argument / Virtual Methods / IsClass Methods** (enabled when a single suitable target is selected) · **Align** dropdown (≥ 2 alignable) · **Delete** (any selection) · **Undo / Redo** · **Zoom In / Zoom Out / Fit** · **Export SVG**.
 
-> **[FIGURE: Class-diagram toolbar]** — cropped strip of the CD toolbar in the order above.
+![The CD toolbar: the Add buttons (greyed when not legal on the selection), the align dropdown, Delete, Undo/Redo, zoom in/out/fit, and Export SVG.](images/Class_diagram_toolbar.png)
 
 ## The CD context menu
 
