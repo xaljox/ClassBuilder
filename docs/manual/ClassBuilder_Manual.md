@@ -766,15 +766,11 @@ A power feature for documentation: **call traces**. Via the command interface (`
 
 # Reference: dialogs
 
-Every dialog, what it edits, and the fields that need explanation. (All dialogs end with OK/Cancel; changes are undoable model edits.)
-
-**Screenshot convention.** Every section below starts with a marker of the form **[FIGURE: *Title* dialog]**, where *Title* is the exact text in the dialog's **title bar** — capture that dialog (preferably filled with Matrix-model content) and insert the screenshot at the marker.
-
-![](images/Class_Dialog.png)
-
-> **[FIGURE]** *One screenshot per dialog in this chapter, captured on Windows at 100% scale with realistic content from the Matrix model. Captions are given per dialog below.*
+Every dialog, what it edits, and the fields that need explanation. The screenshots show each dialog filled with Matrix-model content. (All dialogs end with OK/Cancel; changes are undoable model edits.)
 
 ## Class
+
+![](images/Class_Dialog.png)
 
 Name; **Source File** / **Include File** (output paths); **Template** (+ declaration `template<class T>` and reference `<T>`); properties: **Replace** (generate the replace constructor — chapter 15), **Dll Export**, **Serialize** (chapter 13; locking rules below), **Struct** (emit `struct`), **Relation Macros Last** (move the relation macro block to the end of the class declaration); **Member Prefix** (per-class override of the model default); Note.
 
