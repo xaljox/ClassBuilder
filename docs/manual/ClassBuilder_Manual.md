@@ -502,7 +502,7 @@ The element icons speak one visual language, shared with the diagrams and the to
 | ![](../../src/qt/icons/classdiagram.svg) | class diagram | ![](../../src/qt/icons/sequencediagram.svg) | sequence diagram |
 | ![](../../src/qt/icons/actor.svg) | actor | ![](../../src/qt/icons/membermethodgroup.svg) | group (folder) |
 
-The extern class's **dashed outline** marks it as defined outside the model — the class diagrams draw extern-class boxes dashed for the same reason. The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
+The extern class is the class square without the yellow relations tab — an extern class is declared outside the model, so it has no generated relations. The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
 
 **Members and methods** — the diamond colour is the *kind*:
 
@@ -524,11 +524,11 @@ The fill tells the body state — an untouched method keeps its place's shade on
 
 `virtual` and `= delete` are not on the icon: the tree paints those keywords in magenta in the signature text itself.
 
-**Relations** — the arrow encodes the relation on the node it hangs under. Heads: one = Single, two = Multi. Colour: grey = plain association, black = owned (aggregation), magenta = critical, red = critical **and** owned. The box marks the side: yellow box at the bottom = the *from* (active) side pointing at its targets; blue box at the top = the *to* (passive) side being pointed at. Static relations draw thicker, with a wider box:
+**Relations** — the arrow encodes the relation on the node it hangs under. Heads: one = Single, two = Multi. Colour: grey = plain association, black = owned (aggregation), magenta = critical, red = critical **and** owned. The box marks the side: yellow box at the bottom = the *from* (active) side pointing at its targets; blue box at the top = the *to* (passive) side being pointed at. Static relations draw thicker, with a wider box. Each pair below shows the *from* and *to* icon of the kind:
 
-| ![](../../src/qt/icons/single_act.svg) | ![](../../src/qt/icons/multi_act.svg) | ![](../../src/qt/icons/owned_multi_act.svg) | ![](../../src/qt/icons/cr_multi_act.svg) | ![](../../src/qt/icons/cr_owned_multi_act.svg) | ![](../../src/qt/icons/static_multi_act.svg) | ![](../../src/qt/icons/multi_pas.svg) |
-|------|------|------|------|------|------|------|
-| single | multi | owned | critical | critical + owned | static | *to*-side (pas) |
+| ![](../../src/qt/icons/single_act.svg) ![](../../src/qt/icons/single_pas.svg) | ![](../../src/qt/icons/multi_act.svg) ![](../../src/qt/icons/multi_pas.svg) | ![](../../src/qt/icons/owned_multi_act.svg) ![](../../src/qt/icons/owned_multi_pas.svg) | ![](../../src/qt/icons/cr_multi_act.svg) ![](../../src/qt/icons/cr_multi_pas.svg) | ![](../../src/qt/icons/cr_owned_multi_act.svg) ![](../../src/qt/icons/cr_owned_multi.svg) | ![](../../src/qt/icons/static_multi_act.svg) ![](../../src/qt/icons/static_multi_pas.svg) |
+|------|------|------|------|------|------|
+| single | multi | owned | critical | critical + owned | static |
 
 **Phases** — with Phase Support on, the phase marker joins the element icon:
 

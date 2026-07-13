@@ -214,9 +214,11 @@ Save-Svg 'class' @"
   <rect x=`"11.6`" y=`"11.7`" width=`"3.6`" height=`"3.4`" fill=`"$($P.memberFill)`" stroke=`"$($P.memberEdge)`" stroke-width=`"0.9`"/>
 "@
 
-# externclass: dashed class square + bracket to two features (no relations)
+# externclass: class square + bracket to two features, NO yellow relations
+# square -- that absence is the tell (JV 2026-07-13: the dashed outline read
+# as noise at 16px, solid like the class icon).
 Save-Svg 'externclass' @"
-  <rect x=`"0.8`" y=`"4.8`" width=`"6.4`" height=`"6.4`" rx=`"0.8`" fill=`"$($P.blueFill)`" stroke=`"$($P.blueEdge)`" stroke-width=`"1`" stroke-dasharray=`"2.2,1.3`"/>
+  <rect x=`"0.8`" y=`"4.8`" width=`"6.4`" height=`"6.4`" rx=`"0.8`" fill=`"$($P.blueFill)`" stroke=`"$($P.blueEdge)`" stroke-width=`"1`"/>
   <path d=`"M7.2 8 H9.8 M9.8 4.4 V11.6 M9.8 4.4 H11.4 M9.8 11.6 H11.4`" fill=`"none`" stroke=`"$($P.inkEdge)`" stroke-width=`"1`"/>
   <rect x=`"11.6`" y=`"2.7`" width=`"3.6`" height=`"3.4`" fill=`"$($P.methodFill)`" stroke=`"$($P.methodEdge)`" stroke-width=`"0.9`"/>
   <rect x=`"11.6`" y=`"9.9`" width=`"3.6`" height=`"3.4`" fill=`"$($P.memberFill)`" stroke=`"$($P.memberEdge)`" stroke-width=`"0.9`"/>
