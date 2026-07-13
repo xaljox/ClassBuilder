@@ -1048,6 +1048,17 @@ Generated helpers can insert code for you rather than making you type it:
 - Wizard actions (getter/setter creation, Virtual Methods, IsClass Methods, the serialize scaffolding) insert complete, correctly-indented bodies; inserted multi-line snippets inherit the indentation at the caret.
 - Constructor/destructor templates arrive with the `ConstructorInclude(...)`/`DestructorInclude()` call and the `// Put in your own code` marker already in place — write below the marker (chapter 11.4 for the destructor-order exception).
 
+The `Insert` menu (also on the editor's right-click menu) carries the control-flow statements as one-keystroke snippets — no dialog, correctly indented, the caret placed inside the condition:
+
+| Snippet | Key |
+|---------------------|------------------|
+| `if () {}` | `Ctrl+Shift+I` |
+| `if () {} else {}` | `Ctrl+Shift+E` |
+| `switch () {}` (two `case` labels + `default` seeded) | `Ctrl+Shift+C` |
+| `while () {}` | `Ctrl+Shift+W` |
+| `do {} while ();` | `Ctrl+Shift+D` |
+| `for (; ; ) {}` | `Ctrl+Shift+F` |
+
 ## The constructor editor
 
 The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space — drag it to give either side more room. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
