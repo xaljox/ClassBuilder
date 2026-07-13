@@ -9,33 +9,34 @@ toc-depth: 2
 <!-- ============================================================== -->
 <!-- AUTHORING SOURCE. JV 2026-07-12: iterate HERE and regenerate   -->
 <!-- the .docx from this .md for as long as JV has not edited the   -->
-<!-- .docx in Word himself â€” he will say so explicitly when that    -->
+<!-- .docx in Word himself — he will say so explicitly when that    -->
 <!-- starts. FROM THAT MOMENT the .docx is the master: regenerating -->
 <!-- would silently destroy his Word edits (screenshots, styling);  -->
 <!-- large additions then go into a NEW file (e.g.                  -->
 <!-- Manual_addition.docx) merged by hand in Word.                  -->
 <!-- ============================================================== -->
 
+
 # Introduction
 
 ## What ClassBuilder is
 
-ClassBuilder is a **model-driven C++ code generator**. You design an object-oriented data model â€” classes, members, methods, relations, inheritance â€” in a graphical environment, and ClassBuilder writes the corresponding `.h` and `.cpp` source files for you. The generated code is complete, compilable C++: class declarations, constructors and destructors, relation maintenance code, iterators, optional serialization, and optional undo/redo support.
+ClassBuilder is a **model-driven C++ code generator**. You design an object-oriented data model — classes, members, methods, relations, inheritance — in a graphical environment, and ClassBuilder writes the corresponding `.h` and `.cpp` source files for you. The generated code is complete, compilable C++: class declarations, constructors and destructors, relation maintenance code, iterators, optional serialization, and optional undo/redo support.
 
-The emphasis is on **design first, correct by construction**. The mechanical parts of an object model â€” the parts that are tedious to write and easy to get subtly wrong â€” are generated from a single description:
+The emphasis is on **design first, correct by construction**. The mechanical parts of an object model — the parts that are tedious to write and easy to get subtly wrong — are generated from a single description:
 
 - **Relations between objects** are implemented as *intrusive linked lists*: fast, allocation-free containers whose maintenance code (insert, remove, cascade delete, iterator bookkeeping) is generated and hidden behind a handful of macros, so the source you actually read stays free of plumbing.
-- **Ownership** is a property of a relation. If every class is reachable from a top class through owned relations, destroying the top object frees the entire object graph â€” *no leaks by design*.
-- **Iterators are self-maintaining**: objects can be added or deleted â€” including the element you are standing on â€” while you iterate, without invalidating the loop.
+- **Ownership** is a property of a relation. If every class is reachable from a top class through owned relations, destroying the top object frees the entire object graph — *no leaks by design*.
+- **Iterators are self-maintaining**: objects can be added or deleted — including the element you are standing on — while you iterate, without invalidating the loop.
 - **Serialization** (save/load of the whole object graph, with schema versioning) and a complete **undo/redo framework** can be generated on top of the same model.
 
-ClassBuilder is a **round-trip** code generator, not a one-off wizard: your own logic lives in clearly marked, designated regions inside the generated files (user blocks, method bodies, note comments), and **Read Source** parses hand edits made there **back into the model**. Regeneration rewrites everything around those regions â€” never their content. You can develop in your IDE for days, read the changes back, regenerate, and nothing of yours is lost; the model and the source cannot drift apart.
+ClassBuilder is a **round-trip** code generator, not a one-off wizard: your own logic lives in clearly marked, designated regions inside the generated files (user blocks, method bodies, note comments), and **Read Source** parses hand edits made there **back into the model**. Regeneration rewrites everything around those regions — never their content. You can develop in your IDE for days, read the changes back, regenerate, and nothing of yours is lost; the model and the source cannot drift apart.
 
-> **Historical note â€” document generation.** Earlier (Windows-only) versions could also generate *documentation* from the model â€” with the same round-trip idea â€” into RTF. That feature was bound to Windows and RTF is no longer a common interchange format, so it has been dropped for the moment. It may return in a different form: the building blocks (vector SVG export of every diagram, and the command interface that lets scripts and AI systems walk the entire model) are already in place.
+> **Historical note — document generation.** Earlier (Windows-only) versions could also generate *documentation* from the model — with the same round-trip idea — into RTF. That feature was bound to Windows and RTF is no longer a common interchange format, so it has been dropped for the moment. It may return in a different form: the building blocks (vector SVG export of every diagram, and the command interface that lets scripts and AI systems walk the entire model) are already in place.
 
 ClassBuilder is **self-hosted**: the sources of ClassBuilder are generated by ClassBuilder, from a model that ships with the program. Every mechanism described in this manual is exercised daily by the tool itself.
 
-ClassBuilder is a **cross-platform tool**: the same application runs on **Windows, macOS and Linux** (it is built on Qt), and a `.cbz` model file is byte-identical across platforms â€” design on one machine, continue on another. The generated code and the runtime headers are portable C++ that compiles with MSVC, Clang and GCC alike. Keyboard shortcuts are written as `Ctrl+...` in this manual; on macOS read `Cmd (âŒ˜)` wherever `Ctrl` is named â€” the mapping is automatic.
+ClassBuilder is a **cross-platform tool**: the same application runs on **Windows, macOS and Linux** (it is built on Qt), and a `.cbz` model file is byte-identical across platforms — design on one machine, continue on another. The generated code and the runtime headers are portable C++ that compiles with MSVC, Clang and GCC alike. Keyboard shortcuts are written as `Ctrl+...` in this manual; on macOS read `Cmd (⌘)` wherever `Ctrl` is named — the mapping is automatic.
 
 ## The pieces
 
@@ -45,25 +46,25 @@ ClassBuilder is a **cross-platform tool**: the same application runs on **Window
 | The model file (`.cbz`) | Your design, stored as a Zstandard-compressed binary archive. |
 | Generated sources | One `.h` + one `.cpp` per class, plus a master include file. |
 | Runtime headers | A small library of `CB_*.h` headers (plus value types and the serialization runtime) that generated code compiles against. |
-| Command interface | A JSON-over-TCP API through which scripts â€” or AI systems â€” can read and modify the live model. |
+| Command interface | A JSON-over-TCP API through which scripts — or AI systems — can read and modify the live model. |
 
 ## About this manual
 
-The manual has three parts. **Getting started** (chapters 2â€“4): concepts and vocabulary, project setup, and a hands-on quick start that builds a small model, generates code, compiles and runs it â€” after chapter 4 you can start working. **Reference** (chapters 5â€“10): the application shell, the tree, the two diagram views, every dialog, and the code editor â€” organized so you can look up *"what are the toolbar buttons / menu items / context-menu entries / mouse and key gestures in this view"*. **In depth** (chapters 11â€“16): code generation, the intrusive-list runtime, serialization, undo/redo, the replace constructor, and the command interface, followed by best practices and the appendix.
+The manual has three parts. **Getting started** (chapters 2–4): concepts and vocabulary, project setup, and a hands-on quick start that builds a small model, generates code, compiles and runs it — after chapter 4 you can start working. **Reference** (chapters 5–10): the application shell, the tree, the two diagram views, every dialog, and the code editor — organized so you can look up *"what are the toolbar buttons / menu items / context-menu entries / mouse and key gestures in this view"*. **In depth** (chapters 11–16): code generation, the intrusive-list runtime, serialization, undo/redo, the replace constructor, and the command interface, followed by best practices and the appendix.
 
-The examples use the **Matrix** model â€” a matrix of cells owned simultaneously by their row and their column â€” which is small enough to read in one sitting yet touches almost every feature.
+The examples use the **Matrix** model — a matrix of cells owned simultaneously by their row and their column — which is small enough to read in one sitting yet touches almost every feature.
 
 ## Notation: keyboard shortcuts per platform
 
-This manual writes every shortcut in **one notation only â€” the Windows/Linux form** (`Ctrl+S`, `Ctrl+Shift+C`, `F3`, `Alt`+drag). If you work on macOS, translate with this table; it is not repeated elsewhere in the document:
+This manual writes every shortcut in **one notation only — the Windows/Linux form** (`Ctrl+S`, `Ctrl+Shift+C`, `F3`, `Alt`+drag). If you work on macOS, translate with this table; it is not repeated elsewhere in the document:
 
 | This manual writes | Windows / Linux | macOS |
 |-----------------------------|--------------------------|--------------------------|
-| `Ctrl+`key (e.g. `Ctrl+S`) | `Ctrl+`key | `âŒ˜`+key |
-| `Ctrl+Shift+`key | `Ctrl+Shift+`key | `âŒ˜â‡§`+key |
-| `F3` (find next) | `F3` | `âŒ˜G` |
-| `Alt`+drag | `Alt`+drag | `âŒ¥`+drag |
-| `Del` | `Del` | `âŒ«` |
+| `Ctrl+`key (e.g. `Ctrl+S`) | `Ctrl+`key | `⌘`+key |
+| `Ctrl+Shift+`key | `Ctrl+Shift+`key | `⌘⇧`+key |
+| `F3` (find next) | `F3` | `⌘G` |
+| `Alt`+drag | `Alt`+drag | `⌥`+drag |
+| `Del` | `Del` | `⌫` |
 
 Two things make this safe to rely on: ClassBuilder's menus and tooltips always display the binding that is active **on your platform** (they are authoritative when in doubt), and mouse gestures (click, drag, wheel, middle-drag) are identical everywhere.
 
@@ -73,30 +74,30 @@ Two things make this safe to rely on: ClassBuilder's menus and tooltips always d
 
 ## The model
 
-A **model** (document) is the unit you open, edit and save â€” one `.cbz` file. It contains:
+A **model** (document) is the unit you open, edit and save — one `.cbz` file. It contains:
 
-- **Classes** â€” the classes ClassBuilder will generate code for.
-- **Extern classes** â€” classes that exist *outside* the model (`CbObject`, `CbArchive`, library types, your own hand-written classes). They can be inherited from and referenced, but no code is generated for them.
-- **Types** â€” non-class types usable for members/arguments (`int`, `void`, plus any you add: `CString`, enums, typedefs with their declaration text).
-- **Relations** â€” directed, named links between two classes (chapter 12).
-- **Inheritances** â€” which class inherits from which, each with its access (public/protected/private) and optional `virtual` modifier.
-- **Groups** â€” folders that organize a model, at three levels. *Inside a class*, a group collects members and/or methods â€” the coloured bar on its folder icon tells what is inside: cyan for members, magenta for methods, both colours for a mix. *Above the classes*, a ClassGroup collects classes that belong together. *At the top level*, next to the model root, a MetaGroup collects ClassGroups. Groups are purely organizational â€” they do not change the generated code.
-- **Class diagrams** and **sequence diagrams** â€” graphical views onto the model.
-- **Actors** â€” external parties that appear on sequence diagrams.
-- **Project settings** â€” output naming, prefixes, indentation, comment headers, serialize/undo options, phase support.
+- **Classes** — the classes ClassBuilder will generate code for.
+- **Extern classes** — classes that exist *outside* the model (`CbObject`, `CbArchive`, library types, your own hand-written classes). They can be inherited from and referenced, but no code is generated for them.
+- **Types** — non-class types usable for members/arguments (`int`, `void`, plus any you add: `CString`, enums, typedefs with their declaration text).
+- **Relations** — directed, named links between two classes (chapter 12).
+- **Inheritances** — which class inherits from which, each with its access (public/protected/private) and optional `virtual` modifier.
+- **Groups** — folders that organize a model, at three levels. *Inside a class*, a group collects members and/or methods — the coloured bar on its folder icon tells what is inside: cyan for members, magenta for methods, both colours for a mix. *Above the classes*, a ClassGroup collects classes that belong together. *At the top level*, next to the model root, a MetaGroup collects ClassGroups. Groups are purely organizational — they do not change the generated code.
+- **Class diagrams** and **sequence diagrams** — graphical views onto the model.
+- **Actors** — external parties that appear on sequence diagrams.
+- **Project settings** — output naming, prefixes, indentation, comment headers, serialize/undo options, phase support.
 
-Everything lives in one tree (chapter 6); diagrams are views of the same underlying objects â€” a class renamed in a dialog changes everywhere at once.
+Everything lives in one tree (chapter 6); diagrams are views of the same underlying objects — a class renamed in a dialog changes everywhere at once.
 
 ## Class features
 
-- **Members** â€” data members, with type (+ `*`, `&`, `[]`, const, mutable, bit-field...), access, static flag, initialization value, optional generated **getter/setter**, a **serialize flag** and a **version** (chapter 13).
-- **Methods** â€” with return type, arguments (each with type/default), access, `virtual` / `static` / `const` / pure (`= 0`) / inline / `= delete`, calling convention, and a **body** that you write and that round-trips between the model and the source file.
-- **Constructors / destructor** â€” special methods. Constructor argument lists are largely *derived*: for every relation the class participates in as a child, the constructor takes the owner pointer(s); the generated `ConstructorInclude(...)` call splices the new object into those relations.
-- **Notes** â€” free documentation text on nearly every element; emitted as comments above the declaration.
+- **Members** — data members, with type (+ `*`, `&`, `[]`, const, mutable, bit-field...), access, static flag, initialization value, optional generated **getter/setter**, a **serialize flag** and a **version** (chapter 13).
+- **Methods** — with return type, arguments (each with type/default), access, `virtual` / `static` / `const` / pure (`= 0`) / inline / `= delete`, calling convention, and a **body** that you write and that round-trips between the model and the source file.
+- **Constructors / destructor** — special methods. Constructor argument lists are largely *derived*: for every relation the class participates in as a child, the constructor takes the owner pointer(s); the generated `ConstructorInclude(...)` call splices the new object into those relations.
+- **Notes** — free documentation text on nearly every element; emitted as comments above the declaration.
 
 ## Phases
 
-With **Phase Support** enabled (Project Settings), every element carries a lifecycle phase â€” *Analysis, Design, Implementation, Test, Complete* â€” shown as a second icon in the tree and usable as a tree filter. Purely organizational, no effect on generated code.
+With **Phase Support** enabled (Project Settings), every element carries a lifecycle phase — *Analysis, Design, Implementation, Test, Complete* — shown as a second icon in the tree and usable as a tree filter. Purely organizational, no effect on generated code.
 
 ## Generated vs. user code
 
@@ -114,19 +115,19 @@ Everything else is rewritten on the next **Write Source**. **Read Source** parse
 
 `ClassBuilder.exe` is a single executable (Qt linked statically on Windows). Installing is copying it; associate `.cbz` files with it for double-click opening. On start-up it also opens the command-interface TCP port (chapter 16).
 
-## What generated code needs â€” the runtime headers
+## What generated code needs — the runtime headers
 
 Generated code `#include`s a small, header-only runtime. Ship these directories with your project (or point your include path at them):
 
 | Directory | Contents | Needed |
 |------------|--------------------------------------------------|-----------|
 | `include/` | `CB_Multi.h`, `CB_MultiOwned.h`, `CB_Single.h`, `CB_SingleOwned.h`, tree/static/critical variants, `CB_IteratorMulti.h`, `CB_CriticalSection.h`, ... | always |
-| `value/` | `CbString.h`, `CbTime.h`, `CbColor.h`, `CbGeometry.h` â€” small value types | when used by your model |
+| `value/` | `CbString.h`, `CbTime.h`, `CbColor.h`, `CbGeometry.h` — small value types | when used by your model |
 | `serialize/` | `CbSerialize.{h,cpp}` (CbObject/CbArchive runtime), `CbZstdStream.{h,cpp}` + the zstd library | only with Serialize on |
 
-The generated **master include** (e.g. `MatrixInclude.h`) pulls in exactly the `CB_*` headers the model's relations need, in the right order, plus all class headers â€” twice: once for declarations, once (under `CB_INLINES`) for inline bodies.
+The generated **master include** (e.g. `MatrixInclude.h`) pulls in exactly the `CB_*` headers the model's relations need, in the right order, plus all class headers — twice: once for declarations, once (under `CB_INLINES`) for inline bodies.
 
-## StdAfx.h â€” the one file you write
+## StdAfx.h — the one file you write
 
 With the *StdAfx.h* code-generation option on (the default), every generated `.cpp` begins with `#include "StdAfx.h"`. That file is **yours**, written once per project; it maps the model's type names onto real headers and includes the master include. The quick start's version:
 
@@ -153,42 +154,42 @@ This illustrates a general point: **types in the model are just names**. The mod
 
 Each class stores its target file names (`.h` / `.cpp`, class dialog); paths are relative to the model file's directory. **Write Source** (`File` menu, toolbar, or the `write_source` command) regenerates them; it also saves the model, so model and sources stay in step.
 
-# Quick start â€” the Matrix model
+# Quick start — the Matrix model
 
-This chapter builds a complete model, generates the code, compiles it with a small `main.cpp`, and runs it. Everything shown â€” generated code, console output, diagrams â€” is real output produced while writing this manual.
+This chapter builds a complete model, generates the code, compiles it with a small `main.cpp`, and runs it. Everything shown — generated code, console output, diagrams — is real output produced while writing this manual.
 
-**The design.** A `Matrix` owns `Row`s and `Column`s; every `Cell` is owned **twice** â€” it sits in its Row's list *and* its Column's list. Deleting a Row must delete its Cells and those Cells must silently vanish from their Columns too. This "one object in several owned containers" pattern is painful with standard containers and is exactly where ClassBuilder shines.
+**The design.** A `Matrix` owns `Row`s and `Column`s; every `Cell` is owned **twice** — it sits in its Row's list *and* its Column's list. Deleting a Row must delete its Cells and those Cells must silently vanish from their Columns too. This "one object in several owned containers" pattern is painful with standard containers and is exactly where ClassBuilder shines.
 
 ![The ClassBuilder shell with the Matrix model open: menu bar, toolbar, and the model tree (diagrams, classes, members, methods, relation methods).](images/main-window.png)
 
-## Step 1 â€” create the model
+## Step 1 — create the model
 
-`File â–¸ New...` opens the new-model wizard.
+`File ▸ New...` opens the new-model wizard.
 
-![Creating a serialize-enabled model: DataModel name "Matrix", master include file "MatrixInclude.h", document class "Matrix". The master include cannot be named Matrix.h â€” the Matrix class itself generates that file. Tick Serialize here: it is a one-off choice, made at creation â€” in the Project â–¸ Settings dialog of an existing model the checkbox shows locked.](images/New_DataModel.png)
+![Creating a serialize-enabled model: DataModel name "Matrix", master include file "MatrixInclude.h", document class "Matrix". The master include cannot be named Matrix.h — the Matrix class itself generates that file. Tick Serialize here: it is a one-off choice, made at creation — in the Project ▸ Settings dialog of an existing model the checkbox shows locked.](images/New_DataModel.png)
 
 Choose **Serialize** support and document class `Matrix` (chapter 13 explains what is scaffolded: an extern `CbObject`, the document class `Matrix`, the polymorphic root `MatrixObject`, and the relation between them). Two rules to know now:
 
-- Serialize is a **one-time choice** per model â€” pick it if in doubt; undo/redo (also enable-once) requires it.
+- Serialize is a **one-time choice** per model — pick it if in doubt; undo/redo (also enable-once) requires it.
 - Every serialize-enabled class **single-inherits** from the document-object root, directly or transitively; the GUI enforces this.
 
-## Step 2 â€” add the classes
+## Step 2 — add the classes
 
-In the tree, right-click the model node â–¸ `Add â–¸ Class` (or `Ctrl+Shift+C`), and create `Row`, `Column`, `Cell` â€” each with Serialize on, which auto-inherits them from `MatrixObject`.
+In the tree, right-click the model node ▸ `Add ▸ Class` (or `Ctrl+Shift+C`), and create `Row`, `Column`, `Cell` — each with Serialize on, which auto-inherits them from `MatrixObject`.
 
 ![The Class dialog. With Serialize ticked, the class inherits the model's document-object root automatically.](images/Row_class.png)
 
-## Step 3 â€” add members
+## Step 3 — add members
 
-Right-click `Row` â–¸ `Add â–¸ Member` (`Ctrl+Shift+B`): type `int`, name `id` â€” **bare name, no underscore**: the class's member prefix (default `_`) is added at generation time, so the emitted member is `_id`. Set access *private* and Get method *Public*: a `GetId()` getter is generated (and stays in sync if you retype the member). Repeat for `Column` (`id`, same settings) and `Cell` (`value` of type `CString`, public, no getter).
+Right-click `Row` ▸ `Add ▸ Member` (`Ctrl+Shift+B`): type `int`, name `id` — **bare name, no underscore**: the class's member prefix (default `_`) is added at generation time, so the emitted member is `_id`. Set access *private* and Get method *Public*: a `GetId()` getter is generated (and stays in sync if you retype the member). Repeat for `Column` (`id`, same settings) and `Cell` (`value` of type `CString`, public, no getter).
 
-The model's format **version** needs no member and no code: it is the *Version* field in the DataModel dialog (visible in the Step 1 figure). ClassBuilder handles the rest invisibly â€” the generated document `Serialize` writes the version into every save and uses it when reading older files back; chapter 13 shows how that supports evolving the model.
+The model's format **version** needs no member and no code: it is the *Version* field in the DataModel dialog (visible in the Step 1 figure). ClassBuilder handles the rest invisibly — the generated document `Serialize` writes the version into every save and uses it when reading older files back; chapter 13 shows how that supports evolving the model.
 
 ![The Member dialog. Getter/setter generation and the serialize flag are per-member choices.](images/Row_id.png)
 
-## Step 4 â€” add the relations
+## Step 4 — add the relations
 
-Right-click `Matrix` â–¸ `Add â–¸ Relation` (`Ctrl+Shift+R`) and create, all of kind **Multi** with **Aggregation** (owned) checked:
+Right-click `Matrix` ▸ `Add ▸ Relation` (`Ctrl+Shift+R`) and create, all of kind **Multi** with **Aggregation** (owned) checked:
 
 | From | To | Meaning |
 |----------|----------|--------------------------------------------|
@@ -197,15 +198,15 @@ Right-click `Matrix` â–¸ `Add â–¸ Relation` (`Ctrl+Shift+R`) and create,
 | `Row` | `Cell` | a row owns its cells |
 | `Column` | `Cell` | a column owns the *same* cells |
 
-That double ownership of `Cell` is deliberate â€” the runtime supports one object in any number of intrusive lists (chapter 12).
+That double ownership of `Cell` is deliberate — the runtime supports one object in any number of intrusive lists (chapter 12).
 
-![A relation: kind, ownership, thread-safety, and container implementation are all declared here â€” the code is generated.](images/Row_Cell.png)
+![A relation: kind, ownership, thread-safety, and container implementation are all declared here — the code is generated.](images/Row_Cell.png)
 
-## Step 5 â€” constructors, with real code in the bodies
+## Step 5 — constructors, with real code in the bodies
 
-Right-click each class â–¸ `Add â–¸ Constructor` (`Ctrl+Shift+U`). ClassBuilder **derives the argument list**: `Row`'s constructor automatically takes `(Matrix* pMatrix)` â€” the owner â€” plus whatever you add (here: `int id`). The generated body begins with `ConstructorInclude(pMatrix)`, which splices the new Row into the matrix's list; below the `// Put in your own code` marker the body is yours.
+Right-click each class ▸ `Add ▸ Constructor` (`Ctrl+Shift+U`). ClassBuilder **derives the argument list**: `Row`'s constructor automatically takes `(Matrix* pMatrix)` — the owner — plus whatever you add (here: `int id`). The generated body begins with `ConstructorInclude(pMatrix)`, which splices the new Row into the matrix's list; below the `// Put in your own code` marker the body is yours.
 
-Give `Row` this body (the code editor auto-indents C++). It walks the matrix's Columns and creates one Cell per column â€” using a **generated iterator**:
+Give `Row` this body (the code editor auto-indents C++). It walks the matrix's Columns and creates one Cell per column — using a **generated iterator**:
 
 ```cpp
 Matrix::ColumnIterator iColumn(pMatrix);
@@ -215,7 +216,7 @@ while (++iColumn)
 }
 ```
 
-`Column`'s constructor mirrors it (one Cell per existing Row) â€” the symmetry means Rows and Columns can be added in any order later and the cell grid stays complete. `Cell`'s constructor just takes its two owners plus the value; its `ConstructorInclude(pRow, pColumn)` splices it into **both** lists. The constructor `Matrix(int rows, int columns)` creates the grid:
+`Column`'s constructor mirrors it (one Cell per existing Row) — the symmetry means Rows and Columns can be added in any order later and the cell grid stays complete. `Cell`'s constructor just takes its two owners plus the value; its `ConstructorInclude(pRow, pColumn)` splices it into **both** lists. The constructor `Matrix(int rows, int columns)` creates the grid:
 
 ```cpp
 for (int c = 0; c < columns; c++)
@@ -231,11 +232,11 @@ for (int r = 0; r < rows; r++)
 
 Note what is *absent*: no container declarations, no push_back, no bookkeeping. Creating an object with its owner as argument **is** the insertion.
 
-## Step 6 â€” a find method
+## Step 6 — a find method
 
-Right-click the `Matrixâ†’Row` relation â–¸ add a **Find Method** on member `id`. The generated `FindRow(int id)` iterates the relation and compares â€” and if the relation used a tree implementation, the same dialog generates the fast tree lookup instead (chapter 12.7):
+Right-click the `Matrix→Row` relation ▸ add a **Find Method** on member `id`. The generated `FindRow(int id)` iterates the relation and compares — and if the relation used a tree implementation, the same dialog generates the fast tree lookup instead (chapter 12.7):
 
-![The Find Method dialog on the Matrixâ†’Row relation: the argument map pairs the method's arguments with the members to compare â€” here `->GetId()`. In the tree behind it, the generated method appears as a child of the *Row* relation item, as a sibling above its *Relation methods* folder.](images/Matrix_Row_FindId.png)
+![The Find Method dialog on the Matrix→Row relation: the argument map pairs the method's arguments with the members to compare — here `->GetId()`. In the tree behind it, the generated method appears as a child of the *Row* relation item, as a sibling above its *Relation methods* folder.](images/Matrix_Row_FindId.png)
 
 ```cpp
 Row* Matrix::FindRow(int id)
@@ -253,21 +254,21 @@ Row* Matrix::FindRow(int id)
 }//@CODE_3308
 ```
 
-## Step 7 â€” a class diagram
+## Step 7 — a class diagram
 
-Right-click the model node â–¸ `Add â–¸ Class Diagram`, name it *Matrix Overview*, and add the five classes (`Select Classes...` from the diagram's context menu, or drag them from the tree). `Optimize Placement` lays them out.
+Right-click the model node ▸ `Add ▸ Class Diagram`, name it *Matrix Overview*, and add the five classes (`Select Classes...` from the diagram's context menu, or drag them from the tree). `Optimize Placement` lays them out.
 
 ![The Matrix Overview class diagram as exported by ClassBuilder (Export SVG). Diamonds mark owned (aggregation) relations; 1/* are the multiplicities.](images/cd-matrix-overview.svg)
 
-![A diagram view opens **floating** over the shell â€” this is the initial state of every diagram view.](images/cd-view.png)
+![A diagram view opens **floating** over the shell — this is the initial state of every diagram view.](images/cd-view.png)
 
-![The same view **docked**: drag it onto an edge of the main window â€” here the right edge, giving the usual tree-beside-diagram split; the top and bottom edges split horizontally the same way.](images/Docked.png)
+![The same view **docked**: drag it onto an edge of the main window — here the right edge, giving the usual tree-beside-diagram split; the top and bottom edges split horizontally the same way.](images/Docked.png)
 
 ![Or **tabbed**: drop it onto the tree's tab bar and the views share the full window, one tab each.](images/Tabbed.png)
 
-## Step 8 â€” generate the source
+## Step 8 — generate the source
 
-`File â–¸ Save Source...` (toolbar: **Write Source**). One `.h` + one `.cpp` per class appear next to the model, plus `MatrixInclude.h`. This is the actual generated `Cell.h` (abridged header comment):
+`File ▸ Save Source...` (toolbar: **Write Source**). One `.h` + one `.cpp` per class appear next to the model, plus `MatrixInclude.h`. This is the actual generated `Cell.h` (abridged header comment):
 
 ```cpp
 #ifndef _CELL_H
@@ -314,7 +315,7 @@ public:
 #endif
 ```
 
-The two `RELATION_MULTI_OWNED_PASSIVE` macros are Cell's memberships in its Row's and Column's lists â€” the link pointers (`_refRow/_prevRow/_nextRow`, `_refColumn/_prevColumn/_nextColumn`) become members *of the Cell itself*. The `.cpp` contains the constructors/destructor with your bodies, followed by the generated relation and serialize machinery. That machinery sits between a pair of guard comments:
+The two `RELATION_MULTI_OWNED_PASSIVE` macros are Cell's memberships in its Row's and Column's lists — the link pointers (`_refRow/_prevRow/_nextRow`, `_refColumn/_prevColumn/_nextColumn`) become members *of the Cell itself*. The `.cpp` contains the constructors/destructor with your bodies, followed by the generated relation and serialize machinery. That machinery sits between a pair of guard comments:
 
 ```cpp
 //{{AFX DO NOT EDIT CODE BELOW THIS LINE !!!
@@ -322,11 +323,11 @@ The two `RELATION_MULTI_OWNED_PASSIVE` macros are Cell's memberships in its Row'
 //}}AFX DO NOT EDIT CODE ABOVE THIS LINE !!!
 ```
 
-The guards mean exactly what they say: everything between them is regenerated on every **Write Source**, so a hand edit there is lost â€” your code belongs in the user sections and `//@CODE` bodies (chapter 11 lists every editable region).
+The guards mean exactly what they say: everything between them is regenerated on every **Write Source**, so a hand edit there is lost — your code belongs in the user sections and `//@CODE` bodies (chapter 11 lists every editable region).
 
-## Step 9 â€” compile and run
+## Step 9 — compile and run
 
-A minimal driver (`main.cpp`) exercises the model â€” construction, iteration from both sides, find, cascade delete, deletion *during* iteration, and a save/load round-trip:
+A minimal driver (`main.cpp`) exercises the model — construction, iteration from both sides, find, cascade delete, deletion *during* iteration, and a save/load round-trip:
 
 ```cpp
 Matrix* pMatrix = new Matrix(3, 4);
@@ -371,7 +372,7 @@ Matrix* pLoaded = new Matrix();     // serialize ctor: empty shell
 }
 ```
 
-The data file's extension is yours to choose (`.dat` here) â€” just avoid `.cbz`, which is the extension of ClassBuilder's own model files and typically associated with the application.
+The data file's extension is yours to choose (`.dat` here) — just avoid `.cbz`, which is the extension of ClassBuilder's own model files and typically associated with the application.
 
 Compiled with the generated files + runtime headers (here with GCC; MSVC works identically):
 
@@ -397,11 +398,11 @@ reloaded: 1 rows x 4 columns, first cell 'r2c0'
 done -- every object freed by cascade, no leaks by design
 ```
 
-Read those middle lines again: deleting one `Row` made its cells disappear from every `Column` â€” no code was written for that. A row was deleted *while iterating the rows* â€” the loop just continued. The whole surviving structure round-tripped through a compressed binary file. That is the value proposition of ClassBuilder in eleven lines of console output.
+Read those middle lines again: deleting one `Row` made its cells disappear from every `Column` — no code was written for that. A row was deleted *while iterating the rows* — the loop just continued. The whole surviving structure round-tripped through a compressed binary file. That is the value proposition of ClassBuilder in eleven lines of console output.
 
-## Step 10 â€” the round trip
+## Step 10 — the round trip
 
-Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to ClassBuilder, and use `File â–¸ Read Source...` (**Read Modifications**): the model absorbs your edit. If ClassBuilder itself has the file's model open when the source changes, it offers the read-back automatically â€” accept it, or your next Write Source will overwrite the edit. Model â†” source is a two-way street.
+Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to ClassBuilder, and use `File ▸ Read Source...` (**Read Modifications**): the model absorbs your edit. If ClassBuilder itself has the file's model open when the source changes, it offers the read-back automatically — accept it, or your next Write Source will overwrite the edit. Model ↔ source is a two-way street.
 
 # Reference: the application shell
 
@@ -409,15 +410,15 @@ Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to
 
 | Menu | Items |
 |------------|------------------------------------------------------------------|
-| **File** | New... (`Ctrl+N`) Â· Open... (`Ctrl+O`) Â· Close Model (`Ctrl+W`) Â· Save (`Ctrl+S`) Â· Save As... Â· Save Source... Â· Read Source... Â· Delete Source Â· Exit |
-| **Edit** | Undo (`Ctrl+Z`) Â· Redo (`Ctrl+Y`) |
-| **Project** | Settings... Â· Add Serialize... Â· Refresh Object IDs |
-| **View** | New Window Â· Zoom In (`Ctrl++`) Â· Zoom Out (`Ctrl+-`) Â· Zoom Full Â· UI Scale â–¸ 100% / 125% / 150% / 175% / 200% |
+| **File** | New... (`Ctrl+N`) · Open... (`Ctrl+O`) · Close Model (`Ctrl+W`) · Save (`Ctrl+S`) · Save As... · Save Source... · Read Source... · Delete Source · Exit |
+| **Edit** | Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) |
+| **Project** | Settings... · Add Serialize... · Refresh Object IDs |
+| **View** | New Window · Zoom In (`Ctrl++`) · Zoom Out (`Ctrl+-`) · Zoom Full · UI Scale ▸ 100% / 125% / 150% / 175% / 200% |
 | **Help** | About ClassBuilder... |
 
 *Save Source / Read Source* are the code-generation round trip (chapter 11). *New Window* opens a second full tree of the active model. The zoom items act on the active diagram view.
 
-**UI Scale** enlarges the whole application â€” text, icons, dialogs â€” independently of the operating system's display scaling: useful on a monitor whose system scaling you don't want to change, or when ClassBuilder alone should be bigger. It is a per-machine setting (stored per user, not in the model) and takes effect after a restart â€” picking a scale offers to restart ClassBuilder right away. Not to be confused with the Zoom items, which magnify only the active diagram canvas.
+**UI Scale** enlarges the whole application — text, icons, dialogs — independently of the operating system's display scaling: useful on a monitor whose system scaling you don't want to change, or when ClassBuilder alone should be bigger. It is a per-machine setting (stored per user, not in the model) and takes effect after a restart — picking a scale offers to restart ClassBuilder right away. Not to be confused with the Zoom items, which magnify only the active diagram canvas.
 
 ## The main toolbar
 
@@ -435,10 +436,10 @@ Undo/Redo are deliberately **not** on the main bar: with several models open the
 
 ## Docking
 
-Every view â€” model trees, class diagrams, sequence diagrams, scoped sub-window trees â€” lives in the same docking system:
+Every view — model trees, class diagrams, sequence diagrams, scoped sub-window trees — lives in the same docking system:
 
 - A model's **tree** opens docked in the main window; each further model becomes a **tab** next to it (the tab is its drag handle).
-- A **diagram** view opens **floating** by default. Drag it onto the main window to place it: drop it on a pane's tab row to add it as a **tab**, or on a pane edge to **split** (side by side with the tree or another diagram) â€” drop indicators show the targets while dragging.
+- A **diagram** view opens **floating** by default. Drag it onto the main window to place it: drop it on a pane's tab row to add it as a **tab**, or on a pane edge to **split** (side by side with the tree or another diagram) — drop indicators show the targets while dragging.
 - The same drag works in reverse: any docked pane can be dragged out to float again. A floating window always holds a **single view**: tabbing and splitting happen inside the main window only.
 - Closing a model's tab closes the model (with a save prompt when modified).
 
@@ -446,22 +447,22 @@ Every view â€” model trees, class diagrams, sequence diagrams, scoped sub-w
 
 One binary behavior set on Windows, macOS and Linux, with these platform notes:
 
-- **Shortcuts**: this manual uses Windows/Linux notation only â€” the translation table lives in chapter 1 (*Notation*). Menus and tooltips always display the binding active on your platform.
-- **AltGr rule**: accelerators avoid `Ctrl+Alt` combinations because on European layouts they collide with AltGr characters â€” the Add accelerators are all `Ctrl+Shift+...`.
-- **macOS specifics**: ClassBuilder uses Qt's file dialogs (not the native panels), dock tabs are left-aligned, and the tree adds a hover highlight and adjusts branch-triangle colors on selection â€” cosmetic parity fixes only; features are identical.
+- **Shortcuts**: this manual uses Windows/Linux notation only — the translation table lives in chapter 1 (*Notation*). Menus and tooltips always display the binding active on your platform.
+- **AltGr rule**: accelerators avoid `Ctrl+Alt` combinations because on European layouts they collide with AltGr characters — the Add accelerators are all `Ctrl+Shift+...`.
+- **macOS specifics**: ClassBuilder uses Qt's file dialogs (not the native panels), dock tabs are left-aligned, and the tree adds a hover highlight and adjusts branch-triangle colors on selection — cosmetic parity fixes only; features are identical.
 - The **status bar** shows Width/Height/X/Y of the shape under the cursor in diagram views.
 
 # Reference: the main tree view
 
-The tree is the master view of a model: every element of the model, shown in its structure. Several models can be open at the same time â€” each model's tree gets its own tab in the main window â€” and like every other view it can also be split off or floated (chapter 5.3).
+The tree is the master view of a model: every element of the model, shown in its structure. Several models can be open at the same time — each model's tree gets its own tab in the main window — and like every other view it can also be split off or floated (chapter 5.3).
 
 ## What the tree shows
 
-The model node at top (with class diagrams, sequence diagrams and top-level classes under it), the `Actors`, `Extern Classes` and `Other Types` nodes, groups, and under every class: inheritances, members, methods (with full signatures), constructors/destructor, arguments, relations, and the generated **Relation methods** in their own folder â€” visible but owned by the generator. Every node type has its own icon; with Phase Support on, a phase glyph joins it.
+The model node at top (with class diagrams, sequence diagrams and top-level classes under it), the `Actors`, `Extern Classes` and `Other Types` nodes, groups, and under every class: inheritances, members, methods (with full signatures), constructors/destructor, arguments, relations, and the generated **Relation methods** in their own folder — visible but owned by the generator. Every node type has its own icon; with Phase Support on, a phase glyph joins it.
 
 ## The tree toolbar
 
-Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `Ctrl+Alt` combinations collide with AltGr on European keyboard layouts). A button is enabled exactly when the action is legal on the current selection â€” the same gate the context menu uses.
+Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `Ctrl+Alt` combinations collide with AltGr on European keyboard layouts). A button is enabled exactly when the action is legal on the current selection — the same gate the context menu uses.
 
 | Button | Key | Icon glyph |
 |-----------------------------|----------------|--------------------------------|
@@ -476,14 +477,14 @@ Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `
 | Add IsClass Methods | `Ctrl+Shift+S` | paired diamonds (Is) |
 | Add Argument | `Ctrl+Shift+A` | argument |
 | Add Actor | `Ctrl+Shift+T` | stick figure |
-| Add Class Diagram | â€” | class-diagram thumbnail |
-| Add Sequence Diagram | â€” | sequence-diagram thumbnail |
+| Add Class Diagram | — | class-diagram thumbnail |
+| Add Sequence Diagram | — | sequence-diagram thumbnail |
 | Delete | `Del` | cross |
-| Filters... | â€” | wrench |
+| Filters... | — | wrench |
 | Find... / Next | `Ctrl+F` / `F3` | magnifier / arrow |
 | Undo / Redo | `Ctrl+Z` / `Ctrl+Y` | arrows (per-view, act on this model) |
 
-Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Meta Group** `Ctrl+Shift+P`, **External Class** `Ctrl+Shift+E` (X was unavailable â€” it is an OS hotkey).
+Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Meta Group** `Ctrl+Shift+P`, **External Class** `Ctrl+Shift+E` (X was unavailable — it is an OS hotkey).
 
 ![The tree toolbar, in the order of the table above: the Add buttons, then Delete, Filters, Find/Next, and the per-view Undo/Redo.](images/Tree_Toolbar.png)
 
@@ -501,9 +502,9 @@ The element icons speak one visual language, shared with the diagrams and the to
 | ![](../../src/qt/icons/classdiagram.svg) | class diagram | ![](../../src/qt/icons/sequencediagram.svg) | sequence diagram |
 | ![](../../src/qt/icons/actor.svg) | actor | ![](../../src/qt/icons/membermethodgroup.svg) | group (folder) |
 
-The extern class is the class square without the yellow relations tab â€” an extern class is declared outside the model, so it has no generated relations. The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
+The extern class is the class square without the yellow relations tab — an extern class is declared outside the model, so it has no generated relations. The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
 
-**Members and methods** â€” the diamond colour is the *kind*:
+**Members and methods** — the diamond colour is the *kind*:
 
 | ![](../../src/qt/icons/public_member.svg) | ![](../../src/qt/icons/public_method.svg) | ![](../../src/qt/icons/public_constructor.svg) | ![](../../src/qt/icons/public_destructor.svg) |
 |------|------|------|------|
@@ -515,7 +516,7 @@ Access is an overlay (public is bare):
 |------|------|------|
 | public | protected (key) | private (padlock) |
 
-The fill tells the body state â€” an untouched method keeps its place's shade on the rim:
+The fill tells the body state — an untouched method keeps its place's shade on the rim:
 
 | ![](../../src/qt/icons/public_method.svg) | ![](../../src/qt/icons/public_inline_method.svg) | ![](../../src/qt/icons/public_empty_method.svg) | ![](../../src/qt/icons/public_empty_inline_method.svg) |
 |------|------|------|------|
@@ -523,13 +524,13 @@ The fill tells the body state â€” an untouched method keeps its place's sha
 
 `virtual` and `= delete` are not on the icon: the tree paints those keywords in magenta in the signature text itself.
 
-**Relations** â€” the arrow encodes the relation on the node it hangs under. Heads: one = Single, two = Multi. Colour: grey = plain association, black = owned (aggregation), magenta = critical, red = critical **and** owned. The box marks the side: yellow box at the bottom = the *from* (active) side pointing at its targets; blue box at the top = the *to* (passive) side being pointed at. Static relations draw thicker, with a wider box. Each pair below shows the *from* and *to* icon of the kind:
+**Relations** — the arrow encodes the relation on the node it hangs under. Heads: one = Single, two = Multi. Colour: grey = plain association, black = owned (aggregation), magenta = critical, red = critical **and** owned. The box marks the side: yellow box at the bottom = the *from* (active) side pointing at its targets; blue box at the top = the *to* (passive) side being pointed at. Static relations draw thicker, with a wider box. Each pair below shows the *from* and *to* icon of the kind:
 
 | ![](../../src/qt/icons/single_act.svg) ![](../../src/qt/icons/single_pas.svg) | ![](../../src/qt/icons/multi_act.svg) ![](../../src/qt/icons/multi_pas.svg) | ![](../../src/qt/icons/owned_multi_act.svg) ![](../../src/qt/icons/owned_multi_pas.svg) | ![](../../src/qt/icons/cr_multi_act.svg) ![](../../src/qt/icons/cr_multi_pas.svg) | ![](../../src/qt/icons/cr_owned_multi_act.svg) ![](../../src/qt/icons/cr_owned_multi.svg) | ![](../../src/qt/icons/static_multi_act.svg) ![](../../src/qt/icons/static_multi_pas.svg) | ![](../../src/qt/icons/static_owned_multi_act.svg) ![](../../src/qt/icons/static_owned_multi_pas.svg) |
 |------|------|------|------|------|------|------|
 | single | multi | owned | critical | critical + owned | static | static + owned |
 
-**Phases** â€” with Phase Support on, the phase marker joins the element icon:
+**Phases** — with Phase Support on, the phase marker joins the element icon:
 
 | ![](../../src/qt/icons/analysis_phase.svg) | ![](../../src/qt/icons/design_phase.svg) | ![](../../src/qt/icons/implementation_phase.svg) | ![](../../src/qt/icons/test_phase.svg) | ![](../../src/qt/icons/complete_phase.svg) |
 |------|------|------|------|------|
@@ -537,34 +538,34 @@ The fill tells the body state â€” an untouched method keeps its place's sha
 
 ## The context menu
 
-Right-click any node (an unselected node is selected first). The full menu, top to bottom â€” items appear/enable per node type:
+Right-click any node (an unselected node is selected first). The full menu, top to bottom — items appear/enable per node type:
 
-1. **Open** â€” the double-click action: attribute dialog, the code editor for methods with bodies, the view for diagram nodes.
-2. **Edit Attributes** â€” the element's dialog (chapter 9).
-3. **Edit User Sections** / **Edit Section â–¸** â€” a class's six free-code sections, or jump straight to one (*Before/Inside/After class definition `.h`*, *Before/After master include, After generated code `.cpp`*).
-4. **Edit Exception Specification** â€” per-method exception clause.
-5. **Edit Context / Assign Context** â€” define contexts on the model node, assign them on classes/methods (chapter 9, *Context*).
-6. **Copy / Paste** (`Ctrl+C` / `Ctrl+V`) â€” subtree copy, also **across models**: copy a class in one model, paste into another.
-7. **Sort on Name / Sort on Phase** â€” reorder children.
-8. **Add â–¸** â€” everything addable here: Class Diagram, Sequence Diagram, Group, Class, External Class, Inheritance, Relation, Member, Method, Constructor, Argument, Meta Group, Actor, Virtual Methods, IsClass Methods, Type â€” plus *Deleted Copy Ctor + operator=* on a class (adds both as `= delete` in one click).
-9. **Phase â–¸** â€” Analysis / Design / Implementation / Test / Complete.
-10. **Base Classes / Derived Classes** â€” read-only inheritance-hierarchy browsers.
-11. **New Sub Window** â€” a second, *scoped* tree rooted at this node, as its own dockable view.
-12. **Delete Multiple...** â€” bulk delete (below).
+1. **Open** — the double-click action: attribute dialog, the code editor for methods with bodies, the view for diagram nodes.
+2. **Edit Attributes** — the element's dialog (chapter 9).
+3. **Edit User Sections** / **Edit Section ▸** — a class's six free-code sections, or jump straight to one (*Before/Inside/After class definition `.h`*, *Before/After master include, After generated code `.cpp`*).
+4. **Edit Exception Specification** — per-method exception clause.
+5. **Edit Context / Assign Context** — define contexts on the model node, assign them on classes/methods (chapter 9, *Context*).
+6. **Copy / Paste** (`Ctrl+C` / `Ctrl+V`) — subtree copy, also **across models**: copy a class in one model, paste into another.
+7. **Sort on Name / Sort on Phase** — reorder children.
+8. **Add ▸** — everything addable here: Class Diagram, Sequence Diagram, Group, Class, External Class, Inheritance, Relation, Member, Method, Constructor, Argument, Meta Group, Actor, Virtual Methods, IsClass Methods, Type — plus *Deleted Copy Ctor + operator=* on a class (adds both as `= delete` in one click).
+9. **Phase ▸** — Analysis / Design / Implementation / Test / Complete.
+10. **Base Classes / Derived Classes** — read-only inheritance-hierarchy browsers.
+11. **New Sub Window** — a second, *scoped* tree rooted at this node, as its own dockable view.
+12. **Delete Multiple...** — bulk delete (below).
 
-Which entries are enabled follows from the clicked node â€” the same gate as the toolbar buttons. Below, the menu on a class, with the Add submenu open:
+Which entries are enabled follows from the clicked node — the same gate as the toolbar buttons. Below, the menu on a class, with the Add submenu open:
 
 ![](images/Tree_context_menu.png)
 
 ## Filters
 
-**Filters...** opens the filter panel: per element kind, choose what stays visible â€” access levels and static/non-static for members and methods, relation kinds (inheritance, multi/single, aggregation/association), classes with or without a constructor, and (with Phase Support on) the phases. The filter is **per tree view**: filtered nodes disappear from that tree only. Diagrams are unaffected â€” what a diagram shows is its own explicit choice (Select Classes and the per-class display options).
+**Filters...** opens the filter panel: per element kind, choose what stays visible — access levels and static/non-static for members and methods, relation kinds (inheritance, multi/single, aggregation/association), classes with or without a constructor, and (with Phase Support on) the phases. The filter is **per tree view**: filtered nodes disappear from that tree only. Diagrams are unaffected — what a diagram shows is its own explicit choice (Select Classes and the per-class display options).
 
-![Tree filters: what you hide here is hidden in this tree view â€” diagrams keep their own selection. The Phases group greys out when the model has no Phase Support.](images/Tree_filter.png)
+![Tree filters: what you hide here is hidden in this tree view — diagrams keep their own selection. The Phases group greys out when the model has no Phase Support.](images/Tree_filter.png)
 
 ## Delete Multiple
 
-`Delete Multiple...` shows a checkbox tree scoped to the clicked node, with type filters and Select All â€” tick everything to remove and delete it as **one undo step**. The fastest way to clean up an imported or experimental model.
+`Delete Multiple...` shows a checkbox tree scoped to the clicked node, with type filters and Select All — tick everything to remove and delete it as **one undo step**. The fastest way to clean up an imported or experimental model.
 
 ![Bulk delete: the Show checkboxes narrow the tree by kind, ticking a parent includes its contents, and the whole deletion is a single undo step.](images/Delete_Multiple.png)
 
@@ -573,36 +574,36 @@ Which entries are enabled follows from the clicked node â€” the same gate a
 Dragging in the tree is move-or-copy:
 
 - **Plain drag** = **move**: the node re-parents under the drop target (the model validates which parents are legal per element type; illegal targets simply don't highlight). The dragged row lifts out of the tree while dragging.
-- **`Ctrl`+drag** = **copy**: the ghost cursor gains a green **+** badge and the original stays put â€” this is how you clone a member/method subtree onto another class quickly.
+- **`Ctrl`+drag** = **copy**: the ghost cursor gains a green **+** badge and the original stays put — this is how you clone a member/method subtree onto another class quickly.
 - Valid drop targets highlight with a tinted row and an accent bar at the left edge.
 
-Everyday examples: drag an **argument onto a method** to add it there (`Ctrl`+drag to copy it from another method â€” the fast way to replicate a signature); drop a **type** node â€” a Class, Extern Class or Other Type â€” **onto a method** to add a new argument *of that type*; the same move/copy works for members and methods between classes, and for classes between groups.
+Everyday examples: drag an **argument onto a method** to add it there (`Ctrl`+drag to copy it from another method — the fast way to replicate a signature); drop a **type** node — a Class, Extern Class or Other Type — **onto a method** to add a new argument *of that type*; the same move/copy works for members and methods between classes, and for classes between groups.
 
-**Tree â†’ diagram** (hold `Ctrl` and drag over an open diagram view):
+**Tree → diagram** (hold `Ctrl` and drag over an open diagram view):
 
 - onto a **class diagram**: a class node drops as a new class shape at the cursor (a ghost of the shape previews while hovering);
 - onto a **sequence diagram**: a class or actor drops as a new lifeline.
 
 # Reference: class diagrams
 
-A class diagram shows selected classes as UML boxes with their inheritances, relations and dependencies. A model can have any number of diagrams; each shows a chosen subset of classes and features â€” small focused diagrams beat one wall-sized one.
+A class diagram shows selected classes as UML boxes with their inheritances, relations and dependencies. A model can have any number of diagrams; each shows a chosen subset of classes and features — small focused diagrams beat one wall-sized one.
 
-![The class-diagram view with its toolbar. Row and Column are selected (translucent accent, resize handles); the darker frame on Column marks the align anchor â€” the last-selected shape.](images/Class_diagram_view.png)
+![The class-diagram view with its toolbar. Row and Column are selected (translucent accent, resize handles); the darker frame on Column marks the align anchor — the last-selected shape.](images/Class_diagram_view.png)
 
 ## Reading the diagram
 
 - **Class box**: name, then members / methods. The diagram's auto-add setting (its dialog) decides which access levels appear when a class is *first placed*; after that, which individual features appear is per-shape via `Select Members & Methods...`.
 - **Inheritance**: triangle-headed arrow to the base.
 - **Relation**: line with a **diamond on the owner side when owned** (aggregation); multiplicities `1`/`*` at the ends; the role names optionally shown (`Show Relation Names`).
-- **Dependency**: dashed arrow with a name and a stereotype (`<<uses>>`-style) â€” a documentation-only "uses" link; like Relation (Diagram Only), it changes nothing in the generated code.
-- **Relation (Diagram Only)**: looks like a relation but exists **only in the drawing** â€” nothing is added to the model and nothing is generated. Use it for documentation-only connections.
+- **Dependency**: dashed arrow with a name and a stereotype (`<<uses>>`-style) — a documentation-only "uses" link; like Relation (Diagram Only), it changes nothing in the generated code.
+- **Relation (Diagram Only)**: looks like a relation but exists **only in the drawing** — nothing is added to the model and nothing is generated. Use it for documentation-only connections.
 - **Notes**: free-text boxes, attachable by connection points to other shapes.
 
 ## Selection
 
 - **Click** selects the shape under the cursor (clicking an already-selected shape keeps the selection, so a drag can follow). Clicking empty space clears the selection.
 - **`Ctrl`+click toggles** a shape in/out of the selection; **`Shift`+click always adds**.
-- **Rubber band**: drag from empty space â€” shapes **fully enclosed** by the dashed box are selected (with `Shift`: added to the selection).
+- **Rubber band**: drag from empty space — shapes **fully enclosed** by the dashed box are selected (with `Shift`: added to the selection).
 - **`Ctrl+A`** selects all top-level shapes; **`Esc`** clears the selection (or cancels whatever drag/placement is in progress).
 - When several things overlap, the hit-test prefers the small things first: connection text labels, then note connection points, then connection segment handles, then resize handles, then shape bodies.
 - Selected shapes are outlined (and lightly filled) in the accent color. The **last-selected** class/note carries a darker frame: it is the **anchor** that Align works against.
@@ -610,54 +611,54 @@ A class diagram shows selected classes as UML boxes with their inheritances, rel
 
 ## Moving and resizing
 
-- **Move**: drag any selected shape â€” a multi-selection moves as a block (dashed ghost outlines preview the landing spots). Connections between two moved shapes translate along; connections to unmoved shapes re-route.
+- **Move**: drag any selected shape — a multi-selection moves as a block (dashed ghost outlines preview the landing spots). Connections between two moved shapes translate along; connections to unmoved shapes re-route.
 - **Resize**: classes and notes have **left/right edge handles** (cursor becomes a horizontal double arrow). Width is clamped to a minimum; height is derived from content. Manually resizing a class turns its *Auto Width* off (re-enable via the context menu).
 
 ## Editing connection routing
 
-Connections are orthogonal poly-lines that you can reshape â€” select the connection first:
+Connections are orthogonal poly-lines that you can reshape — select the connection first:
 
-- **Middle segments** slide perpendicular to their direction (a vertical segment moves left/right â€” horizontal double-arrow cursor; a horizontal one moves up/down). Movement snaps to the grid and is clamped so the routing stays legal; a dashed ghost previews the result.
-- **End points** slide along the class perimeter (four-arrow cursor). The whole path re-routes live: the preview shows the complete re-routed connection â€” arrowheads, diamonds and all â€” as a dashed ghost.
-- **Move all â€” `Alt`**: hold `Alt` while dropping and every sibling connection that shares the same routing moves together. This is how you move the **shared trunk of all inheritance lines** of a base class in one gesture: drag any one of them with `Alt`, and every collinear sibling follows. The same applies to `Alt` on a shared start point.
+- **Middle segments** slide perpendicular to their direction (a vertical segment moves left/right — horizontal double-arrow cursor; a horizontal one moves up/down). Movement snaps to the grid and is clamped so the routing stays legal; a dashed ghost previews the result.
+- **End points** slide along the class perimeter (four-arrow cursor). The whole path re-routes live: the preview shows the complete re-routed connection — arrowheads, diamonds and all — as a dashed ghost.
+- **Move all — `Alt`**: hold `Alt` while dropping and every sibling connection that shares the same routing moves together. This is how you move the **shared trunk of all inheritance lines** of a base class in one gesture: drag any one of them with `Alt`, and every collinear sibling follows. The same applies to `Alt` on a shared start point.
 - **Text labels** (relation role names and multiplicities, dependency name/stereotype) are draggable on a selected connection (four-arrow cursor, snaps to the grid). Once moved, a label stays where you put it.
 
 ## Members and methods inside the box
 
 - A member/method **row** is individually selectable; double-click opens its dialog.
-- **Reorder by drag**: press on an already-selected row and drag vertically â€” a horizontal insertion line shows the landing slot. Members reorder among members, methods among methods. The new order is model order: it changes the declaration order in the generated file.
-- Arrow keys walk the rows of a class (header â†” members â†” methods).
+- **Reorder by drag**: press on an already-selected row and drag vertically — a horizontal insertion line shows the landing slot. Members reorder among members, methods among methods. The new order is model order: it changes the declaration order in the generated file.
+- Arrow keys walk the rows of a class (header ↔ members ↔ methods).
 
 ## Notes and their connection points
 
-Notes attach to other shapes with connection lines whose points are **positional** ("semi-attached"): a point that lies inside a shape's rectangle travels with that shape when it moves â€” nothing is hard-wired, so you can park a point anywhere.
+Notes attach to other shapes with connection lines whose points are **positional** ("semi-attached"): a point that lies inside a shape's rectangle travels with that shape when it moves — nothing is hard-wired, so you can park a point anywhere.
 
 - Drag a note's **corner point outward** to spawn a new point (the attach-line grows a joint); drag a point **back inside the note** to delete it.
 - While dragging, a dashed line plus a small square marker previews the geometry.
 
 ## Creating elements on the canvas
 
-- **Key + drag** (the fastest way): hold a key, then drag from one class to another â€” the cursor becomes a crosshair, a dashed line follows the drag, and the target class highlights:
-  - **R** â€” Relation (dialog opens on drop; `Cancel` creates nothing)
-  - **I** â€” Inheritance (drag **from base to derived**)
-  - **D** â€” Dependency
-  - **O** â€” Relation (Diagram Only)
+- **Key + drag** (the fastest way): hold a key, then drag from one class to another — the cursor becomes a crosshair, a dashed line follows the drag, and the target class highlights:
+  - **R** — Relation (dialog opens on drop; `Cancel` creates nothing)
+  - **I** — Inheritance (drag **from base to derived**)
+  - **D** — Dependency
+  - **O** — Relation (Diagram Only)
   - One gesture per key press; `Esc` cancels mid-drag.
-- **Placement modes**: `Add â–¸ Class` (`Ctrl+Shift+C`) or `Add â–¸ Note` (`Ctrl+Shift+N`) arm a crosshair with a footprint ghost; click to place (the class/note dialog opens), right-click or `Esc` to cancel.
-- **From the selection**: select the *from* class, `Shift`+click the *to* class, then use `Add â–¸ Relation` / `Add â–¸ Inheritance` â€” the dialog opens pre-filled with the pair in selection order.
-- `Add â–¸` also creates members/methods/constructors/arguments directly on the selected class or method â€” same dialogs as the tree.
+- **Placement modes**: `Add ▸ Class` (`Ctrl+Shift+C`) or `Add ▸ Note` (`Ctrl+Shift+N`) arm a crosshair with a footprint ghost; click to place (the class/note dialog opens), right-click or `Esc` to cancel.
+- **From the selection**: select the *from* class, `Shift`+click the *to* class, then use `Add ▸ Relation` / `Add ▸ Inheritance` — the dialog opens pre-filled with the pair in selection order.
+- `Add ▸` also creates members/methods/constructors/arguments directly on the selected class or method — same dialogs as the tree.
 - **Deleting** a shape asks whether to remove it *from the diagram* or *from the model*.
 
 ## Align
 
-Select two or more classes/notes and align them to the **anchor** (the last-selected shape, marked with the darker frame): **Left / Center / Right** (horizontal) and **Top / Middle / Bottom** (vertical) â€” from the context menu's `Align â–¸` submenu or the toolbar's align dropdown. `Optimize Placement` (â‰¥ 2 classes) auto-lays-out the whole diagram instead.
+Select two or more classes/notes and align them to the **anchor** (the last-selected shape, marked with the darker frame): **Left / Center / Right** (horizontal) and **Top / Middle / Bottom** (vertical) — from the context menu's `Align ▸` submenu or the toolbar's align dropdown. `Optimize Placement` (≥ 2 classes) auto-lays-out the whole diagram instead.
 
 ## Hiding, per-shape toggles, colors
 
 - **Hide** removes selected connections from view (per diagram); **Show Hidden** brings them back via a picker.
 - Per-class toggles: **Auto Width**, **Show Method Arguments**. Per-relation: **Show Relation Names**.
 - **Change Line Color... / Change Text Color...** recolor the selected shapes.
-- **Color Templates â–¸** sets the **document-wide default colors** â€” class line/text, member text, method text, relation line/critical-relation line/text, inherit line, diagram-only line/text, dependency line/text, note line/text. Each opens a color picker seeded with the current value; the change applies to every diagram of the model (and is undoable).
+- **Color Templates ▸** sets the **document-wide default colors** — class line/text, member text, method text, relation line/critical-relation line/text, inherit line, diagram-only line/text, dependency line/text, note line/text. Each opens a color picker seeded with the current value; the change applies to every diagram of the model (and is undoable).
 
 ## Zoom and pan
 
@@ -670,17 +671,17 @@ Select two or more classes/notes and align them to the **anchor** (the last-sele
 | middle-mouse drag | pan (closed-hand cursor) |
 | scrollbars | pan |
 
-Zoom ranges from 0.1Ã— to 32Ã—; the status bar's X/Y fields track the model coordinates under the cursor.
+Zoom ranges from 0.1× to 32×; the status bar's X/Y fields track the model coordinates under the cursor.
 
 ## The CD toolbar
 
-In order: **Add Class**, **Add Note** (both arm placement) Â· **Add Inheritance**, **Add Relation**, **Add Relation (Diagram Only)**, **Add Dependency** (enabled per selection) Â· **Add Member / Method / Constructor / Argument / Virtual Methods / IsClass Methods** (enabled when a single suitable target is selected) Â· **Align** dropdown (â‰¥ 2 alignable) Â· **Delete** (any selection) Â· **Undo / Redo** Â· **Zoom In / Zoom Out / Fit** Â· **Export SVG**.
+In order: **Add Class**, **Add Note** (both arm placement) · **Add Inheritance**, **Add Relation**, **Add Relation (Diagram Only)**, **Add Dependency** (enabled per selection) · **Add Member / Method / Constructor / Argument / Virtual Methods / IsClass Methods** (enabled when a single suitable target is selected) · **Align** dropdown (≥ 2 alignable) · **Delete** (any selection) · **Undo / Redo** · **Zoom In / Zoom Out / Fit** · **Export SVG**.
 
 ![The CD toolbar: the Add buttons (greyed when not legal on the selection), the align dropdown, Delete, Undo/Redo, zoom in/out/fit, and Export SVG.](images/Class_diagram_toolbar.png)
 
 ## The CD context menu
 
-One menu serves the whole canvas: which entries are enabled follows from what is selected â€” the same gate as the toolbar buttons. Below, the menu on an **empty selection**: the diagram-level actions are available (adding a class or note, Select Classes, Color Templates, Optimize Placement), while everything that needs a shape â€” Open, Edit Attributes, Align, Hide â€” waits for one.
+One menu serves the whole canvas: which entries are enabled follows from what is selected — the same gate as the toolbar buttons. Below, the menu on an **empty selection**: the diagram-level actions are available (adding a class or note, Select Classes, Color Templates, Optimize Placement), while everything that needs a shape — Open, Edit Attributes, Align, Hide — waits for one.
 
 ![](images/Class_diagram_context_menu.png)
 
@@ -691,26 +692,26 @@ One menu serves the whole canvas: which entries are enabled follows from what is
 | `R` / `I` / `D` / `O` + drag | create relation / inheritance / dependency / diagram-only |
 | `Ctrl+Shift+C/N` | arm Add Class / Add Note placement |
 | `Ctrl+Shift+I/R/O/D/B/M/U/A/V/S` | the Add actions (as on the tree) |
-| `â†‘` / `â†“` | walk the rows of the selected class |
+| `↑` / `↓` | walk the rows of the selected class |
 | `Del` | delete selection |
 | `Esc` | cancel placement/drag/rubber-band, else clear selection |
 | `Ctrl+A` | select all |
 
 # Reference: sequence diagrams
 
-Sequence diagrams show *interactions*: which object calls what, in which order. Lifelines (classes or actors) run vertically; **activations** (the narrow boxes) are nested calls; **messages** (signals) are the arrows between them. Activations can be bound to a real method of the model â€” the diagram then knows the signature, and `Open` on the activation jumps straight into the method's code editor.
+Sequence diagrams show *interactions*: which object calls what, in which order. Lifelines (classes or actors) run vertically; **activations** (the narrow boxes) are nested calls; **messages** (signals) are the arrows between them. Activations can be bound to a real method of the model — the diagram then knows the signature, and `Open` on the activation jumps straight into the method's code editor.
 
-![A sequence-diagram view in the shell â€” its own toolbar (delete, undo/redo, zoom, export SVG) at the top; diagram views dock, tab and float exactly like the trees.](images/sd-view.png)
+![A sequence-diagram view in the shell — its own toolbar (delete, undo/redo, zoom, export SVG) at the top; diagram views dock, tab and float exactly like the trees.](images/sd-view.png)
 
 ## Building one
 
-1. `Add â–¸ Sequence Diagram` on the model/class/group node; the dialog sets numbering style (`1`, `1.1.1`, `a`, ...), whether message labels show argument types/names/scope, caption, scale.
+1. `Add ▸ Sequence Diagram` on the model/class/group node; the dialog sets numbering style (`1`, `1.1.1`, `a`, ...), whether message labels show argument types/names/scope, caption, scale.
 
     ![](images/SD_Dialog.png)
 
-2. Add lifelines: `Add â–¸ Lifeline` (`Ctrl+Shift+L`) then click on the lifeline row, `Ctrl`+drag classes/actors in from the tree, or `Add â–¸ Class` to create a class and its lifeline in one go.
-3. Create messages **by dragging**: press on a sender activation and drag onto a target â€” another activation, or a lifeline body (which creates the receiving activation). A dashed preview line follows the drag and the cursor becomes a pointing hand over a valid target; on drop the message dialog opens to bind a method (`Cancel` creates nothing). Creation/destruction flags mark constructor/destructor semantics. Self-calls and cycles are refused.
-4. Notes: free boxes with attach-lines â€” see below.
+2. Add lifelines: `Add ▸ Lifeline` (`Ctrl+Shift+L`) then click on the lifeline row, `Ctrl`+drag classes/actors in from the tree, or `Add ▸ Class` to create a class and its lifeline in one go.
+3. Create messages **by dragging**: press on a sender activation and drag onto a target — another activation, or a lifeline body (which creates the receiving activation). A dashed preview line follows the drag and the cursor becomes a pointing hand over a valid target; on drop the message dialog opens to bind a method (`Cancel` creates nothing). Creation/destruction flags mark constructor/destructor semantics. Self-calls and cycles are refused.
+4. Notes: free boxes with attach-lines — see below.
 
 ## What moves, and how
 
@@ -718,31 +719,31 @@ Sequence diagrams show *interactions*: which object calls what, in which order. 
 |--------------------------|-------------------------|----------------------------------------|
 | Receiving activation | drag the **message arrow** up/down | vertical only; clamped to its container; dashed ghost |
 | Sending activation | `Alt` + drag the arrow | same drag, other end |
-| Activation among siblings | `Ctrl+â†‘` / `Ctrl+â†“` (or context menu Move Up/Down) | reorders the call sequence |
-| Lifeline | drag its head left/right, or `Ctrl+â†` / `Ctrl+â†’` | horizontal only; siblings shift aside |
+| Activation among siblings | `Ctrl+↑` / `Ctrl+↓` (or context menu Move Up/Down) | reorders the call sequence |
+| Lifeline | drag its head left/right, or `Ctrl+←` / `Ctrl+→` | horizontal only; siblings shift aside |
 | Signal texts (name, guard label, return) | drag, on a selected signal | free 2-D offset, grid-snapped |
 | Note | drag body / left-right edge handles | move / resize |
 | Note attach-line points | drag the point | see below |
 
-**Notes and their points.** Like class-diagram notes, attach-line endpoints are **semi-attached**: purely positional, so a point lying on a lifeline or signal travels with it. Dragging a corner point outward spawns a new joint; dragging a point back into the note deletes it. On release, a point near a signal arrow snaps vertically onto it â€” the line then tracks that signal.
+**Notes and their points.** Like class-diagram notes, attach-line endpoints are **semi-attached**: purely positional, so a point lying on a lifeline or signal travels with it. Dragging a corner point outward spawns a new joint; dragging a point back into the note deletes it. On release, a point near a signal arrow snaps vertically onto it — the line then tracks that signal.
 
 ## Keeping it readable
 
 Three context-menu layout commands (each one undo step):
 
-- **Optimize Placement** â€” reorders lifelines to minimize crossings, packs horizontally, resets offsets.
-- **Space Lifelines** â€” even horizontal spacing, order preserved.
-- **Reset Activation Offsets** â€” clears manual vertical tweaks.
+- **Optimize Placement** — reorders lifelines to minimize crossings, packs horizontally, resets offsets.
+- **Space Lifelines** — even horizontal spacing, order preserved.
+- **Reset Activation Offsets** — clears manual vertical tweaks.
 
-`Collapse Activations to Note` replaces a selected group of nested activations with a summarizing note â€” good for hiding boilerplate sub-calls.
+`Collapse Activations to Note` replaces a selected group of nested activations with a summarizing note — good for hiding boilerplate sub-calls.
 
 ## Toolbar, colors, zoom
 
-- **Toolbar**: Add Lifeline, Add Note, Add Class (placement/dialog) Â· Delete Â· Undo / Redo Â· Zoom In / Out / Fit Â· Export SVG.
+- **Toolbar**: Add Lifeline, Add Note, Add Class (placement/dialog) · Delete · Undo / Redo · Zoom In / Out / Fit · Export SVG.
 
 ![](images/SD_toolbar.png)
 
-- **Colors**: per-shape `Change Line/Text Color...`, plus the document-wide **Color Templates â–¸** for the sequence-diagram defaults (lifeline, activation, signal and note line/text colors) â€” same mechanism as in class diagrams.
+- **Colors**: per-shape `Change Line/Text Color...`, plus the document-wide **Color Templates ▸** for the sequence-diagram defaults (lifeline, activation, signal and note line/text colors) — same mechanism as in class diagrams.
 - **Zoom & pan**: identical to class diagrams (`Ctrl`+wheel anchored at the cursor, `Ctrl+=`/`Ctrl+-`, Fit via toolbar or `Ctrl+0`, pan with plain scroll / middle-drag / scrollbars, pinch on trackpads).
 
 The context menu serves the whole canvas; entries enable per selection, exactly like the toolbar buttons. With nothing selected, the placement and diagram-level actions are what remains:
@@ -755,13 +756,13 @@ The context menu serves the whole canvas; entries enable per selection, exactly 
 |----------------------|------------------------------------------------|
 | `Ctrl+Shift+L` / `Ctrl+Shift+N` | arm Add Lifeline / Add Note placement |
 | `Ctrl+Shift+C` | Add Class (dialog; lifeline auto-placed) |
-| `Ctrl+â†‘` `Ctrl+â†“` | move activation up/down among siblings |
-| `Ctrl+â†` `Ctrl+â†’` | move lifeline left/right |
-| `â†` `â†’` / `â†‘` `â†“` | navigate between related shapes / along a lifeline |
+| `Ctrl+↑` `Ctrl+↓` | move activation up/down among siblings |
+| `Ctrl+←` `Ctrl+→` | move lifeline left/right |
+| `←` `→` / `↑` `↓` | navigate between related shapes / along a lifeline |
 | `Enter` | open the selected shape (as double-click) |
 | `Del` / `Esc` / `Ctrl+A` | delete / cancel-or-clear / select all |
 
-A power feature for documentation: **call traces**. Via the command interface (`add_call_trace`, chapter 16), ClassBuilder scans a method body, resolves the calls against the model, and generates a whole sequence diagram of the call tree automatically â€” a starting sketch to refine by hand.
+A power feature for documentation: **call traces**. Via the command interface (`add_call_trace`, chapter 16), ClassBuilder scans a method body, resolves the calls against the model, and generates a whole sequence diagram of the call tree automatically — a starting sketch to refine by hand.
 
 # Reference: dialogs
 
@@ -771,9 +772,9 @@ Every dialog, what it edits, and the fields that need explanation. The screensho
 
 ![](images/Class_Dialog.png)
 
-Name; **Source File** / **Include File** (output paths); **Template** (+ declaration `template<class T>` and reference `<T>`); properties: **Replace** (generate the replace constructor â€” chapter 15), **Dll Export**, **Serialize** (chapter 13; locking rules below), **Struct** (emit `struct`), **Relation Macros Last** (move the relation macro block to the end of the class declaration); **Member Prefix** (per-class override of the model default); Note.
+Name; **Source File** / **Include File** (output paths); **Template** (+ declaration `template<class T>` and reference `<T>`); properties: **Replace** (generate the replace constructor — chapter 15), **Dll Export**, **Serialize** (chapter 13; locking rules below), **Struct** (emit `struct`), **Relation Macros Last** (move the relation macro block to the end of the class declaration); **Member Prefix** (per-class override of the model default); Note.
 
-*Serialize locking:* the checkbox disables when switching would break the model â€” most importantly, a class with a Serialize-on subclass cannot turn Serialize off.
+*Serialize locking:* the checkbox disables when switching would break the model — most importantly, a class with a Serialize-on subclass cannot turn Serialize off.
 
 ## External Class
 
@@ -785,25 +786,25 @@ Name, template declaration/reference, **Struct**, **Suppress forward declaration
 
 ![](images/Member_Dialog.png)
 
-Type (searchable combo of all model types) + name (bare, no prefix); template reference for templated types; type shape: **Const, Mutable, Reference, Pointer, Pointer/Pointer, Const Pointer, Array [size], Bit Field [bits]**; **Serialize** (include in the generated `Serialize` body â€” with the member's *version*, chapter 13); **Delete** (emit `= delete`); access + **Static**; **Get method / Set method** (see below); **Initial Value** (becomes the constructor-initializer expression); Note.
+Type (searchable combo of all model types) + name (bare, no prefix); template reference for templated types; type shape: **Const, Mutable, Reference, Pointer, Pointer/Pointer, Const Pointer, Array [size], Bit Field [bits]**; **Serialize** (include in the generated `Serialize` body — with the member's *version*, chapter 13); **Delete** (emit `= delete`); access + **Static**; **Get method / Set method** (see below); **Initial Value** (becomes the constructor-initializer expression); Note.
 
-**Generated getters and setters.** Choosing an access level (instead of *None*) generates `GetX()` (inline, `const`, returns the member) and/or `SetX(value)` with that access; the static flag follows the member, and both stay in sync when the member is renamed or retyped. One important special case: **if the member is the key of a tree-implemented relation** (Value Tree / Unique Value Tree / AVL Tree), the generated setter also **repositions the object inside the tree** â€” changing a key must never be a plain assignment. See chapter 12.7 for the generated code.
+**Generated getters and setters.** Choosing an access level (instead of *None*) generates `GetX()` (inline, `const`, returns the member) and/or `SetX(value)` with that access; the static flag follows the member, and both stay in sync when the member is renamed or retyped. One important special case: **if the member is the key of a tree-implemented relation** (Value Tree / Unique Value Tree / AVL Tree), the generated setter also **repositions the object inside the tree** — changing a key must never be a plain assignment. See chapter 12.7 for the generated code.
 
 ## Method
 
 ![](images/Method_Dialog.png)
 
-Return type + shape; name (combo remembers names used elsewhere â€” pick `Serialize` and the tool knows the convention); access + **Static**; **Virtual**, **Pure** (`= 0`), **Declare** / **Implement** (whether to emit the declaration and/or an implementation body â€” declare-only for hand-implemented specials), **Inline**, **Const**, **= delete**, **Dll Export**, **Calling Convention** (`__cdecl`, `__stdcall`, ... or free text); Note (emitted as the `@NOTE` comment above the method).
+Return type + shape; name (combo remembers names used elsewhere — pick `Serialize` and the tool knows the convention); access + **Static**; **Virtual**, **Pure** (`= 0`), **Declare** / **Implement** (whether to emit the declaration and/or an implementation body — declare-only for hand-implemented specials), **Inline**, **Const**, **= delete**, **Dll Export**, **Calling Convention** (`__cdecl`, `__stdcall`, ... or free text); Note (emitted as the `@NOTE` comment above the method).
 
-*Renaming a method* does not stop at the declaration: ClassBuilder scans all stored method bodies for occurrences of the old name and opens the **occurrences dialog** â€” every hit listed with its class/method location; select which to rename, and view any hit's code directly from the dialog before deciding. This makes model-wide renames safe without a text editor.
+*Renaming a method* does not stop at the declaration: ClassBuilder scans all stored method bodies for occurrences of the old name and opens the **occurrences dialog** — every hit listed with its class/method location; select which to rename, and view any hit's code directly from the dialog before deciding. This makes model-wide renames safe without a text editor.
 
-![Renaming a method offers to update every call site stored in the model â€” with the possibility to view the code.](images/Replace_Dialog.png)
+![Renaming a method offers to update every call site stored in the model — with the possibility to view the code.](images/Replace_Dialog.png)
 
 ## Constructor / Destructor
 
 ![The Constructor dialog.](images/Constructor_Dialog.png)
 
-Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention â€” plus the derived-arguments behaviour of chapter 4.5. The derived argument list and initializer list **re-derive automatically** when the class structure changes â€” adding/removing a member or changing a base updates the constructor's arguments and its `_x(value)` initializer entries (from each member's *Initial Value*). If you edit an initializer by hand in the constructor dialog, your text wins until the next structural change re-derives that entry.
+Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention — plus the derived-arguments behaviour of chapter 4.5. The derived argument list and initializer list **re-derive automatically** when the class structure changes — adding/removing a member or changing a base updates the constructor's arguments and its `_x(value)` initializer entries (from each member's *Initial Value*). If you edit an initializer by hand in the constructor dialog, your text wins until the next structural change re-derives that entry.
 
 ![The Destructor dialog.](images/Destructor_Dialog.png)
 
@@ -813,7 +814,7 @@ Destructor: the same options minus Explicit, plus **Virtual / Pure**.
 
 ![](images/Exception_Specification_Dialog.png)
 
-Per method (context menu â–¸ *Edit Exception Specification*): a master checkbox *"Method has an exception specification (throw clause)"*, and a two-list builder â€” pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add**/**Remove** them to compose the emitted `throw(...)` clause.
+Per method (context menu ▸ *Edit Exception Specification*): a master checkbox *"Method has an exception specification (throw clause)"*, and a two-list builder — pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add**/**Remove** them to compose the emitted `throw(...)` clause.
 
 ## Argument
 
@@ -832,7 +833,7 @@ The **Base Classes / Derived Classes** context-menu items open read-only browser
 | ![](images/Base_Classes_Dialog.png) | ![](images/Derived_Classes_Dialog.png) |
 |------|------|
 
-*Left: the Base Classes browser â€” everything the class inherits from. Right: the more telling Derived Classes browser â€” everything that inherits from it.*
+*Left: the Base Classes browser — everything the class inherits from. Right: the more telling Derived Classes browser — everything that inherits from it.*
 
 ## Relation
 
@@ -842,14 +843,14 @@ Chapter 12 is the background; the dialog fields:
 
 - **From / To**: the two classes and the two role names (the names appear in all generated identifiers: `GetFirstCell`, `AddCellLast`, `CellIterator`, ...).
 - **Association Type**: **Single** (one pointer), **Multi** (a list), **Static Multi** (one *shared* container across all instances of the from-class).
-- **Association Properties**: **Aggregation** (owned: cascade delete), **Critical** (thread-safe: every operation locks â€” chapter 12.8), **Filter** (iterators get a predicate variant).
-- **Implementation** (Multi only): **Standard** (doubly-linked intrusive list), **Value Tree** (bit-indexed tree on an **integer-like** member â€” fastest find, unordered; **Unique** selects the unique-key variant when duplicates are impossible), **AVL Tree** (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` â€” ints and `CbString` qualify). **Member**: the key member for the tree variants â€” its generated **setter becomes tree-aware** (chapter 12.7).
+- **Association Properties**: **Aggregation** (owned: cascade delete), **Critical** (thread-safe: every operation locks — chapter 12.8), **Filter** (iterators get a predicate variant).
+- **Implementation** (Multi only): **Standard** (doubly-linked intrusive list), **Value Tree** (bit-indexed tree on an **integer-like** member — fastest find, unordered; **Unique** selects the unique-key variant when duplicates are impossible), **AVL Tree** (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` — ints and `CbString` qualify). **Member**: the key member for the tree variants — its generated **setter becomes tree-aware** (chapter 12.7).
 
 ## Find Method (on a relation)
 
 ![](images/Find_Method_Dialog.png)
 
-Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object â€” its members, and members reached by *navigating* further relations â€” from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the code body, is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead â€” callers are identical either way.
+Created on a **multi relation** (context menu of the relation node). The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the code body, is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
 
 ## Dependency
 
@@ -861,15 +862,15 @@ Created on a **multi relation** (context menu of the relation node). The dialog 
 
 ![](images/Relation_only_Dialog.png)
 
-The drawing-only counterpart of the Relation dialog: both ends get a **Class**, a **Name** and a free **Multiplicity** text; the kind radio buttons (Single / Multi / Static Multi) and **Association / Aggregation / Composition** choose the UML notation drawn. Nothing enters the model and nothing is generated â€” pure documentation, and notation-wise *richer* than modeled relations (e.g. Composition).
+The drawing-only counterpart of the Relation dialog: both ends get a **Class**, a **Name** and a free **Multiplicity** text; the kind radio buttons (Single / Multi / Static Multi) and **Association / Aggregation / Composition** choose the UML notation drawn. Nothing enters the model and nothing is generated — pure documentation, and notation-wise *richer* than modeled relations (e.g. Composition).
 
 ## Type
 
 ![](images/Type_Dialog.png)
 
-Name, serialize mapping (**None** or **Int** â€” how the unknown type is streamed), and the **Declaration** text block: the actual `typedef`/`enum`/`struct` C++ text that gets emitted into the master include.
+Name, serialize mapping (**None** or **Int** — how the unknown type is streamed), and the **Declaration** text block: the actual `typedef`/`enum`/`struct` C++ text that gets emitted into the master include.
 
-With Serialize on, a serialized member of such a type must be streamable: map the type to **Int** when it converts to an integer. When it cannot (mapping **None**), supply the two stream operators for the type yourself â€” for example in `StdAfx.h` or a user section:
+With Serialize on, a serialized member of such a type must be streamable: map the type to **Int** when it converts to an integer. When it cannot (mapping **None**), supply the two stream operators for the type yourself — for example in `StdAfx.h` or a user section:
 
 ```cpp
 CbArchive& operator <<(CbArchive& archive, const TypeName& typeName);
@@ -880,18 +881,18 @@ CbArchive& operator >>(CbArchive& archive, TypeName& typeName);
 
 ![](images/Group_Dialog.png)
 
-Name + note. (MemberAndMethodGroups â€” in-class folders â€” are created from the class context menu.)
+Name + note. (MemberAndMethodGroups — in-class folders — are created from the class context menu.)
 
-## Context â€” define and assign
+## Context — define and assign
 
 ![](images/Edit_Context.png)
 
-A **context** is a named wrapper of free-form text: for every element assigned to it, the text you define is emitted *before* and *after* the generated declaration (`.h`) and implementation (`.cpp`). Wrapping classes or methods in `#ifdef`/`#endif` to compile them in or out of a build is one common use â€” but any bracketing text works: `#pragma` push/pop pairs, compiler-specific attributes, warning suppressions. Two dialogs:
+A **context** is a named wrapper of free-form text: for every element assigned to it, the text you define is emitted *before* and *after* the generated declaration (`.h`) and implementation (`.cpp`). Wrapping classes or methods in `#ifdef`/`#endif` to compile them in or out of a build is one common use — but any bracketing text works: `#pragma` push/pop pairs, compiler-specific attributes, warning suppressions. Two dialogs:
 
-- **Edit Context** (on the model node) manages the **context declarations**: each has a name, the `#define` line to emit into the master include (with an enable/disable flag â€” the master include's "Context define declarations" section), and the exact start/end wrapper text used around declarations (`.h`) and implementations (`.cpp`).
+- **Edit Context** (on the model node) manages the **context declarations**: each has a name, the `#define` line to emit into the master include (with an enable/disable flag — the master include's "Context define declarations" section), and the exact start/end wrapper text used around declarations (`.h`) and implementations (`.cpp`).
 - **Assign Context** (on a class or method) assigns declarations to that element: the left list shows contexts already assigned, the right list the available declarations; **Add** and **Remove** move between them.
 
-Typical use: feature flags (`FEATURE_X`), platform sections, debug-only helpers, or pragma/warning brackets â€” modeled once, consistently emitted, instead of hand-maintained preprocessor text scattered through user regions.
+Typical use: feature flags (`FEATURE_X`), platform sections, debug-only helpers, or pragma/warning brackets — modeled once, consistently emitted, instead of hand-maintained preprocessor text scattered through user regions.
 
 ![Contexts wrap the generated code of assigned elements in the bracketing text you define.](images/Assign_Context.png)
 
@@ -905,7 +906,7 @@ Name + note; actors appear under `Actors` and go on sequence diagrams as stick f
 
 ![](images/CD_Dialog.png)
 
-Name, page size/orientation/scale, multi-page layout (1â€“16 pages), caption, note â€” and the **auto-add** matrix: which member/method access levels are automatically shown when a class is placed on this diagram (private/protected/public members and methods, plus Get/Set methods).
+Name, page size/orientation/scale, multi-page layout (1–16 pages), caption, note — and the **auto-add** matrix: which member/method access levels are automatically shown when a class is placed on this diagram (private/protected/public members and methods, plus Get/Set methods).
 
 ## Sequence Diagram
 
@@ -917,14 +918,14 @@ Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, 
 
 ![](images/Select_Classes_Dialog.png)
 
-A checkbox list of **every class in the model**: tick to place a class on this diagram, untick to remove its shape. The bulk way to (re)compose a diagram â€” newly ticked classes are placed on free grid positions (run `Optimize Placement` afterwards).
+A checkbox list of **every class in the model**: tick to place a class on this diagram, untick to remove its shape. The bulk way to (re)compose a diagram — newly ticked classes are placed on free grid positions (run `Optimize Placement` afterwards).
 
 ## Select Members & Methods
 
-Controls **which individual members and methods are visible** on a class shape. (The diagram's auto-add flags only seed the initial set when a class is placed â€” they put no limit on what you pick here.) The context-menu action comes in two tastes, depending on the selection:
+Controls **which individual members and methods are visible** on a class shape. (The diagram's auto-add flags only seed the initial set when a class is placed — they put no limit on what you pick here.) The context-menu action comes in two tastes, depending on the selection:
 
-- **One class selected**: a per-class picker, titled with the class name â€” two checkbox lists, the class's members and methods, each with Select All / Unselect All; ticked items are shown on *this* shape. (`Open` / `Edit Attributes` on a class shape is something else: it opens the ordinary Class dialog of 9.1, exactly as in the tree.)
-- **Nothing selected**: the **diagram-wide picker** â€” a checkbox tree of every class shape with its members and methods beneath; OK/**Apply** commit, Cancel rolls everything back.
+- **One class selected**: a per-class picker, titled with the class name — two checkbox lists, the class's members and methods, each with Select All / Unselect All; ticked items are shown on *this* shape. (`Open` / `Edit Attributes` on a class shape is something else: it opens the ordinary Class dialog of 9.1, exactly as in the tree.)
+- **Nothing selected**: the **diagram-wide picker** — a checkbox tree of every class shape with its members and methods beneath; OK/**Apply** commit, Cancel rolls everything back.
 
 The same class can show different features on different diagrams.
 
@@ -942,7 +943,7 @@ Reorders a class's members and methods with the **Move Up / Move Down** buttons.
 
 ![](images/Message_Dialog.png)
 
-Name (the displayed call), label/guard (`[...]` â€” the `*` clause conventionally means "called in a loop"), return text + show-return-arrow, async flag, per-message argument/scope display, note.
+Name (the displayed call), label/guard (`[...]` — the `*` clause conventionally means "called in a loop"), return text + show-return-arrow, async flag, per-message argument/scope display, note.
 
 ## LifeLine / Note dialogs
 
@@ -956,21 +957,21 @@ Note (both diagram kinds): text, font height, and "force to all" (apply the size
 
 ## Project Settings and the DataModel dialog
 
-Two related dialogs share this ground: **Edit Attributes on the model node** opens the "DataModel" dialog (the model's structural properties), while **Project â–¸ Settings...** opens "Project Settings" (working preferences: the **Undo stack** depth, **Additional Allowed** identifier characters, **Comment Initial Code**, and the Method Name / Similar Lines lists). The fields are described below, per dialog.
+Two related dialogs share this ground: **Edit Attributes on the model node** opens the "DataModel" dialog (the model's structural properties), while **Project ▸ Settings...** opens "Project Settings" (working preferences: the **Undo stack** depth, **Additional Allowed** identifier characters, **Comment Initial Code**, and the Method Name / Similar Lines lists). The fields are described below, per dialog.
 
-![The DataModel dialog â€” Edit Attributes on the model node.](images/Datamodel_Dialog.png)
+![The DataModel dialog — Edit Attributes on the model node.](images/Datamodel_Dialog.png)
 
-Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version â€” chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` (with placeholders for file name, date, author, purpose â€” the `@INSERT_MODIFICATIONS` marker keeps a per-file change log); **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF).
+Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version — chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` (with placeholders for file name, date, author, purpose — the `@INSERT_MODIFICATIONS` marker keeps a per-file change log); **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF).
 
-![Project Settings â€” Project â–¸ Settings...](images/Project_Settings_Dialog.png)
+![Project Settings — Project ▸ Settings...](images/Project_Settings_Dialog.png)
 
-**Undo stack** depth â€” **default 10** steps, raise it here if you want deeper undo history; **Additional Allowed** identifier characters; **Comment Initial Code** (the TODO line seeded into new method bodies); Method Name List / Similar Lines List (name suggestions and the similar-lines tool's pattern list).
+**Undo stack** depth — **default 10** steps, raise it here if you want deeper undo history; **Additional Allowed** identifier characters; **Comment Initial Code** (the TODO line seeded into new method bodies); Method Name List / Similar Lines List (name suggestions and the similar-lines tool's pattern list).
 
 ## Add Serialization to project
 
 ![](images/Add_Serialize.png)
 
-Adds the full serialization scaffolding to an existing model that was created without it: you supply the **Document Class Name**, and the wizard creates the `CbObject` extern, the document class, the document-object root, their relation, and the `SerializeMembersOnly` machinery (chapter 13.1). One-way â€” once a model has Serialize, it keeps it.
+Adds the full serialization scaffolding to an existing model that was created without it: you supply the **Document Class Name**, and the wizard creates the `CbObject` extern, the document class, the document-object root, their relation, and the `SerializeMembersOnly` machinery (chapter 13.1). One-way — once a model has Serialize, it keeps it.
 
 ## Find
 
@@ -988,49 +989,52 @@ Non-modal progress dialog for source read-back: log pane, progress bar, **Read M
 
 ![](images/Save_Source_Files.png)
 
-The generation twin of Read Source: **Save Modifications** (only classes changed since the last write) vs **Save All**, a log pane â€” and the **Author & Note** field, whose text is stamped into each rewritten file's *Modifications* change log (the `@INSERT_MODIFICATIONS` block in the header comment). That is where the author initials next to each change line in generated headers come from.
+The generation twin of Read Source: **Save Modifications** (only classes changed since the last write) vs **Save All**, a log pane — and the **Author & Note** field, whose text is stamped into each rewritten file's *Modifications* change log (the `@INSERT_MODIFICATIONS` block in the header comment). That is where the author initials next to each change line in generated headers come from.
 
 ## Virtual Methods / IsClass Methods / Wrap Member Methods
 
-Three generators of one family, all on the `Add â–¸` menu. **Virtual Methods** exists in two situations:
 
-![On a **class**: the inherited virtuals of all base classes â€” tick them and overrides with matching signatures land on the class in one click.](images/Add_Virtual_Class.png)
+Three generators of one family, all on the `Add ▸` menu. **Virtual Methods** exists in two situations:
 
-![On a **virtual method** of a base class it works top-down: the derived classes that do not override it yet â€” tick them and each receives the override with an empty body to fill in.](images/Add_Virtual_Method.png)
+![On a **class**: the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click.](images/Add_Virtual_Class.png)
+
+![On a **virtual method** of a base class it works top-down: the derived classes that do not override it yet — tick them and each receives the override with an empty body to fill in.](images/Add_Virtual_Method.png)
 
 ![**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value).](images/Add_IsClass.png)
 
-![**Wrap Member Methods**, on a member whose type is a class: pick methods of the member's class and forwarding wrappers are generated on the containing class â€” the classic "expose the embedded object's interface" chore.](images/Wrap_Member_Methods.png)
+![**Wrap Member Methods**, on a member whose type is a class: pick methods of the member's class and forwarding wrappers are generated on the containing class — the classic "expose the embedded object's interface" chore.](images/Wrap_Member_Methods.png)
 
 ## User Sections / Code dialogs
 
-The six per-class user sections and the method-body editor both embed the code editor â€” see the next chapter.
+The six per-class user sections and the method-body editor both embed the code editor — see the next chapter.
 
 The user-section editor pins the `//@START_USER`/`//@END_USER` marker bands above and below your text.
 
-![`Edit User Sections` shows all six regions of the class â€” three in the `.h`, three in the `.cpp` â€” in one dialog.](images/User_Sections.png)
+![`Edit User Sections` shows all six regions of the class — three in the `.h`, three in the `.cpp` — in one dialog.](images/User_Sections.png)
 
-![The `Edit Section â–¸` submenu jumps straight to one section.](images/Edit_US_Context_Menu.png)
+![The `Edit Section ▸` submenu jumps straight to one section.](images/Edit_US_Context_Menu.png)
 
 ![One section in its own editor.](images/Edit_User_Section.png)
 
 ![The method-body editor edits exactly the text between the `@CODE` markers.](images/Code_Editor_Method.png)
 
-The constructor's two-pane variant â€” initializer list above the body, divided by a splitter â€” has its own section in the next chapter.
+The constructor's two-pane variant — initializer list above the body, divided by a splitter — has its own section in the next chapter.
 
 ## Code-editing helper wizards
 
 Launched **from the code editor** (method/constructor code dialogs), these insert correct code instead of making you type it:
 
-- **Iterator Wizard** â€” pick a variable reachable in the current scope (a tree of candidates is offered, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate â€” and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.
-- **Type Variable Wizard** â€” declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.
-- **Variableâ†’Method() Wizard** â€” pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.
-- **Similar Lines** â€” works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.
+- **Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates is offered, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.
+- **Type Variable Wizard** — declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.
+- **Variable→Method() Wizard** — pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.
+- **Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.
+
 
 ![](images/Iterator_Wizzard.png)
 ![](images/Type_Variable_Wizzard.png)
 ![](images/Variable-Method_Wizzard.png)
 ![](images/Similar_Lines_Wizzard.png)
+
 
 # Reference: the code editor
 
@@ -1040,7 +1044,7 @@ Method bodies, constructor/destructor bodies and the user sections are edited in
 
 - **Enter** inserts a newline with a *predicted* indent: after a line ending in `{` it indents one level deeper; after `}` it returns to the closing brace's level; after `;` it keeps the statement level; after `:` (labels, initializer lists) it indents one level.
 - Typing **`}`** on an otherwise-blank line re-indents that line to the matching level.
-- **Tab** indents â€” with a selection, all selected lines shift one indent level; without, spaces are inserted to the next indent stop. **Shift+Tab** un-indents. Indentation is spaces (the width follows the model's *Indent size* setting, default 4).
+- **Tab** indents — with a selection, all selected lines shift one indent level; without, spaces are inserted to the next indent stop. **Shift+Tab** un-indents. Indentation is spaces (the width follows the model's *Indent size* setting, default 4).
 - No line wrapping; long lines scroll.
 
 ## Code insertion
@@ -1049,9 +1053,9 @@ Generated helpers can insert code for you rather than making you type it:
 
 - New method bodies are seeded with the *Comment Initial Code* line from Project Settings (e.g. a `// TODO:` marker naming the method).
 - Wizard actions (getter/setter creation, Virtual Methods, IsClass Methods, the serialize scaffolding) insert complete, correctly-indented bodies; inserted multi-line snippets inherit the indentation at the caret.
-- Constructor/destructor templates arrive with the `ConstructorInclude(...)`/`DestructorInclude()` call and the `// Put in your own code` marker already in place â€” write below the marker (chapter 11.4 for the destructor-order exception).
+- Constructor/destructor templates arrive with the `ConstructorInclude(...)`/`DestructorInclude()` call and the `// Put in your own code` marker already in place — write below the marker (chapter 11.4 for the destructor-order exception).
 
-The `Insert` menu (also on the editor's right-click menu) carries the control-flow statements as one-keystroke snippets â€” no dialog, correctly indented, the caret placed inside the condition:
+The `Insert` menu (also on the editor's right-click menu) carries the control-flow statements as one-keystroke snippets — no dialog, correctly indented, the caret placed inside the condition:
 
 | Snippet | Key |
 |---------------------|------------------|
@@ -1064,7 +1068,7 @@ The `Insert` menu (also on the editor's right-click menu) carries the control-fl
 
 ## The constructor editor
 
-The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list â€” the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space â€” drag it to give either side more room. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
+The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space — drag it to give either side more room. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
 
 ![](images/Constructor_Code_Editor.png)
 
@@ -1113,22 +1117,22 @@ The markers, precisely:
 | `//{{AFX ... //}}AFX` | Generator-owned block. Never edit. |
 | `// Put in your own code` | Inside ctor/dtor bodies: the boundary below which your code goes. |
 
-**Everything outside the round-tripped regions is regenerated** â€” hand edits there are lost on the next Write Source. In particular: never patch `Serialize` bodies, relation macros, class declarations or member lists on disk; change the model instead.
+**Everything outside the round-tripped regions is regenerated** — hand edits there are lost on the next Write Source. In particular: never patch `Serialize` bodies, relation macros, class declarations or member lists on disk; change the model instead.
 
 ## The six user sections
 
-Per class (context menu â–¸ *Edit User Sections*): *Before / Inside / After class definition* (`.h`) and *Before master include / After master include / After generated code* (`.cpp`). "Inside class definition" is the place for hand-written members or friend declarations that should live in the class but not in the model.
+Per class (context menu ▸ *Edit User Sections*): *Before / Inside / After class definition* (`.h`) and *Before master include / After master include / After generated code* (`.cpp`). "Inside class definition" is the place for hand-written members or friend declarations that should live in the class but not in the model.
 
 ## ConstructorInclude / DestructorInclude
 
 Every class gets these two generated private methods:
 
-- `ConstructorInclude(owners...)` â€” initializes all relation link members and splices the object into its owners' lists. **Must be the first call in every constructor.**
-- `DestructorInclude()` â€” deletes all owned children (cascade) and unlinks the object from every list it is in. Called first in the destructor.
+- `ConstructorInclude(owners...)` — initializes all relation link members and splices the object into its owners' lists. **Must be the first call in every constructor.**
+- `DestructorInclude()` — deletes all owned children (cascade) and unlinks the object from every list it is in. Called first in the destructor.
 
-Because `DestructorInclude()` runs *first*, destructor user code that still needs the owned children must move **above** it â€” a deliberate exception to "user code below the marker" (the generator preserves your body; you own the order inside it).
+Because `DestructorInclude()` runs *first*, destructor user code that still needs the owned children must move **above** it — a deliberate exception to "user code below the marker" (the generator preserves your body; you own the order inside it).
 
-## Read Source â€” the round trip
+## Read Source — the round trip
 
 `Read Source` runs a real C++-aware parser (flex/bison based) over the generated files and folds back: user regions, method bodies (by `@CODE` id), and notes. *Read Modifications* processes only files newer than the last write; *Read All* re-reads everything. The parser skips the `//{{AFX` blocks entirely.
 
@@ -1146,24 +1150,24 @@ This chapter is the heart of ClassBuilder. It explains what the relation macros 
 
 ![One Cell in two lists: all link pointers are members of the Cell itself.](images/fig-intrusive-lists.svg)
 
-A conventional `std::list<Cell*>` allocates a *bucket* per element `{prev, next, payload*}`. An **intrusive** list stores those pointers **inside the element**: declaring the `Rowâ†’Cell` relation gives `Row` the members `_firstCell/_lastCell/_countCell` and gives `Cell` the members `_refRow/_prevRow/_nextRow`. Membership in a second list (`Columnâ†’Cell`) adds a second, independently-named pointer set (`_refColumn/_prevColumn/_nextColumn`). One object, N lists, zero ambiguity.
+A conventional `std::list<Cell*>` allocates a *bucket* per element `{prev, next, payload*}`. An **intrusive** list stores those pointers **inside the element**: declaring the `Row→Cell` relation gives `Row` the members `_firstCell/_lastCell/_countCell` and gives `Cell` the members `_refRow/_prevRow/_nextRow`. Membership in a second list (`Column→Cell`) adds a second, independently-named pointer set (`_refColumn/_prevColumn/_nextColumn`). One object, N lists, zero ambiguity.
 
-**Allocation economics.** Every `std::list` insertion is a heap allocation; heap allocations are among the most expensive primitive operations in C++. The intrusive list allocates **nothing** â€” the links are already inside the object you just created. Against a pointer-bucket list you halve the allocations; and the object-*by-value* alternative (`std::list<Cell>`) is even worse off, as the next section shows.
+**Allocation economics.** Every `std::list` insertion is a heap allocation; heap allocations are among the most expensive primitive operations in C++. The intrusive list allocates **nothing** — the links are already inside the object you just created. Against a pointer-bucket list you halve the allocations; and the object-*by-value* alternative (`std::list<Cell>`) is even worse off, as the next section shows.
 
-**Locality/lifetime.** The element knows all its memberships, so the destructor can unlink it from *everything* without searching any container â€” O(1) per membership, symmetric between Row and Column. Deleting a `Row` in the Matrix example costs exactly (cells in the row) unlink operations; a `std::list` design would have to *search* every Column's list for each cell to remove it â€” O(rowsÃ—columns) where the intrusive design is O(columns).
+**Locality/lifetime.** The element knows all its memberships, so the destructor can unlink it from *everything* without searching any container — O(1) per membership, symmetric between Row and Column. Deleting a `Row` in the Matrix example costs exactly (cells in the row) unlink operations; a `std::list` design would have to *search* every Column's list for each cell to remove it — O(rows×columns) where the intrusive design is O(columns).
 
-**Why not simply store objects by value in the container?** Then the container *is* the object's home: `std::list<Cell>` inside `Row` means Cells physically live in the Row. When the model later evolves â€” a `Column` class is added that also needs to hold the cells â€” there is nowhere to go: the Cells are already *inside* the Rows. The implementation has to be redesigned. This is the general scalability failure of container-centric design: **the relation owns the class instead of the class having relations.** In ClassBuilder a new relation on an existing class is one dialog and a regeneration; existing relations, code and files are untouched.
+**Why not simply store objects by value in the container?** Then the container *is* the object's home: `std::list<Cell>` inside `Row` means Cells physically live in the Row. When the model later evolves — a `Column` class is added that also needs to hold the cells — there is nowhere to go: the Cells are already *inside* the Rows. The implementation has to be redesigned. This is the general scalability failure of container-centric design: **the relation owns the class instead of the class having relations.** In ClassBuilder a new relation on an existing class is one dialog and a regeneration; existing relations, code and files are untouched.
 
 ## Declaring relations: the macro surface
 
-For an owned multi relation `Rowâ†’Cell`, the generated headers contain single-line macros:
+For an owned multi relation `Row→Cell`, the generated headers contain single-line macros:
 
 ```cpp
 class Row  { RELATION_MULTI_OWNED_ACTIVE (Row, Row, Cell, Cell)  ... };  // owner side
 class Cell { RELATION_MULTI_OWNED_PASSIVE(Row, Row, Cell, Cell)  ... };  // member side
 ```
 
-and the `.cpp`s add `METHODS_MULTI_OWNED_ACTIVE(...)` (the method bodies) plus `INIT_.../EXIT_...` lines inside `ConstructorInclude`/`DestructorInclude`. That is *all* the generated source shows â€” the machinery lives in `include/CB_*.h`, and your code reads like design, not bookkeeping. The macro families:
+and the `.cpp`s add `METHODS_MULTI_OWNED_ACTIVE(...)` (the method bodies) plus `INIT_.../EXIT_...` lines inside `ConstructorInclude`/`DestructorInclude`. That is *all* the generated source shows — the machinery lives in `include/CB_*.h`, and your code reads like design, not bookkeeping. The macro families:
 
 | Family | Variants |
 |----------------|------------------------------------------------------------|
@@ -1176,7 +1180,7 @@ and the `.cpp`s add `METHODS_MULTI_OWNED_ACTIVE(...)` (the method bodies) plus `
 
 ## The generated API of a multi relation
 
-For `Rowâ†’Cell` (names come from the relation's role names):
+For `Row→Cell` (names come from the relation's role names):
 
 ```cpp
 // navigation                          // mutation
@@ -1192,33 +1196,33 @@ void SortCell(int (*cmp)(Cell*, Cell*));       // and MergeSortCell
 Row::CellIterator it(pRow);  while (++it) { it->...; }
 ```
 
-On the passive side, `Cell` gets `GetRow()` â€” the back-pointer. All of these appear in the tree under *Relation methods*, so their exact signatures are always visible.
+On the passive side, `Cell` gets `GetRow()` — the back-pointer. All of these appear in the tree under *Relation methods*, so their exact signatures are always visible.
 
-## Lifetime semantics â€” the formal ground rules
+## Lifetime semantics — the formal ground rules
 
 Relations *constrain object lifetimes*, and the generated constructors/destructors are where those constraints are enforced. Writing L~A~ for the lifetime of an object and L~R~ for the lifetime of a relation between two objects:
 
-- **Association** (non-owned): L~R~ âŠ‚ L~A~ âˆ© L~B~ â€” the relation can only exist while *both* objects do. So when either object dies, the association must die with it: the destructor unlinks.
-- **Aggregation** (owned): L~R~ = L~B~, hence L~B~ âŠ‚ L~A~ â€” a member object *cannot exist outside* the relation. Creation splices it in (`ConstructorInclude`), and when the owner dies the members die (cascade).
-- **Shared aggregate** (two owners, like the Matrix's Cells): L~C~ âŠ‚ L~A~ âˆ© L~B~ â€” the member exists only while *all* its owners do; whichever owner dies first takes it along, and it unlinks from the survivor.
+- **Association** (non-owned): L~R~ ⊂ L~A~ ∩ L~B~ — the relation can only exist while *both* objects do. So when either object dies, the association must die with it: the destructor unlinks.
+- **Aggregation** (owned): L~R~ = L~B~, hence L~B~ ⊂ L~A~ — a member object *cannot exist outside* the relation. Creation splices it in (`ConstructorInclude`), and when the owner dies the members die (cascade).
+- **Shared aggregate** (two owners, like the Matrix's Cells): L~C~ ⊂ L~A~ ∩ L~B~ — the member exists only while *all* its owners do; whichever owner dies first takes it along, and it unlinks from the survivor.
 
-The point of enforcing this in constructors and destructors â€” rather than in "manager" code â€” is that **an in-core data structure that violates its own specification can then never exist**: the pre- and postcondition of every public method is the fulfilled model. That is what "correct by construction" means concretely.
+The point of enforcing this in constructors and destructors — rather than in "manager" code — is that **an in-core data structure that violates its own specification can then never exist**: the pre- and postcondition of every public method is the fulfilled model. That is what "correct by construction" means concretely.
 
-One transformation is worth knowing: ClassBuilder deliberately has **no direct many-to-many relation**. Model it as a small *link class* owned from both sides â€” `A â—‡â€” AB â€”â—‡ B` â€” which has the same lifetime semantics (L~AB~ âŠ‚ L~A~ âˆ© L~B~) and gives the pair a natural home for attributes of the association itself. The Matrix example is exactly this shape: `Cell` *is* the link class between `Row` and `Column`.
+One transformation is worth knowing: ClassBuilder deliberately has **no direct many-to-many relation**. Model it as a small *link class* owned from both sides — `A ◇— AB —◇ B` — which has the same lifetime semantics (L~AB~ ⊂ L~A~ ∩ L~B~) and gives the pair a natural home for attributes of the association itself. The Matrix example is exactly this shape: `Cell` *is* the link class between `Row` and `Column`.
 
 ## Ownership and cascade delete
 
-![delete pMatrix â€” the cascade frees the entire graph.](images/fig-ownership-cascade.svg)
+![delete pMatrix — the cascade frees the entire graph.](images/fig-ownership-cascade.svg)
 
-Owned relations delete their members: `~Row` (via `DestructorInclude`) deletes its cells (`while (Cell* c = GetLastCell()) delete c;`), and each `~Cell` unlinks itself from **both** its Row and its Column. Order never matters â€” whichever owner cascades first, the shared child unlinks from the survivor, and the second cascade simply finds a shorter list.
+Owned relations delete their members: `~Row` (via `DestructorInclude`) deletes its cells (`while (Cell* c = GetLastCell()) delete c;`), and each `~Cell` unlinks itself from **both** its Row and its Column. Order never matters — whichever owner cascades first, the shared child unlinks from the survivor, and the second cascade simply finds a shorter list.
 
-**The no-leak rule:** make every class reachable from one top class through owned relations, and `delete top` provably frees everything, with no dangling pointer left anywhere â€” the links *are* members, and destructors clear them. In the demo run of chapter 4 this is the last line: every object freed by cascade.
+**The no-leak rule:** make every class reachable from one top class through owned relations, and `delete top` provably frees everything, with no dangling pointer left anywhere — the links *are* members, and destructors clear them. In the demo run of chapter 4 this is the last line: every object freed by cascade.
 
 ## Iterators that survive modification
 
 Generated iterators register themselves (per relation, in a small global registry) for their lifetime. Every `Remove`/`delete` notifies live iterators: an iterator standing on the removed element silently re-anchors to its neighbour, so `++` continues correctly. This is why the chapter-4 demo could delete the current Row *inside* the row loop.
 
-The classic use case: a netlist optimizer walks all instances looking for an inverter driving an inverter, replaces each such pair with a wire â€” deleting two instances per hit *from the very relation being iterated*. With ClassBuilder iterators that is just the natural loop; no deferred-delete lists, no "collect then erase" second pass, no invalidation crashes.
+The classic use case: a netlist optimizer walks all instances looking for an inverter driving an inverter, replaces each such pair with a wire — deleting two instances per hit *from the very relation being iterated*. With ClassBuilder iterators that is just the natural loop; no deferred-delete lists, no "collect then erase" second pass, no invalidation crashes.
 
 Iterator flavour notes:
 
@@ -1230,19 +1234,19 @@ One rule of hand-written code around iterators: if you call a *setter* on the it
 
 ## Single, static-multi
 
-- **Single**: a 1:1 slot â€” `GetCell()/AddCell()/RemoveCell()/ReplaceCell()`, owned or not. Cheaper than a list of one.
+- **Single**: a 1:1 slot — `GetCell()/AddCell()/RemoveCell()/ReplaceCell()`, owned or not. Cheaper than a list of one.
 - **Static Multi**: one container shared by *all* instances of the from-class (class-level registry). Not available for template or serialize classes.
 
 ## Tree implementations and find methods
 
-A multi relation's implementation can be switched (dialog or `set_relation_implementation`) with **zero source-level API change** â€” the accessors and iterators keep their names:
+A multi relation's implementation can be switched (dialog or `set_relation_implementation`) with **zero source-level API change** — the accessors and iterators keep their names:
 
-- **Value Tree** â€” bit-pattern-indexed tree keyed on an integer member: near-hash-table find speed, no ordering, no rebalancing. It exists in **two versions**: the plain Value Tree allows several objects with the same key value; the **Unique Value Tree** is the leaner variant for keys that are guaranteed unique (typically IDs) â€” the model then knows duplicates are impossible.
-- **AVL Tree** â€” balanced search tree: ordered iteration + O(log n) find.
+- **Value Tree** — bit-pattern-indexed tree keyed on an integer member: near-hash-table find speed, no ordering, no rebalancing. It exists in **two versions**: the plain Value Tree allows several objects with the same key value; the **Unique Value Tree** is the leaner variant for keys that are guaranteed unique (typically IDs) — the model then knows duplicates are impossible.
+- **AVL Tree** — balanced search tree: ordered iteration + O(log n) find.
 
-**What a key type must provide.** A Value Tree (either version) indexes on the key's *bit pattern*: the member must be an **integer-like type** (convertible to an integer; no other operators needed). An AVL Tree keeps its elements *ordered by comparing keys*: the member's type must support the **comparison operators `<`, `<=`, `>`, `>=`, `==`** â€” plain integers qualify, and so does any class implementing them (`CbString` does, which is how string-keyed AVL relations work).
+**What a key type must provide.** A Value Tree (either version) indexes on the key's *bit pattern*: the member must be an **integer-like type** (convertible to an integer; no other operators needed). An AVL Tree keeps its elements *ordered by comparing keys*: the member's type must support the **comparison operators `<`, `<=`, `>`, `>=`, `==`** — plain integers qualify, and so does any class implementing them (`CbString` does, which is how string-keyed AVL relations work).
 
-**The key member's setter is special.** An object's position in the tree *is* its key, so changing the key by plain assignment would corrupt the tree. The generated setter therefore takes the object out, changes the key, and re-inserts it at the right position â€” this is real generated code from ClassBuilder's own model, where every `Property` sits in its owner's AVL tree keyed on `_name`:
+**The key member's setter is special.** An object's position in the tree *is* its key, so changing the key by plain assignment would corrupt the tree. The generated setter therefore takes the object out, changes the key, and re-inserts it at the right position — this is real generated code from ClassBuilder's own model, where every `Property` sits in its owner's AVL tree keyed on `_name`:
 
 ```cpp
 void Property::SetName(const CbString& rName)
@@ -1259,13 +1263,13 @@ void Property::SetName(const CbString& rName)
 }//@CODE_36069
 ```
 
-The corollary for hand-written code: **always change a key through its setter** â€” never assign the member directly (from inside the class, for example), or the tree will no longer find the object.
+The corollary for hand-written code: **always change a key through its setter** — never assign the member directly (from inside the class, for example), or the tree will no longer find the object.
 
-**Find methods** (chapter 4.6) are generated lookups on a relation: choose the member(s)/paths to compare and get `FindCell(...)` â€” implemented as a loop on a list relation, or as the native tree search when the argument matches the tree key. Design workflow: start with lists; when profiling says a find is hot, flip the relation to a tree â€” the find method regenerates to the fast path, callers unchanged.
+**Find methods** (chapter 4.6) are generated lookups on a relation: choose the member(s)/paths to compare and get `FindCell(...)` — implemented as a loop on a list relation, or as the native tree search when the argument matches the tree key. Design workflow: start with lists; when profiling says a find is hot, flip the relation to a tree — the find method regenerates to the fast path, callers unchanged.
 
 ## Critical relations (threads)
 
-Checking **Critical** on a relation wraps every operation of that relation in a per-relation recursive mutex (`CB_CriticalSection.h`), and iterators take the lock while re-anchoring. Use it when another thread mutates a relation you iterate. It serializes *relation maintenance* only â€” your own data races remain your own; keep cross-thread mutation points few and explicit.
+Checking **Critical** on a relation wraps every operation of that relation in a per-relation recursive mutex (`CB_CriticalSection.h`), and iterators take the lock while re-anchoring. Use it when another thread mutates a relation you iterate. It serializes *relation maintenance* only — your own data races remain your own; keep cross-thread mutation points few and explicit.
 
 ## Writing loops the generated way
 
@@ -1283,27 +1287,27 @@ while (++it)
         delete (Cell*)it;
 ```
 
-Never snapshot `GetFirst()`/`GetLast()` before a loop that deletes â€” the list is live and your snapshot is not.
+Never snapshot `GetFirst()`/`GetLast()` before a loop that deletes — the list is live and your snapshot is not.
 
 # Serialization
 
 ## What you get
 
-With Serialize on, the model gains a **document class** (e.g. `Matrix`) and a **document-object root** (`MatrixObject`); every serialize-enabled class inherits the root and gets three generated methods â€” `Serialize` (members), `SerializeRelations` (links), and a private serialize constructor â€” plus `CB_DECLARE_SERIAL` / `CB_IMPLEMENT_SERIAL` registration. One call streams the **entire object graph**:
+With Serialize on, the model gains a **document class** (e.g. `Matrix`) and a **document-object root** (`MatrixObject`); every serialize-enabled class inherits the root and gets three generated methods — `Serialize` (members), `SerializeRelations` (links), and a private serialize constructor — plus `CB_DECLARE_SERIAL` / `CB_IMPLEMENT_SERIAL` registration. One call streams the **entire object graph**:
 
 ```cpp
 pMatrix->Serialize(archive);     // store or load, decided by the archive
 ```
 
-Under the hood the document's `Serialize` runs `SERIALIZE_ALL_OBJECTS`: store writes the object count, then every object polymorphically (class tag + members), then every object's relations as index references; load reads the count, factory-creates each object from its class tag (`CB_IMPLEMENT_SERIAL` registers the factory), then re-links all relations through a pointer table. Shared pointers, back-pointers, multi-ownership â€” the graph reloads exactly.
+Under the hood the document's `Serialize` runs `SERIALIZE_ALL_OBJECTS`: store writes the object count, then every object polymorphically (class tag + members), then every object's relations as index references; load reads the count, factory-creates each object from its class tag (`CB_IMPLEMENT_SERIAL` registers the factory), then re-links all relations through a pointer table. Shared pointers, back-pointers, multi-ownership — the graph reloads exactly.
 
 ## CbArchive and the wire format
 
-`CbArchive` (in `serialize/CbSerialize.{h,cpp}`, MFC-free) streams over any `std::istream/ostream`. Primitives, `CbString`, `CbPoint/CbRect/CbSize`, `CbTime` and `CbObject*` have `<<`/`>>` operators; `IsStoring()/IsLoading()` pick the direction. Class tags are written as the class-name string on first encounter, then as a 2-byte index â€” compact and self-describing. A corrupted or schema-mismatched stream throws `CB_ARCHIVE_BAD_STREAM` rather than crashing.
+`CbArchive` (in `serialize/CbSerialize.{h,cpp}`, MFC-free) streams over any `std::istream/ostream`. Primitives, `CbString`, `CbPoint/CbRect/CbSize`, `CbTime` and `CbObject*` have `<<`/`>>` operators; `IsStoring()/IsLoading()` pick the direction. Class tags are written as the class-name string on first encounter, then as a 2-byte index — compact and self-describing. A corrupted or schema-mismatched stream throws `CB_ARCHIVE_BAD_STREAM` rather than crashing.
 
 ## CBZ: compression on the fly
 
-`.cbz` files are a **Zstandard frame around the raw archive bytes** â€” not an archive-then-compress step, but transparent stream compression: `CbZstdOutBuf`/`CbZstdInBuf` are `std::streambuf` wrappers that compress on write and decompress on read, so `CbArchive` never knows compression exists:
+`.cbz` files are a **Zstandard frame around the raw archive bytes** — not an archive-then-compress step, but transparent stream compression: `CbZstdOutBuf`/`CbZstdInBuf` are `std::streambuf` wrappers that compress on write and decompress on read, so `CbArchive` never knows compression exists:
 
 ```cpp
 std::ofstream raw(path, std::ios::binary);
@@ -1315,40 +1319,40 @@ std::ofstream raw(path, std::ios::binary);
 }                                     // zbuf destructor finalizes the frame
 ```
 
-Real-world ratio on model files is roughly **8â€“9Ã—**; the quick start's whole matrix saved in 114 bytes. Your applications get the same for free â€” link zstd and use the two wrappers.
+Real-world ratio on model files is roughly **8–9×**; the quick start's whole matrix saved in 114 bytes. Your applications get the same for free — link zstd and use the two wrappers.
 
 ## Versioning: evolving the model without breaking old files
 
 The scheme is *write everything, gate the reads*:
 
-- The **document version** is the model's schema version â€” the *Version* field in the DataModel dialog, and that field is the only place you see or touch it. Everything else is generated and invisible: the document writes the version into every save, reads it back before anything else on load, and publishes it to every class (`_objectVersion`).
-- Every **member** is stamped with the version at which it was added â€” automatically, as (current document version + 1); the Member dialog shows the stamp. Store side writes members unconditionally; load side wraps them in `if (memberVersion <= _objectVersion)`.
+- The **document version** is the model's schema version — the *Version* field in the DataModel dialog, and that field is the only place you see or touch it. Everything else is generated and invisible: the document writes the version into every save, reads it back before anything else on load, and publishes it to every class (`_objectVersion`).
+- Every **member** is stamped with the version at which it was added — automatically, as (current document version + 1); the Member dialog shows the stamp. Store side writes members unconditionally; load side wraps them in `if (memberVersion <= _objectVersion)`.
 
 Adding a field to a shipped schema, correctly:
 
-1. Add the member â€” ClassBuilder stamps it **(current document version + 1)** by itself.
+1. Add the member — ClassBuilder stamps it **(current document version + 1)** by itself.
 2. Raise *Version* in the DataModel dialog to that same number.
 3. Regenerate.
 
-Old files (written with a smaller version) skip the new field's read and keep the member's initial value; new files read it. **The failure mode to respect:** if the new member's version stamp is wrong (e.g. lowered by hand in the Member dialog to a value old files already satisfy), load consumes bytes that were never written â€” the stream misaligns and the *next* object's class tag is garbage â†’ `CB_ARCHIVE_BAD_STREAM`. If an old file must gain a field retroactively, load it with the *older binary*, save (now written with the field), then upgrade.
+Old files (written with a smaller version) skip the new field's read and keep the member's initial value; new files read it. **The failure mode to respect:** if the new member's version stamp is wrong (e.g. lowered by hand in the Member dialog to a value old files already satisfy), load consumes bytes that were never written — the stream misaligns and the *next* object's class tag is garbage → `CB_ARCHIVE_BAD_STREAM`. If an old file must gain a field retroactively, load it with the *older binary*, save (now written with the field), then upgrade.
 
-The **Compact Version** button (next to the *Version* field in the DataModel dialog) renumbers a long version history down to the minimal equivalent scheme (max used + 1) â€” cosmetic, but keeps gates readable. Only compact when files older than the compacted scheme no longer need to load.
+The **Compact Version** button (next to the *Version* field in the DataModel dialog) renumbers a long version history down to the minimal equivalent scheme (max used + 1) — cosmetic, but keeps gates readable. Only compact when files older than the compacted scheme no longer need to load.
 
 ## Rules and properties
 
 - **Single inheritance** for serialize classes (GUI-enforced): the generated `Serialize` chains base-class `Serialize` calls; a diamond would double-stream members.
 - **Per-member opt-out**: transient members simply untick Serialize.
 - **Object-pointer members** (not just relations) stream as graph references too.
-- **`SerializeMembersOnly`** on the document: streams only the document's own scalar settings â€” the graph is skipped via an internal flag. This is the cheap snapshot the undo system uses for document-level changes, and it stays in lockstep with `Serialize` automatically.
+- **`SerializeMembersOnly`** on the document: streams only the document's own scalar settings — the graph is skipped via an internal flag. This is the cheap snapshot the undo system uses for document-level changes, and it stays in lockstep with `Serialize` automatically.
 - **Unknown types**: an `OtherType` maps to *None* or *Int* for streaming (type dialog).
 
-## Starting a new serialize model â€” current scaffolding checklist
+## Starting a new serialize model — current scaffolding checklist
 
-The new-model scaffolding predates recent runtime changes; until it is refreshed, bring a *fresh* serialize model in line once (two minutes, or script it â€” chapter 16):
+The new-model scaffolding predates recent runtime changes; until it is refreshed, bring a *fresh* serialize model in line once (two minutes, or script it — chapter 16):
 
 1. Add extern class `CbArchive`; change the `archive` argument of every generated `Serialize`/`SerializeRelations` (and the document's `SerializeMembersOnly`) from `CbObject&` to `CbArchive&`.
-2. The auto-created inheritances of serialize classes are marked **virtual**; recreate them non-virtual (serialize off â†’ add inherit â†’ serialize on). Virtual bases break the generated relation-load casts.
-3. Add the document's `int version` member (serialize on) and initialize it â€” the generated document `Serialize` expects it.
+2. The auto-created inheritances of serialize classes are marked **virtual**; recreate them non-virtual (serialize off → add inherit → serialize on). Virtual bases break the generated relation-load casts.
+3. Add the document's `int version` member (serialize on) and initialize it — the generated document `Serialize` expects it.
 
 Models that already build (like ClassBuilder's own) are unaffected.
 
@@ -1356,18 +1360,18 @@ Models that already build (like ClassBuilder's own) are unaffected.
 
 ## What it is
 
-With **Undo/Redo** enabled (Project Settings; requires Serialize; enable-once), ClassBuilder generates a complete, application-level undo system for *your* generated model â€” the same machinery ClassBuilder itself uses for its own Edit â–¸ Undo/Redo.
+With **Undo/Redo** enabled (Project Settings; requires Serialize; enable-once), ClassBuilder generates a complete, application-level undo system for *your* generated model — the same machinery ClassBuilder itself uses for its own Edit ▸ Undo/Redo.
 
 ## How it works
 
 The framework leans on serialization for state capture:
 
-- **UndoNew** â€” recorded when an object is created; undo = delete it.
-- **UndoDelete** â€” recorded before an object dies; the object's state is kept; undo = resurrect and re-link.
-- **UndoChange** â€” recorded by calling `SaveState()` on an object *before* changing it; the object is snapshotted **through `CbArchive` into an in-memory stream** (a `std::stringstream`), relations included via reference bookkeeping; undo streams it back.
-- **UndoChangeDoc** â€” document-level settings snapshot via `SerializeMembersOnly` (cheap: no graph clone).
+- **UndoNew** — recorded when an object is created; undo = delete it.
+- **UndoDelete** — recorded before an object dies; the object's state is kept; undo = resurrect and re-link.
+- **UndoChange** — recorded by calling `SaveState()` on an object *before* changing it; the object is snapshotted **through `CbArchive` into an in-memory stream** (a `std::stringstream`), relations included via reference bookkeeping; undo streams it back.
+- **UndoChangeDoc** — document-level settings snapshot via `SerializeMembersOnly` (cheap: no graph clone).
 
-Records accumulate on an undo stack; `MarkLastUndo()` closes the current **user-visible step** (one Ctrl+Z's worth). A second marker level (`MarkLastUndo(2)`) creates sub-batches inside a step â€” used for compound operations that need internal ordering (e.g. multi-swap reorders) while still undoing as one step. The stack depth is the Project-Settings *Undo stack* value; redo is symmetric.
+Records accumulate on an undo stack; `MarkLastUndo()` closes the current **user-visible step** (one Ctrl+Z's worth). A second marker level (`MarkLastUndo(2)`) creates sub-batches inside a step — used for compound operations that need internal ordering (e.g. multi-swap reorders) while still undoing as one step. The stack depth is the Project-Settings *Undo stack* value; redo is symmetric.
 
 Usage pattern in application code:
 
@@ -1381,9 +1385,9 @@ pDoc->MarkLastUndo();        // close the user-visible step
 
 ## The undo/replace entanglement
 
-Undo restore works by **replacement**: the stored copy is deserialized and takes the live object's place, with every reference redirected (`ReplaceReference` sweeps live objects *and* the parked entries on the undo/redo stacks). That is the replace-constructor mechanism of chapter 15 â€” the framework is its heaviest user.
+Undo restore works by **replacement**: the stored copy is deserialized and takes the live object's place, with every reference redirected (`ReplaceReference` sweeps live objects *and* the parked entries on the undo/redo stacks). That is the replace-constructor mechanism of chapter 15 — the framework is its heaviest user.
 
-Consequence: **combining generated undo/redo with your own replace-constructor usage is delicate.** A user-level replace must also fix up undo-stack entries that still point at the replaced object (reuse the old object's undo record and redirect it â€” `ChangeDataModelDocObject` in ClassBuilder's own model shows the pattern). If you use both features on the same classes, study that pattern first; getting it wrong leaves stale pointers parked on the undo stack â€” crashes that appear only after *later* undos.
+Consequence: **combining generated undo/redo with your own replace-constructor usage is delicate.** A user-level replace must also fix up undo-stack entries that still point at the replaced object (reuse the old object's undo record and redirect it — `ChangeDataModelDocObject` in ClassBuilder's own model shows the pattern). If you use both features on the same classes, study that pattern first; getting it wrong leaves stale pointers parked on the undo stack — crashes that appear only after *later* undos.
 
 # The replace constructor
 
@@ -1397,13 +1401,13 @@ Checking **Replace** on a class generates a special constructor taking a pointer
 AndGate* pGate = new AndGate(pCell);   // pCell: the generic object being replaced
 ```
 
-Semantics: the new object copies the old one's members, **takes the old object's exact place in every relation it participates in** â€” same lists, same neighbours, same back-pointers, same owners â€” and then the old object is deleted. To the rest of the object graph nothing happened; the object simply *became* a different class.
+Semantics: the new object copies the old one's members, **takes the old object's exact place in every relation it participates in** — same lists, same neighbours, same back-pointers, same owners — and then the old object is deleted. To the rest of the object graph nothing happened; the object simply *became* a different class.
 
 ## Why it is more powerful than a factory
 
-A factory chooses a class at **creation** time â€” you must already know, at parse time, what each object will be. The replace constructor postpones that decision to **any later moment**, after the object is fully wired into the graph.
+A factory chooses a class at **creation** time — you must already know, at parse time, what each object will be. The replace constructor postpones that decision to **any later moment**, after the object is fully wired into the graph.
 
-The original motivation is the **generic-library problem**: a reusable library ships with readers/parsers that build data structures out of *its own* classes â€” they cannot know about the classes an application derives from them. With replace constructors in the library, the application first lets the generic reader build the whole structure, then *promotes* the generic objects to its own derived classes â€” a derived-class constructor that forwards to the base's replace constructor is called a **promotion constructor**:
+The original motivation is the **generic-library problem**: a reusable library ships with readers/parsers that build data structures out of *its own* classes — they cannot know about the classes an application derives from them. With replace constructors in the library, the application first lets the generic reader build the whole structure, then *promotes* the generic objects to its own derived classes — a derived-class constructor that forwards to the base's replace constructor is called a **promotion constructor**:
 
 ```cpp
 Ax::Ax(A* pOld, int value)
@@ -1415,13 +1419,13 @@ Ax::Ax(A* pOld, int value)
 
 That enables one generic front end to serve many applications:
 
-**The logic-network family.** A netlist parser builds a generic network: `Cell` objects with input/output net relations, named "AND2", "OR4", whatever the library says. The parser knows nothing about applications â€” it creates only `Cell`s. Then:
+**The logic-network family.** A netlist parser builds a generic network: `Cell` objects with input/output net relations, named "AND2", "OR4", whatever the library says. The parser knows nothing about applications — it creates only `Cell`s. Then:
 
-- a **logic simulator** walks the network once and replaces each `Cell` with `AndGate`, `OrGate`, ... â€” subclasses whose `Simulate()` does the logic;
+- a **logic simulator** walks the network once and replaces each `Cell` with `AndGate`, `OrGate`, ... — subclasses whose `Simulate()` does the logic;
 - a **timing analyzer** replaces the same generic cells with delay-annotated variants for propagation calculations;
 - a **fault simulator / test-pattern generator** replaces them with fault-injecting variants.
 
-One parser, one generic library, three applications â€” each specializes the same loaded network for its own task. Every replaced object keeps its position in every net list, so the network never needs re-wiring.
+One parser, one generic library, three applications — each specializes the same loaded network for its own task. Every replaced object keeps its position in every net list, so the network never needs re-wiring.
 
 **State machines.** Model a base `State` with one subclass per state, each implementing only the transitions *that state* allows. A transition is then literally:
 
@@ -1429,29 +1433,29 @@ One parser, one generic library, three applications â€” each specializes th
 (void)new StateRunning(pStateIdle);   // the object changes state class
 ```
 
-The object's relations (owner machine, queues, watchers) carry over untouched; illegal transitions don't compile or don't exist as methods. The object's *class* is the state â€” the type system enforces the state chart.
+The object's relations (owner machine, queues, watchers) carry over untouched; illegal transitions don't compile or don't exist as methods. The object's *class* is the state — the type system enforces the state chart.
 
 ## Mechanics and constraints
 
-- Generated body: base-class replace chain, `ReplaceConstructorInclude(pOld)` (relation slot takeover), member-by-member copy, then `delete pOld` â€” with a user-code region for what you want to add.
+- Generated body: base-class replace chain, `ReplaceConstructorInclude(pOld)` (relation slot takeover), member-by-member copy, then `delete pOld` — with a user-code region for what you want to add.
 - Replacement is between classes sharing the relation-carrying base (typically siblings under the same root, e.g. `MatrixObject`); the relation macros transfer per-relation link sets, which both classes must have.
 - Owned pointers that move to the new object are nulled on the old one before deletion (no double-free).
-- **Undo/redo interplay**: see chapter 14.3 â€” the undo framework itself replaces objects on restore; mixing both requires redirecting parked undo entries, as ClassBuilder's own model does.
+- **Undo/redo interplay**: see chapter 14.3 — the undo framework itself replaces objects on restore; mixing both requires redirecting parked undo entries, as ClassBuilder's own model does.
 
 # The command interface
 
 ## What it is
 
-Every running ClassBuilder is also a server: a **JSON-over-TCP** command interface listening on `127.0.0.1:51777` (loopback only; override with the `CB_CMD_PORT` environment variable â€” a dev instance on `51778` runs happily beside the stable one). One JSON request per line, one JSON reply per line:
+Every running ClassBuilder is also a server: a **JSON-over-TCP** command interface listening on `127.0.0.1:51777` (loopback only; override with the `CB_CMD_PORT` environment variable — a dev instance on `51778` runs happily beside the stable one). One JSON request per line, one JSON reply per line:
 
 ```
 request:  {"cmd":"<name>","params":{...}}
 reply:    {"ok":true,"result":{...}}      or      {"ok":false,"error":"<message>"}
 ```
 
-Commands execute on the GUI thread against the **live model** â€” every mutation follows the same code path as the corresponding GUI action, including undo recording and view refresh. You *watch* the model change while a script drives it.
+Commands execute on the GUI thread against the **live model** — every mutation follows the same code path as the corresponding GUI action, including undo recording and view refresh. You *watch* the model change while a script drives it.
 
-This is a first-class interface, not an afterthought: it is how bulk migrations are done on ClassBuilder's own model, and it is deliberately friendly to **AI systems** â€” an AI agent that can open a TCP socket can inspect and refactor a live model conversationally (`list_commands` gives it the full vocabulary to discover). The quick-start model and the diagram exports in this manual were produced through this interface. The commands have grown on need â€” when a workflow needs a missing command, adding one is routine (there can be gaps; `list_commands` on your build is the ground truth). The complete per-command reference with all parameters lives in **`tools/PIPE_API.md`**; below is the map plus worked examples.
+This is a first-class interface, not an afterthought: it is how bulk migrations are done on ClassBuilder's own model, and it is deliberately friendly to **AI systems** — an AI agent that can open a TCP socket can inspect and refactor a live model conversationally (`list_commands` gives it the full vocabulary to discover). The quick-start model and the diagram exports in this manual were produced through this interface. The commands have grown on need — when a workflow needs a missing command, adding one is routine (there can be gaps; `list_commands` on your build is the ground truth). The complete per-command reference with all parameters lives in **`tools/PIPE_API.md`**; below is the map plus worked examples.
 
 ## Connecting
 
@@ -1480,7 +1484,7 @@ print(cb("list_classes"))
 
 | Family | Commands (abridged) |
 |--------------------|--------------------------------------------------------------------|
-| Lifecycle / meta | `ping` (returns the build stamp â€” detects a stale binary), `list_commands`, `new_model_basic`, `new_model_serialize` |
+| Lifecycle / meta | `ping` (returns the build stamp — detects a stale binary), `list_commands`, `new_model_basic`, `new_model_serialize` |
 | Documents | `list_documents`, `select_document` (sticky server-side target, decoupled from GUI focus), `current_document`, `close_document` |
 | Read | `list_classes`, `get_class` (full record), `list_members`, `list_class_methods`, `find_method[_by_id]`, `find_member`, `list_relations`, `get_relation`, `list_types`, `list_methods_named`, `find_methods_using_type` (migration audits) |
 | Classes | `add_class`, `delete_class`, `set_class_name/_serialize/_h_file/_note/_dll_export/_member_prefix`, `add_inherit`, `remove_inherit`, extern-class family |
@@ -1495,7 +1499,7 @@ print(cb("list_classes"))
 
 ## Worked examples (real requests)
 
-Build a model from nothing (the quick start, scripted â€” see `tools/build_matrix_model.ps1` for the full version):
+Build a model from nothing (the quick start, scripted — see `tools/build_matrix_model.ps1` for the full version):
 
 ```json
 {"cmd":"new_model_serialize","params":{"name":"Matrix","document_class":"Matrix","h_file":"MatrixInclude.h"}}
@@ -1510,7 +1514,7 @@ Inspect and edit:
 
 ```json
 {"cmd":"get_class","params":{"name":"Cell"}}
-â†’ {"ok":true,"result":{"name":"Cell","serialize":true,"h_file":"Cell.h",
+→ {"ok":true,"result":{"name":"Cell","serialize":true,"h_file":"Cell.h",
     "inherits":[{"name":"MatrixObject","virtual":false}],
     "members":[{"name":"_value","type":"CString"}],
     "methods":[{"id":313,"name":"Cell","args":[...]}, ...]}}
@@ -1523,33 +1527,33 @@ Generate sources and export a figure:
 
 ```json
 {"cmd":"write_source","params":{"modified_only":false}}
-â†’ {"ok":true,"result":{"modified_only":false,"warnings":0,"errors":0}}
+→ {"ok":true,"result":{"modified_only":false,"warnings":0,"errors":0}}
 
 {"cmd":"export_diagram_svg","params":{"diagram":"Matrix Overview","path":"docs/images/cd.svg","tight":true,"margin":50}}
-â†’ {"ok":true,"result":{"diagram":"Matrix Overview","kind":"class_diagram","path":"docs/images/cd.svg"}}
+→ {"ok":true,"result":{"diagram":"Matrix Overview","kind":"class_diagram","path":"docs/images/cd.svg"}}
 ```
 
 ## Conventions and gotchas
 
-- **Member names are bare** (`id`, not `_id`) â€” the prefix is applied at generation time.
-- **Method bodies**: CRLF line endings (`\r\n` in JSON) and 4-space indentation *including the first line*; LF-only bodies collapse to one line. When replacing a **constructor/destructor** body wholesale, keep the `ConstructorInclude(...)`/`DestructorInclude()` call â€” `set_method_body` warns when it is missing (`add_constructor` seeds it for you).
-- `write_source` **also saves the model** (like the GUI's Save Source), and flushes *every* modified class â€” make sure the model state is what you want on disk before calling. A failed write rolls the model back to the last saved state.
-- `add_member` with an `initialization` does not retrofit *existing* constructors' initializer lists â€” set the value in a constructor body or recreate the constructor.
-- A bare `{"ok":false}` with no error text usually means a **stale older binary** still owns the port â€” `ping`'s `build` stamp tells you.
+- **Member names are bare** (`id`, not `_id`) — the prefix is applied at generation time.
+- **Method bodies**: CRLF line endings (`\r\n` in JSON) and 4-space indentation *including the first line*; LF-only bodies collapse to one line. When replacing a **constructor/destructor** body wholesale, keep the `ConstructorInclude(...)`/`DestructorInclude()` call — `set_method_body` warns when it is missing (`add_constructor` seeds it for you).
+- `write_source` **also saves the model** (like the GUI's Save Source), and flushes *every* modified class — make sure the model state is what you want on disk before calling. A failed write rolls the model back to the last saved state.
+- `add_member` with an `initialization` does not retrofit *existing* constructors' initializer lists — set the value in a constructor body or recreate the constructor.
+- A bare `{"ok":false}` with no error text usually means a **stale older binary** still owns the port — `ping`'s `build` stamp tells you.
 
 # Tips, pitfalls, and best practices
 
 **Modeling**
 
-- One top class owning everything (directly or transitively) buys the no-leak guarantee â€” design for it from day one.
+- One top class owning everything (directly or transitively) buys the no-leak guarantee — design for it from day one.
 - Prefer modeled relations over hand-kept `std::vector<T*>` members: the vector version re-invents (worse) what the generator does, and grows dedup/cleanup bugs one design step later.
-- Copying entities: copy *values*, never relation links â€” give classes a `CopyValuesFrom` instead of a full `operator=` (or `= delete` the copy operations via the one-click menu item).
-- Multi-ownership (one child in N owned lists) is fully supported â€” the Matrix's Cells are the pattern.
+- Copying entities: copy *values*, never relation links — give classes a `CopyValuesFrom` instead of a full `operator=` (or `= delete` the copy operations via the one-click menu item).
+- Multi-ownership (one child in N owned lists) is fully supported — the Matrix's Cells are the pattern.
 - Model evolution is cheap; exploit it. Adding a relation/tree/find method later is a regeneration, not a refactor.
 
 **Serialization**
 
-- Decide Serialize (and Undo/Redo) at model creation â€” both are enable-once.
+- Decide Serialize (and Undo/Redo) at model creation — both are enable-once.
 - Bump the document version and the new member's version *together*; misaligned gates are the classic broken-load (chapter 13.4).
 - Keep a copy of the previous binary around while old files still matter.
 
@@ -1559,7 +1563,7 @@ Generate sources and export a figure:
 - Re-query `GetFirst/GetLast` in delete loops; never iterate a cached snapshot of a live list.
 - Destructor user code that reads owned children goes *before* `DestructorInclude()`.
 - In iterator loops that call setters, capture `it.Get()` first.
-- Only edit inside `@START_USER`/`@CODE`/`@NOTE` regions â€” everything else is regenerated.
+- Only edit inside `@START_USER`/`@CODE`/`@NOTE` regions — everything else is regenerated.
 - After hand edits, **Read Source before Write Source**: read-back first, or the next generation overwrites you (the self-host prompt exists for exactly this).
 
 **Workflow**
@@ -1567,7 +1571,7 @@ Generate sources and export a figure:
 - Save the model before big pipe-driven operations (`write_source` saves; a failed one rolls back to the last save).
 - Use `select_document` when scripting against one model while editing another.
 - Keep generated files out of manual formatting tools; CRLF endings are part of the round-trip contract.
-- Use SVG export (GUI button or `export_diagram_svg`) for documentation â€” it is the same renderer as the screen, vector-clean at any size.
+- Use SVG export (GUI button or `export_diagram_svg`) for documentation — it is the same renderer as the screen, vector-clean at any size.
 
 # Appendix
 
