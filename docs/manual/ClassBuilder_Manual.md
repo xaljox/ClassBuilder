@@ -258,7 +258,9 @@ Row* Matrix::FindRow(int id)
 
 Right-click the model node ▸ `Add ▸ Class Diagram`, name it *Matrix Overview*, and add the five classes (`Select Classes...` from the diagram's context menu, or drag them from the tree). `Optimize Placement` lays them out.
 
-![The Matrix Overview class diagram as exported by ClassBuilder (Export SVG). Diamonds mark owned (aggregation) relations; 1/* are the multiplicities.](images/cd-matrix-overview.svg)
+![](images/cd-matrix-overview.svg)
+
+The Matrix Overview class diagram as exported by ClassBuilder (Export SVG). Diamonds mark owned (aggregation) relations; `1`/`*` are the multiplicities. The view hosting the diagram is a window of its own:
 
 ![](images/cd-view.png)
 
