@@ -3,7 +3,7 @@
         fill="#F5C400" stroke="#8A6D00" stroke-width="0.8" stroke-linejoin="round"/>  <g transform="translate(4.5 4.5) scale(0.72)">
     <rect x="5" y="1" width="6" height="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1"/>
     <rect x="5" y="1" width="6" height="1.5" fill="#3D6BE5"/>
-    <path d="M8 5 V7.5 M3.5 11 V9 H12.5 V11 M8 7.5 H3.5 M8 7.5 H12.5" fill="none" stroke="#3C4043" stroke-width="1"/>
+    <path d="M8 5 V8.2 M3.5 8.2 H12.5 M3.5 8.2 V11 M12.5 8.2 V11" fill="none" stroke="#3C4043" stroke-width="1"/>
     <rect x="0.7" y="11" width="6" height="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1"/>
     <rect x="0.7" y="11" width="6" height="1.5" fill="#3D6BE5"/>
     <rect x="9.3" y="11" width="6" height="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1"/>

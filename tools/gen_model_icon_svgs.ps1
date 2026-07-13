@@ -272,7 +272,7 @@ Save-Svg 'fileselected' @"
 Save-Svg 'classdiagram' @"
   <rect x=`"5`" y=`"1`" width=`"6`" height=`"4`" fill=`"#FFFFFF`" stroke=`"$($P.inkEdge)`" stroke-width=`"1`"/>
   <rect x=`"5`" y=`"1`" width=`"6`" height=`"1.5`" fill=`"$($P.blueFill)`"/>
-  <path d=`"M8 5 V7.5 M3.5 11 V9 H12.5 V11 M8 7.5 H3.5 M8 7.5 H12.5`" fill=`"none`" stroke=`"$($P.inkEdge)`" stroke-width=`"1`"/>
+  <path d=`"M8 5 V8.2 M3.5 8.2 H12.5 M3.5 8.2 V11 M12.5 8.2 V11`" fill=`"none`" stroke=`"$($P.inkEdge)`" stroke-width=`"1`"/>
   <rect x=`"0.7`" y=`"11`" width=`"6`" height=`"4`" fill=`"#FFFFFF`" stroke=`"$($P.inkEdge)`" stroke-width=`"1`"/>
   <rect x=`"0.7`" y=`"11`" width=`"6`" height=`"1.5`" fill=`"$($P.blueFill)`"/>
   <rect x=`"9.3`" y=`"11`" width=`"6`" height=`"4`" fill=`"#FFFFFF`" stroke=`"$($P.inkEdge)`" stroke-width=`"1`"/>
