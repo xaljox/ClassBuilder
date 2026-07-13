@@ -905,7 +905,7 @@ CbArchive& operator >>(CbArchive& archive, TypeName& typeName);
 
 ## Group / Meta Group
 
-`Add ▸ Group` (`Ctrl+Shift+G`) creates the group where the selection points: on a **class**, an in-class folder that groups its members and methods; on the **model node** (or inside a Meta Group), a **ClassGroup** that groups classes. `Add ▸ Meta Group` (`Ctrl+Shift+P`) on the model node groups ClassGroups (the three levels of chapter 2.1). `Edit Attributes` on any group folder opens the dialog.
+`Add ▸ Group` (`Ctrl+Shift+G`) creates the group where the selection points: on a **class**, an in-class folder that groups its members and methods; on the **model node** (or inside a Meta Group), a **ClassGroup** that groups classes. `Add ▸ Meta Group` (`Ctrl+Shift+P`) always lands at the top level, as a **sibling next to the model node** — whatever is selected; it collects ClassGroups (the three levels of chapter 2.1). `Edit Attributes` on any group folder opens the dialog.
 
 ![](images/Group_Dialog.png)
 
