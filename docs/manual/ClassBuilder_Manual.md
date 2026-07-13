@@ -679,7 +679,7 @@ In order: **Add Class**, **Add Note** (both arm placement) · **Add Inheritance*
 
 ## The CD context menu
 
-`Open` · `Edit Attributes` · `Delete` · `Add ▸` (all of the above) · `Edit User Sections...` · `Edit Exception Specification...` · `Edit/Assign Context...` · `Change Line/Text Color...` · `Color Templates ▸` · `Auto Width` · `Show Method Arguments` · `Show Relation Names` · `Hide` / `Show Hidden` · `Select Classes...` · `Select Members & Methods...` · `Optimize Placement` · `Align ▸` · `Reorder Members & Methods...` · `Inherits From...` / `Inherited By...`.
+One menu serves the whole canvas: which entries are enabled follows from what is selected — the same gate as the toolbar buttons. Below, the menu on an **empty selection**: the diagram-level actions are available (adding a class or note, Select Classes, Color Templates, Optimize Placement), while everything that needs a shape — Open, Edit Attributes, Align, Hide — waits for one.
 
 ![](images/Class_diagram_context_menu.png)
 
