@@ -526,9 +526,9 @@ The fill tells the body state — an untouched method keeps its place's shade on
 
 **Relations** — the arrow encodes the relation on the node it hangs under. Heads: one = Single, two = Multi. Colour: grey = plain association, black = owned (aggregation), magenta = critical, red = critical **and** owned. The box marks the side: yellow box at the bottom = the *from* (active) side pointing at its targets; blue box at the top = the *to* (passive) side being pointed at. Static relations draw thicker, with a wider box. Each pair below shows the *from* and *to* icon of the kind:
 
-| ![](../../src/qt/icons/single_act.svg) ![](../../src/qt/icons/single_pas.svg) | ![](../../src/qt/icons/multi_act.svg) ![](../../src/qt/icons/multi_pas.svg) | ![](../../src/qt/icons/owned_multi_act.svg) ![](../../src/qt/icons/owned_multi_pas.svg) | ![](../../src/qt/icons/cr_multi_act.svg) ![](../../src/qt/icons/cr_multi_pas.svg) | ![](../../src/qt/icons/cr_owned_multi_act.svg) ![](../../src/qt/icons/cr_owned_multi.svg) | ![](../../src/qt/icons/static_multi_act.svg) ![](../../src/qt/icons/static_multi_pas.svg) |
-|------|------|------|------|------|------|
-| single | multi | owned | critical | critical + owned | static |
+| ![](../../src/qt/icons/single_act.svg) ![](../../src/qt/icons/single_pas.svg) | ![](../../src/qt/icons/multi_act.svg) ![](../../src/qt/icons/multi_pas.svg) | ![](../../src/qt/icons/owned_multi_act.svg) ![](../../src/qt/icons/owned_multi_pas.svg) | ![](../../src/qt/icons/cr_multi_act.svg) ![](../../src/qt/icons/cr_multi_pas.svg) | ![](../../src/qt/icons/cr_owned_multi_act.svg) ![](../../src/qt/icons/cr_owned_multi.svg) | ![](../../src/qt/icons/static_multi_act.svg) ![](../../src/qt/icons/static_multi_pas.svg) | ![](../../src/qt/icons/static_owned_multi_act.svg) ![](../../src/qt/icons/static_owned_multi_pas.svg) |
+|------|------|------|------|------|------|------|
+| single | multi | owned | critical | critical + owned | static | static + owned |
 
 **Phases** — with Phase Support on, the phase marker joins the element icon:
 
