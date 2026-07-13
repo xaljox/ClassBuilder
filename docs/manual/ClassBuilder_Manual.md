@@ -701,8 +701,6 @@ Sequence diagrams show *interactions*: which object calls what, in which order. 
 
 ![A sequence-diagram view in the shell — its own toolbar (delete, undo/redo, zoom, export SVG) at the top; diagram views dock, tab and float exactly like the trees.](images/sd-view.png)
 
-![The "Creating a Matrix" sequence diagram (SVG export, generated with add_call_trace): a User triggers Matrix(rows, columns), which constructs the Columns and Rows.](images/sd-create.svg)
-
 ## Building one
 
 1. `Add ▸ Sequence Diagram` on the model/class/group node; the dialog sets numbering style (`1`, `1.1.1`, `a`, ...), whether message labels show argument types/names/scope, caption, scale.
