@@ -1052,7 +1052,7 @@ Generated helpers can insert code for you rather than making you type it:
 
 The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space — drag it to give either side more room. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
 
-> **[FIGURE: Constructor code editor]** — the two panes with the splitter between the initializer list and the body.
+![](images/Constructor_Code_Editor.png)
 
 ## Where it appears
 
