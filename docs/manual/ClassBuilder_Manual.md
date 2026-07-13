@@ -234,7 +234,7 @@ Note what is *absent*: no container declarations, no push_back, no bookkeeping. 
 
 ## Step 6 — a find method
 
-Right-click the `Matrix→Row` relation ▸ add a **Find Method** on member `id`. The generated `FindRow(int id)` iterates the relation and compares — and if the relation used a tree implementation, the same dialog generates the fast tree lookup instead (chapter 12.7):
+Right-click the `Matrix→Row` relation ▸ add a **Find Method** on member `id`. The generated `FindRow(int id)` iterates the relation and compares — and if the relation used a tree implementation, the same dialog generates the fast tree lookup instead (chapter 12.8):
 
 ![The Find Method dialog on the Matrix→Row relation: the argument map pairs the method's arguments with the members to compare — here `->GetId()`. In the tree behind it, the generated method appears as a child of the *Row* relation item, as a sibling above its *Relation methods* folder.](images/Matrix_Row_FindId.png)
 
@@ -794,7 +794,7 @@ Name, template declaration/reference, **Struct**, **Suppress forward declaration
 
 Type (searchable combo of all model types) + name (bare, no prefix); template reference for templated types; type shape: **Const, Mutable, Reference, Pointer, Pointer/Pointer, Const Pointer, Array [size], Bit Field [bits]**; **Serialize** (include in the generated `Serialize` body — with the member's *version*, chapter 13); **Delete** (emit `= delete`); access + **Static**; **Get method / Set method** (see below); **Initial Value** (becomes the constructor-initializer expression); Note.
 
-**Generated getters and setters.** Choosing an access level (instead of *None*) generates `GetX()` (inline, `const`, returns the member) and/or `SetX(value)` with that access; the static flag follows the member, and both stay in sync when the member is renamed or retyped. One important special case: **if the member is the key of a tree-implemented relation** (Value Tree / Unique Value Tree / AVL Tree), the generated setter also **repositions the object inside the tree** — changing a key must never be a plain assignment. See chapter 12.7 for the generated code.
+**Generated getters and setters.** Choosing an access level (instead of *None*) generates `GetX()` (inline, `const`, returns the member) and/or `SetX(value)` with that access; the static flag follows the member, and both stay in sync when the member is renamed or retyped. One important special case: **if the member is the key of a tree-implemented relation** (Value Tree / Unique Value Tree / AVL Tree), the generated setter also **repositions the object inside the tree** — changing a key must never be a plain assignment. See chapter 12.8 for the generated code.
 
 ## Method
 
@@ -861,7 +861,7 @@ Chapter 12 is the background; the dialog fields:
 
 - **From / To**: the two classes and the two role names (the names appear in all generated identifiers: `GetFirstCell`, `AddCellLast`, `CellIterator`, ...).
 - **Association Type**: **Single** (one pointer), **Multi** (a list), **Static Multi** (one *shared* container across all instances of the from-class).
-- **Association Properties**: **Aggregation** (owned: cascade delete), **Critical** (thread-safe: every operation locks — chapter 12.8), **Filter** (iterators get a predicate variant).
+- **Association Properties**: **Aggregation** (owned: cascade delete), **Critical** (thread-safe: every operation locks — chapter 12.9), **Filter** (iterators get a predicate variant).
 - **Implementation** (Multi only): **Standard** (doubly-linked intrusive list), **Value Tree** (bit-indexed tree on an **integer-like** member — fastest find, unordered; **Unique** selects the unique-key variant when duplicates are impossible), **AVL Tree** (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` — ints and `CbString` qualify). **Member**: the key member for the tree variants — its generated **setter becomes tree-aware** (chapter 12.7).
 
 ## Find Method (on a relation)
@@ -1050,7 +1050,7 @@ Three generators of one family: `Add ▸ Virtual Methods` (`Ctrl+Shift+V`) and `
 
 ![On a **virtual method** of a base class it works top-down: the derived classes that do not override it yet — tick them and each receives the override with an empty body to fill in.](images/Add_Virtual_Method.png)
 
-![**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value).](images/Add_IsClass.png)
+![**IsClass Methods** adds `IsRow()`-style type predicates to a base class for each selected subclass (implemented via `dynamic_cast`, returning a boolean truth value). With **Filter** enabled on a multi relation, these IsX predicates are exactly what the filter iterator takes (chapter 12.6).](images/Add_IsClass.png)
 
 ![**Wrap Member Methods**, on a member whose type is a class: pick methods of the member's class and forwarding wrappers are generated on the containing class — the classic "expose the embedded object's interface" chore.](images/Wrap_Member_Methods.png)
 
