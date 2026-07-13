@@ -1025,7 +1025,7 @@ Launched **from the code editor** (method/constructor code dialogs), these inser
 
 ![](images/Iterator_Wizzard.png)
 > **[FIGURE: Type Variable Wizard dialog]** — the local-variable declaration wizard.
-> **[FIGURE: Variable->Method() Wizard dialog]** — the call-insertion wizard.
+![](images/Variable-Method_Wizzard.png)
 > **[FIGURE: Similar Lines dialog]** — the similar-lines browser.
 > **[FIGURE: Wrap Member Methods dialog]** — the member-method wrapper picker.
 
