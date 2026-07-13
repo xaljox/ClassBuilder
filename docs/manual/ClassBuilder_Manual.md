@@ -970,7 +970,7 @@ Adds the full serialization scaffolding to an existing model that was created wi
 
 ## Find
 
-> **[FIGURE: Find dialog]** — the dialog titled "Find".
+![](images/Find_Dialog.png)
 
 `Ctrl+F`: search text, match case / whole name, and which element kinds to search (Types / Arguments / Methods / Members). `F3` repeats.
 
