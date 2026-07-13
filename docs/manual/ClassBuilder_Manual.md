@@ -553,7 +553,7 @@ Right-click any node (an unselected node is selected first). The full menu, top 
 11. **New Sub Window** — a second, *scoped* tree rooted at this node, as its own dockable view.
 12. **Delete Multiple...** — bulk delete (below).
 
-> **[FIGURE: Tree context menu]** — the context menu open on a **class** node, with the Add submenu expanded.
+![](images/Tree_context_menu.png)
 
 ## Filters
 
