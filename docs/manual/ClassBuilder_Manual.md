@@ -586,7 +586,7 @@ Everyday examples: drag an **argument onto a method** to add it there (`Ctrl`+dr
 
 A class diagram shows selected classes as UML boxes with their inheritances, relations and dependencies. A model can have any number of diagrams; each shows a chosen subset of classes and features — small focused diagrams beat one wall-sized one.
 
-> **[FIGURE]** *A class-diagram view with one class selected (translucent selection box and resize handles visible), a relation and an inheritance between classes, and the CD toolbar along the top. Caption: "The class-diagram view. Selected shapes get a translucent accent box; the last-selected shape is the align anchor."*
+![The class-diagram view with its toolbar. Row and Column are selected (translucent accent, resize handles); the darker frame on Column marks the align anchor — the last-selected shape.](images/Class_diagram_view.png)
 
 ## Reading the diagram
 
