@@ -798,7 +798,7 @@ Return type + shape; name (combo remembers names used elsewhere — pick `Serial
 
 *Renaming a method* does not stop at the declaration: ClassBuilder scans all stored method bodies for occurrences of the old name and opens the **occurrences dialog** — every hit listed with its class/method location; select which to rename, and view any hit's code directly from the dialog before deciding. This makes model-wide renames safe without a text editor.
 
-> **[FIGURE: Replace dialog]** — the occurrences dialog (titled "Replace") after renaming a method that is called in several bodies: the hit list with checkboxes (Select All / Unselect All) and the code preview. Caption: "Renaming a method offers to update every call site stored in the model — with code preview per hit."
+![Renaming a method offers to update every call site stored in the model — with a code preview per hit.](images/Replace_Dialog.png)
 
 ## Constructor / Destructor
 
@@ -830,7 +830,10 @@ Base class combo (Classes + Extern Classes), access (public/protected/private), 
 
 The **Base Classes / Derived Classes** context-menu items open read-only browser dialogs showing the inheritance hierarchy up- or downward from the clicked class.
 
-> **[FIGURE: Base Classes dialog]** — the "Base Classes of class ..." browser.
+| ![](images/Base_Classes_Dialog.png) | ![](images/Derived_Classes_Dialog.png) |
+|------|------|
+
+*Left: the Base Classes browser — everything the class inherits from. Right: the more telling Derived Classes browser — everything that inherits from it.*
 
 ## Relation
 
@@ -851,25 +854,25 @@ Created on a **multi relation** (context menu of the relation node). The dialog 
 
 ## Dependency
 
-> **[FIGURE: Dependency dialog]** — the dialog titled "Dependency".
+![](images/Dependency_Dialog.png)
 
 **Client Class** (the user) and **Supplier Class** (the used), the **Stereotype** text drawn between `<< >>` guillemets on the dashed arrow, and a **Name**. A dependency is modeled — it affects the include/forward-declaration emission for the client — but adds no members or relation code.
 
 ## Relation (Diagram Only)
 
-> **[FIGURE: Relation ClassDiagram Only dialog]** — the dialog titled "Relation ClassDiagram Only".
+![](images/Relation_only_Dialog.png)
 
 The drawing-only counterpart of the Relation dialog: both ends get a **Class**, a **Name** and a free **Multiplicity** text; the kind radio buttons (Single / Multi / Static Multi) and **Association / Aggregation / Composition** choose the UML notation drawn. Nothing enters the model and nothing is generated — pure documentation, and notation-wise *richer* than modeled relations (e.g. Composition).
 
 ## Type
 
-> **[FIGURE: Type dialog]** — the dialog titled "Type".
+![](images/Type_Dialog.png)
 
 Name, serialize mapping (**None** or **Int** — how the unknown type is streamed), and the **Declaration** text block: the actual `typedef`/`enum`/`struct` C++ text that gets emitted into the master include.
 
 ## Group / Meta Group
 
-> **[FIGURE: Group dialog]** — the dialog titled "Group".
+![](images/Group_Dialog.png)
 
 Name + note. (MemberAndMethodGroups — in-class folders — are created from the class context menu.)
 
