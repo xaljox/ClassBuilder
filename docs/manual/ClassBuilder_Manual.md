@@ -941,14 +941,15 @@ Reorders a class's members and methods with the **Move Up / Move Down** buttons.
 
 ## Signal (message)
 
-> **[FIGURE: Signal dialog]** — the message-specification dialog.
+![](images/Message_Dialog.png)
 
 Name (the displayed call), label/guard (`[...]` — the `*` clause conventionally means "called in a loop"), return text + show-return-arrow, async flag, per-message argument/scope display, note.
 
 ## LifeLine / Note dialogs
 
-> **[FIGURE: LifeLine dialog]** — the lifeline-specification dialog.
-> **[FIGURE: Note dialog]** — the note-text dialog (either diagram kind).
+![](images/Lifeline_Dialog.png)
+
+![](images/Note_Dialog.png)
 
 LifeLine: the represented class/actor, auto-width. Note (both diagram kinds): text, font height, and "force to all" (apply the size everywhere).
 
@@ -956,7 +957,7 @@ LifeLine: the represented class/actor, auto-width. Note (both diagram kinds): te
 
 Two related dialogs share this ground: **Edit Attributes on the model node** opens the "DataModel" dialog (the model's structural properties), while **Project ▸ Settings...** opens "Project Settings" (working preferences: the **Undo stack** depth, **Additional Allowed** identifier characters, **Comment Initial Code**, and the Method Name / Similar Lines lists). The fields below are described together.
 
-> **[FIGURE: DataModel dialog]** — Edit Attributes on the model node, titled "DataModel".
+![](images/Datamodel_Dialog.png)
 > **[FIGURE: Project Settings dialog]** — Project ▸ Settings...
 
 Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version — chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` (with placeholders for file name, date, author, purpose — the `@INSERT_MODIFICATIONS` marker keeps a per-file change log); **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF); **Undo stack** depth — **default 10** steps, raise it here if you want deeper undo history; **Additional Allowed** identifier characters; **Comment Initial Code** (the TODO line seeded into new method bodies); Method Name List / Similar Lines List (name suggestions and the similar-lines tool's pattern list).
