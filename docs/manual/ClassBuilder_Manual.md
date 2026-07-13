@@ -1036,9 +1036,9 @@ Launched **from the code editor** (method/constructor code dialogs), these inser
 
 
 ![](images/Iterator_Wizzard.png)
-> **[FIGURE: Type Variable Wizard dialog]** — the local-variable declaration wizard.
+![](images/Type_Variable_Wizzard.png)
 ![](images/Variable-Method_Wizzard.png)
-> **[FIGURE: Similar Lines dialog]** — the similar-lines browser.
+![](images/Similar_Lines_Wizzard.png)
 
 
 # Reference: the code editor
