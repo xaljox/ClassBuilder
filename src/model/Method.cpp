@@ -884,6 +884,9 @@ CbString Method::GetShapeText(VerbosityType verbosity)
         text += GetTypeName();
     }
 
+    if (GetDelete())
+        text += " = delete";
+
     return text;
 }//@CODE_4748
 
