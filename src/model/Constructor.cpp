@@ -230,6 +230,8 @@ CbString Constructor::GetShapeText(VerbosityType verbosity)
 
     text += ")";
 
+    if (GetDelete())
+        text += " = delete";
 
     return text;
 }//@CODE_16940

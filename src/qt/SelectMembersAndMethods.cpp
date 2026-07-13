@@ -228,18 +228,27 @@ void SelectMembersAndMethods::addFeatureRows(QTreeWidgetItem* root,
         {
             Member* pMember = static_cast<Member*>(pGti);
             const int access = pMember->GetAccess();
-            if (!((_privateMembers && access == PRIVATE) ||
-                  (_protectedMembers && access == PROTECTED) ||
-                  (_publicMembers && access == PUBLIC)))
-                continue;
+            if ((_privateMembers && access == PRIVATE) ||
+                (_protectedMembers && access == PROTECTED) ||
+                (_publicMembers && access == PUBLIC))
+            {
+                QTreeWidgetItem* item = new QTreeWidgetItem(root);
+                item->setText(0, toQ(pMember->GetItemText()));
+                item->setIcon(0, Qt_ModelIcon(pMember->GetIcon()));
+                setPtr(item, static_cast<void*>(static_cast<Gti*>(pMember)));
+                item->setCheckState(0,
+                    pMember->FindMemberShape(pClassShape) ? Qt::Checked
+                                                          : Qt::Unchecked);
+            }
 
-            QTreeWidgetItem* item = new QTreeWidgetItem(root);
-            item->setText(0, toQ(pMember->GetItemText()));
-            item->setIcon(0, Qt_ModelIcon(pMember->GetIcon()));
-            setPtr(item, static_cast<void*>(static_cast<Gti*>(pMember)));
-            item->setCheckState(0,
-                pMember->FindMemberShape(pClassShape) ? Qt::Checked
-                                                      : Qt::Unchecked);
+            // The member's get/set methods are its children.
+            addFeatureRows(root, pGti, pClassShape);
+        }
+        else
+        {
+            // Group folders and the generated-method folders: flatten their
+            // contents in place.
+            addFeatureRows(root, pGti, pClassShape);
         }
     }
 }

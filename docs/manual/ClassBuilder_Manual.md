@@ -1001,6 +1001,10 @@ On a **virtual method** of a base class, it works top-down: it lists the derived
 
 ![](images/Add_IsClass.png)
 
+A third generator of the same family lives on a **member whose type is a class** (with methods): **Wrap Member Methods** picks methods of the member's class and generates forwarding wrappers on the containing class — the classic "expose the embedded object's interface" chore:
+
+![](images/Wrap_Member_Methods.png)
+
 ## User Sections / Code dialogs
 
 The six per-class user sections and the method-body editor both embed the code editor — see the next chapter.
@@ -1029,13 +1033,13 @@ Launched **from the code editor** (method/constructor code dialogs), these inser
 - **Type Variable Wizard** — declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.
 - **Variable→Method() Wizard** — pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.
 - **Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.
-- **Wrap Member Methods** — for a member whose type is a class: pick methods of that class and forwarding wrappers are generated on the containing class (the classic "expose the embedded object's interface" chore, generated).
+
 
 ![](images/Iterator_Wizzard.png)
 > **[FIGURE: Type Variable Wizard dialog]** — the local-variable declaration wizard.
 ![](images/Variable-Method_Wizzard.png)
 > **[FIGURE: Similar Lines dialog]** — the similar-lines browser.
-> **[FIGURE: Wrap Member Methods dialog]** — the member-method wrapper picker.
+
 
 # Reference: the code editor
 
