@@ -134,6 +134,55 @@ cross-platform-closed. See also the new manual UI-scale feature in
 [PORTING_LINUX.md](PORTING_LINUX.md#manual-ui-scale-view--ui-scale-menu),
 which is likewise untested outside Linux.
 
+## 5. Blurry icons on Linux/HiDPI — **XWayland is half-res; use an Xorg session**
+
+**Symptom:** on Linux, the tree + toolbar icons look blurry/mushy while text still
+reads sharp. The same Qt code is sharp on Windows and macOS. Easy to misdiagnose as
+an icon-art or SVG problem — **it is not**. The icon code is fine (SVG is enabled;
+`CB_HAVE_SVG` is defined, `-- Qt: Svg module found` at configure).
+
+**Root cause:** CB forces `QT_QPA_PLATFORM=xcb` on a Wayland session
+(`WinMain.cpp`) because **native Wayland forbids the client-side window placement**
+CB needs for its MDI / floating tool windows. But on a HiDPI monitor (e.g. a 2x
+display: 3456x2168 framebuffer, 1728x1084 logical) **XWayland hands Qt a
+devicePixelRatio of 1** — so CB paints the whole UI at HALF the real resolution and
+mutter then magnifies the window 2x. *Everything* is bitmap-upscaled; the icons just
+show it worst (1px strokes and hard edges turn to mush, while antialiased glyphs
+survive magnification, which is why text still "looks sharp").
+
+Measured on the same box with a 4-line `QGuiApplication` probe:
+
+| session / platform | devicePixelRatio |
+|--------------------|------------------|
+| Wayland + `xcb` (XWayland) | **1.0**  ← blurry |
+| Wayland + `wayland`        | 2.0 |
+| **Xorg (x11) + `xcb`**     | **2.0**  ← sharp |
+
+**No app-side setting can fix the XWayland case** — the X screen genuinely only *has*
+1728x1084 pixels; you cannot add resolution that is not there. Raising
+`QT_SCALE_FACTOR` only makes the UI bigger *and* still upscaled.
+
+**Fix: log in to an "Ubuntu on Xorg" session** (GDM login screen → pick the user →
+gear icon, bottom-right → *Ubuntu on Xorg*). On Xorg with a 2x display GNOME sets
+`Xft.dpi=192`, so Qt/xcb gets **DPR 2 (sharp)** *and* real X11 window positioning
+(**floating docks still drag**). No code change. GDM remembers the choice across
+reboots — but if the session ever lands back on Wayland, the blur returns.
+
+**Do NOT "fix" this by running native Wayland** (`QT_QPA_PLATFORM=wayland`): it is
+sharp, but **floating dock windows cannot be moved** (confirmed by test) — exactly the
+limitation the forced-`xcb` guard exists for.
+
+**Bonus:** a pure Xorg session has no XWayland X-selection bridge, so it should also
+sidestep **item 2** (the intermittent XWayland clipboard use-after-free crash).
+
+**Future / when to revisit:** mutter (GNOME's compositor) **>= 47** adds the
+`xwayland-native-scaling` experimental feature, which renders XWayland clients at
+native resolution — that would give sharp icons *while keeping the Wayland session and
+`xcb`*. Not available on GNOME/mutter **46** (Ubuntu 24.04 LTS): its
+`org.gnome.mutter experimental-features` schema offers only `scale-monitor-framebuffer`,
+`kms-modifiers`, `autoclose-xwayland`, `variable-refresh-rate`,
+`x11-randr-fractional-scaling`. Revisit if/when the box leaves 24.04.
+
 ## Working rule this file encodes
 
 UI/layout changes have non-obvious sibling states (single / tabbed / side-by-side
