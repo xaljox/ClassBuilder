@@ -19,9 +19,29 @@
 #include <QPushButton>
 #include <QTreeWidgetItem>
 
+#include <algorithm>
+#include <vector>
+
 
 #define FORWARD_ONLY
 #include "ClassBuilderInclude.h"
+
+namespace {
+// Children of pGti in main-tree DISPLAY order: the model comparator
+// Gti::CompareTreeOrder, stable for ties -- the same rule MainTreeQtView's
+// sortedChildren applies. Raw child order is NOT what the tree shows.
+std::vector<Gti*> treeOrderedChildren(Gti* pGti)
+{
+    std::vector<Gti*> children;
+    Gti::ChildIterator iChild(pGti);
+    while (++iChild)
+        children.push_back(iChild.Get());
+
+    std::stable_sort(children.begin(), children.end(),
+                     [](Gti* a, Gti* b) { return Gti::CompareTreeOrder(a, b) < 0; });
+    return children;
+}
+} // namespace
 
 bool SelectMembersAndMethods::_privateMembers      = true;
 bool SelectMembersAndMethods::_protectedMembers    = true;
@@ -119,64 +139,109 @@ void SelectMembersAndMethods::fillTree()
 {
     _ui->tree->clear();
 
+    // Both levels follow the MODEL's tree order, exactly like the main tree:
+    // the class roots come from a depth-first walk over the model's children
+    // (document class first, groups in place), and the rows below each root
+    // from the class's own child order. (The old fill added all methods,
+    // then all members, then alphabetically sorted the whole tree -- neither
+    // level matched the main tree, JV 2026-07-13.)
+    std::vector<ClassShape*> shapes;
     ClassDiagram::ClassDiagramShapeIterator
         iShape(_pClassDiagram, &ClassDiagramShape::IsClassShape);
     while (++iShape)
+        shapes.push_back((ClassShape*)iShape.Get());
+
+    addClassRoots(_pClassDiagram->GetDataModelDoc()->GetDataModel(), shapes);
+
+    _ui->tree->expandAll();
+}
+
+// Depth-first over the model's children in tree order; every class that has
+// a shape on this diagram becomes a root. Non-class containers (class
+// groups, the Extern Classes node) are entered; a class's own children are
+// handled by addFeatureRows.
+void SelectMembersAndMethods::addClassRoots(
+    Gti* pParent, const std::vector<ClassShape*>& shapes)
+{
+    for (Gti* pGti : treeOrderedChildren(pParent))
     {
-        ClassShape* pClassShape = (ClassShape*)iShape.Get();
-        BaseClass*  pBaseClass  = pClassShape->GetBaseClass();
+        ClassShape* pClassShape = nullptr;
+        for (ClassShape* pShape : shapes)
+            if (static_cast<Gti*>(pShape->GetBaseClass()) == pGti)
+            {
+                pClassShape = pShape;
+                break;
+            }
 
-        QTreeWidgetItem* root = new QTreeWidgetItem(_ui->tree);
-        root->setText(0, toQ(pBaseClass->GetItemText()));
-        root->setIcon(0, Qt_ModelIcon(pBaseClass->GetIcon()));
-        setPtr(root, static_cast<void*>(pClassShape));
-
-        BaseClass::MethodIterator iMethod(pBaseClass);
-        while (++iMethod)
+        if (pClassShape)
         {
-            const int access = iMethod->GetAccess();
+            BaseClass* pBaseClass = pClassShape->GetBaseClass();
+
+            QTreeWidgetItem* root = new QTreeWidgetItem(_ui->tree);
+            root->setText(0, toQ(pBaseClass->GetItemText()));
+            root->setIcon(0, Qt_ModelIcon(pBaseClass->GetIcon()));
+            setPtr(root, static_cast<void*>(pClassShape));
+
+            addFeatureRows(root, pBaseClass, pClassShape);
+        }
+        else
+        {
+            addClassRoots(pGti, shapes);
+        }
+    }
+}
+
+// Depth-first over `pParent`'s children in model order -- the exact order
+// the main tree shows -- adding a row for every member/method that passes
+// the filters. Containers flatten in place: group folders, the ClassBuilder/
+// Relation methods folders, and members (whose get/set methods are their
+// children) all keep their features at the tree position.
+void SelectMembersAndMethods::addFeatureRows(QTreeWidgetItem* root,
+                                             Gti* pParent,
+                                             ClassShape* pClassShape)
+{
+    for (Gti* pGti : treeOrderedChildren(pParent))
+    {
+        if (pGti->IsMethod())
+        {
+            Method* pMethod = static_cast<Method*>(pGti);
+            const int access = pMethod->GetAccess();
             if (!((_privateMethods && access == PRIVATE) ||
                   (_protectedMethods && access == PROTECTED) ||
                   (_publicMethods && access == PUBLIC)))
                 continue;
-            if ((iMethod->IsFixedMethod() && !_classBuilderMethods) ||
-                (iMethod->IsMacroMethod() && !_relationMethods) ||
-                (iMethod->IsGetMemberMethod() && !_getSetMethods) ||
-                (iMethod->IsSetMemberMethod() && !_getSetMethods))
+            if ((pMethod->IsFixedMethod() && !_classBuilderMethods) ||
+                (pMethod->IsMacroMethod() && !_relationMethods) ||
+                (pMethod->IsGetMemberMethod() && !_getSetMethods) ||
+                (pMethod->IsSetMemberMethod() && !_getSetMethods))
                 continue;
 
             QTreeWidgetItem* item = new QTreeWidgetItem(root);
-            item->setText(0, toQ(iMethod->GetItemText()));
-            item->setIcon(0, Qt_ModelIcon(iMethod->GetIcon()));
-            setPtr(item, static_cast<void*>(
-                static_cast<Gti*>(iMethod.Get())));
+            item->setText(0, toQ(pMethod->GetItemText()));
+            item->setIcon(0, Qt_ModelIcon(pMethod->GetIcon()));
+            setPtr(item, static_cast<void*>(static_cast<Gti*>(pMethod)));
             item->setCheckState(0,
-                iMethod->FindMethodShape(pClassShape) ? Qt::Checked
+                pMethod->FindMethodShape(pClassShape) ? Qt::Checked
                                                       : Qt::Unchecked);
         }
-
-        BaseClass::MemberIterator iMember(pBaseClass);
-        while (++iMember)
+        else if (pGti->IsMember())
         {
-            const int access = iMember->GetAccess();
+            Member* pMember = static_cast<Member*>(pGti);
+            const int access = pMember->GetAccess();
             if (!((_privateMembers && access == PRIVATE) ||
                   (_protectedMembers && access == PROTECTED) ||
                   (_publicMembers && access == PUBLIC)))
                 continue;
 
             QTreeWidgetItem* item = new QTreeWidgetItem(root);
-            item->setText(0, toQ(iMember->GetItemText()));
-            item->setIcon(0, Qt_ModelIcon(iMember->GetIcon()));
-            setPtr(item, static_cast<void*>(
-                static_cast<Gti*>(iMember.Get())));
+            item->setText(0, toQ(pMember->GetItemText()));
+            item->setIcon(0, Qt_ModelIcon(pMember->GetIcon()));
+            setPtr(item, static_cast<void*>(static_cast<Gti*>(pMember)));
             item->setCheckState(0,
-                iMember->FindMemberShape(pClassShape) ? Qt::Checked
+                pMember->FindMemberShape(pClassShape) ? Qt::Checked
                                                       : Qt::Unchecked);
         }
     }
-
-    _ui->tree->sortItems(0, Qt::AscendingOrder);
-    _ui->tree->expandAll();
 }
 
 // A filter checkbox toggled -- store the flags and rebuild the tree.

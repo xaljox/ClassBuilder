@@ -17,6 +17,9 @@
 #include <QTreeWidgetItem>
 #include <QDialogButtonBox>
 
+#include <algorithm>
+#include <vector>
+
 
 #define FORWARD_ONLY
 #include "ClassBuilderInclude.h"
@@ -87,13 +90,21 @@ QTreeWidgetItem* SelectClassesDialog::fillTreeItems(Gti* pGti,
     }
     else
     {
+        // Main-tree display order (Gti::CompareTreeOrder, stable ties), not
+        // the alphabetical sort the dialog used to apply -- the rows must
+        // read like the tree (JV 2026-07-13).
+        std::vector<Gti*> children;
         Gti::ChildIterator iChild(pGti);
         while (++iChild)
         {
             if (iChild->IsBaseClass() || iChild->IsClassGroup())
-                fillTreeItems(iChild.Get(), item);
+                children.push_back(iChild.Get());
         }
-        item->sortChildren(0, Qt::AscendingOrder);
+        std::stable_sort(children.begin(), children.end(),
+                         [](Gti* a, Gti* b)
+                         { return Gti::CompareTreeOrder(a, b) < 0; });
+        for (Gti* pChild : children)
+            fillTreeItems(pChild, item);
     }
 
     return item;

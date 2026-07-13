@@ -10,10 +10,13 @@
 
 #include <QDialog>
 
+#include <vector>
+
 #include "QtSelectMembersAndMethods.h"   // SelectMembersApplyCallback
 
 class ClassDiagram;
 class ClassShape;
+class Gti;
 class UndoBase;
 class QTreeWidgetItem;
 
@@ -31,6 +34,9 @@ public:
 
 private:
     void fillTree();
+    void addClassRoots(Gti* pParent, const std::vector<ClassShape*>& shapes);
+    void addFeatureRows(QTreeWidgetItem* root, Gti* pParent,
+                        ClassShape* pClassShape);
     void applyChecks();
     void checkItem(QTreeWidgetItem* item, ClassShape* pClassShape);
     void onFilterChanged();
