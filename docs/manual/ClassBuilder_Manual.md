@@ -887,14 +887,14 @@ Name + note. (MemberAndMethodGroups — in-class folders — are created from th
 
 > **[FIGURE: Edit Context dialog]** — the context-declaration editor, opened on the model node.
 
-A **context** is a named preprocessor wrapper: generated code for the elements assigned to it is emitted inside `#ifdef`/`#endif` blocks, so whole classes or individual methods can be compiled in or out of a build. Two dialogs:
+A **context** is a named wrapper of free-form text: for every element assigned to it, the text you define is emitted *before* and *after* the generated declaration (`.h`) and implementation (`.cpp`). Wrapping classes or methods in `#ifdef`/`#endif` to compile them in or out of a build is one common use — but any bracketing text works: `#pragma` push/pop pairs, compiler-specific attributes, warning suppressions. Two dialogs:
 
 - **Edit Context** (on the model node) manages the **context declarations**: each has a name, the `#define` line to emit into the master include (with an enable/disable flag — the master include's "Context define declarations" section), and the exact start/end wrapper text used around declarations (`.h`) and implementations (`.cpp`).
 - **Assign Context** (on a class or method) assigns declarations to that element: the left list shows contexts already assigned, the right list the available declarations; **Add** and **Remove** move between them.
 
-Typical use: feature flags (`FEATURE_X`), platform sections, or debug-only helpers — modeled once, consistently emitted, instead of hand-maintained `#ifdef`s scattered through user regions.
+Typical use: feature flags (`FEATURE_X`), platform sections, debug-only helpers, or pragma/warning brackets — modeled once, consistently emitted, instead of hand-maintained preprocessor text scattered through user regions.
 
-> **[FIGURE: Assign Context dialog]** — on a class: assigned list left, available declarations right, Add/Remove between. Caption: "Contexts wrap the generated code of assigned elements in #ifdef blocks."
+> **[FIGURE: Assign Context dialog]** — on a class: assigned list left, available declarations right, Add/Remove between. Caption: "Contexts wrap the generated code of assigned elements in the bracketing text you define."
 
 ## Actor
 
