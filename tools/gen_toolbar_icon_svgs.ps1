@@ -35,7 +35,10 @@ $P = @{
 
 function Save-Tb([string]$name, [string]$body)
 {
-    $svg = "<svg xmlns=`"http://www.w3.org/2000/svg`" viewBox=`"0 0 16 16`">`n" +
+    # width/height besides the viewBox: Qt ignores them (renders by viewBox),
+    # but they give the file an intrinsic size when embedded elsewhere (the
+    # manual's icon legend) -- without them an <img>/pandoc render can balloon.
+    $svg = "<svg xmlns=`"http://www.w3.org/2000/svg`" width=`"16`" height=`"16`" viewBox=`"0 0 16 16`">`n" +
            $body + "`n</svg>`n"
     [IO.File]::WriteAllText((Join-Path $outDir "tb_$name.svg"), $svg, $script:utf8)
 }
@@ -66,8 +69,8 @@ $classGlyph = @"
 "@
 $inheritGlyph = @"
     <rect x=`"3.5`" y=`"1.4`" width=`"9`" height=`"4`" fill=`"$($P.blueFill)`" stroke=`"$($P.blueEdge)`" stroke-width=`"1`"/>
-    <polygon points=`"8,7 11.2,10.4 4.8,10.4`" fill=`"#FFFFFF`" stroke=`"$($P.ink)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
-    <rect x=`"7.35`" y=`"10.4`" width=`"1.3`" height=`"4.2`" fill=`"$($P.ink)`"/>
+    <polygon points=`"8,5.4 11.2,8.8 4.8,8.8`" fill=`"#FFFFFF`" stroke=`"$($P.ink)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
+    <rect x=`"7.35`" y=`"8.8`" width=`"1.3`" height=`"5.8`" fill=`"$($P.ink)`"/>
 "@
 $folderGlyph = @"
     <path d=`"M1.2 4.6 a1 1 0 0 1 1 -1 H5.6 l1.4 1.6 H13.8 a1 1 0 0 1 1 1 V12 a1 1 0 0 1 -1 1 H2.2 a1 1 0 0 1 -1 -1 Z`"
@@ -140,16 +143,16 @@ Save-Tb 'add_isclass'  ($star + "  <g transform=`"translate(3.0 3.0) scale(0.79)
 # directly under the class box (the marker starts at the top -- JV 2026-07-12)
 $relationGlyph = @"
     <rect x=`"3.5`" y=`"1.4`" width=`"9`" height=`"4`" fill=`"$($P.blueFill)`" stroke=`"$($P.blueEdge)`" stroke-width=`"1`"/>
-    <path d=`"M8 6.2 L10.7 9 L8 11.8 L5.3 9 Z`" fill=`"#FFFFFF`" stroke=`"$($P.ink)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
-    <rect x=`"7.35`" y=`"11.8`" width=`"1.3`" height=`"3.2`" fill=`"$($P.ink)`"/>
+    <path d=`"M8 5.9 L10.2 9 L8 12.1 L5.8 9 Z`" fill=`"#FFFFFF`" stroke=`"$($P.ink)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
+    <rect x=`"7.35`" y=`"12.1`" width=`"1.3`" height=`"2.9`" fill=`"$($P.ink)`"/>
 "@
 Save-Tb 'add_relation' (AddGlyph $relationGlyph)
 
 # add_relation_diagramonly: no class box -- the diamond itself at the top,
 # relation line hanging down
 $relDiagGlyph = @"
-    <path d=`"M8 1.2 L10.7 4 L8 6.8 L5.3 4 Z`" fill=`"#FFFFFF`" stroke=`"$($P.ink)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
-    <rect x=`"7.35`" y=`"6.8`" width=`"1.3`" height=`"8`" fill=`"$($P.ink)`"/>
+    <path d=`"M8 0.9 L10.2 4 L8 7.1 L5.8 4 Z`" fill=`"#FFFFFF`" stroke=`"$($P.ink)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
+    <rect x=`"7.35`" y=`"7.1`" width=`"1.3`" height=`"7.7`" fill=`"$($P.ink)`"/>
 "@
 Save-Tb 'add_relation_diagramonly' (AddGlyph $relDiagGlyph)
 

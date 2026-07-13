@@ -41,7 +41,10 @@ $P = @{
 
 function Save-Svg([string]$name, [string]$body)
 {
-    $svg = "<svg xmlns=`"http://www.w3.org/2000/svg`" viewBox=`"0 0 16 16`">`n" +
+    # width/height besides the viewBox: Qt ignores them (renders by viewBox),
+    # but they give the file an intrinsic size when embedded elsewhere (the
+    # manual's icon legend) -- without them an <img>/pandoc render can balloon.
+    $svg = "<svg xmlns=`"http://www.w3.org/2000/svg`" width=`"16`" height=`"16`" viewBox=`"0 0 16 16`">`n" +
            $body + "`n</svg>`n"
     [IO.File]::WriteAllText((Join-Path $outDir "$name.svg"), $svg, $script:utf8)
 }
@@ -196,8 +199,8 @@ Save-Svg 'argument' @"
 # inherit: class box with a UML generalization arrow pointing up into it
 Save-Svg 'inherit' @"
   <rect x=`"3.5`" y=`"1.4`" width=`"9`" height=`"4`" fill=`"$($P.blueFill)`" stroke=`"$($P.blueEdge)`" stroke-width=`"1`"/>
-  <polygon points=`"8,7 11.2,10.4 4.8,10.4`" fill=`"#FFFFFF`" stroke=`"$($P.inkEdge)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
-  <rect x=`"7.35`" y=`"10.4`" width=`"1.3`" height=`"4.2`" fill=`"$($P.inkEdge)`"/>
+  <polygon points=`"8,5.4 11.2,8.8 4.8,8.8`" fill=`"#FFFFFF`" stroke=`"$($P.inkEdge)`" stroke-width=`"1.1`" stroke-linejoin=`"round`"/>
+  <rect x=`"7.35`" y=`"8.8`" width=`"1.3`" height=`"5.8`" fill=`"$($P.inkEdge)`"/>
 "@
 
 # class: blue class SQUARE + bracket to three coloured features (yellow

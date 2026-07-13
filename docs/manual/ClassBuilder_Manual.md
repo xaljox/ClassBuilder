@@ -488,7 +488,53 @@ Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Met
 
 ![The tree toolbar, in the order of the table above: the Add buttons, then Delete, Filters, Find/Next, and the per-view Undo/Redo.](images/Tree_Toolbar.png)
 
-The element icons speak one visual language, shared with the diagrams and the toolbar. The diamond colour is the *kind*: cyan member, magenta method, green constructor, red destructor. Access is an overlay: a key marks protected, a padlock private (public is bare). The fill tells the body state: full colour = code in the `.cpp`, a darker shade = inline, and a hollow white core = no code written yet (the rim keeps the full or darker shade, so the body place stays readable). `virtual` and `= delete` are not on the icon: the tree paints those keywords in magenta in the signature text itself. All icons are drawn from SVG, with the legacy `.ico` set as fallback.
+## The element icons
+
+The element icons speak one visual language, shared with the diagrams and the toolbar, and drawn from SVG (the legacy `.ico` set is the fallback). The legend below uses the actual icon files, so it cannot drift from the application.
+
+**Structure and elements:**
+
+| Icon | Element | Icon | Element |
+|------|---------|------|---------|
+| ![](../../src/qt/icons/file.svg) | model root | ![](../../src/qt/icons/class.svg) | class |
+| ![](../../src/qt/icons/externclass.svg) | extern class | ![](../../src/qt/icons/type.svg) | type |
+| ![](../../src/qt/icons/inherit.svg) | inheritance | ![](../../src/qt/icons/argument.svg) | argument |
+| ![](../../src/qt/icons/classdiagram.svg) | class diagram | ![](../../src/qt/icons/sequencediagram.svg) | sequence diagram |
+| ![](../../src/qt/icons/actor.svg) | actor | ![](../../src/qt/icons/membermethodgroup.svg) | group (folder) |
+
+The group folder's coloured bar tells what is inside: ![](../../src/qt/icons/membergroup.svg) members, ![](../../src/qt/icons/methodgroup.svg) methods, ![](../../src/qt/icons/membermethodgroup.svg) a mix.
+
+**Members and methods** — the diamond colour is the *kind*:
+
+| ![](../../src/qt/icons/public_member.svg) | ![](../../src/qt/icons/public_method.svg) | ![](../../src/qt/icons/public_constructor.svg) | ![](../../src/qt/icons/public_destructor.svg) |
+|------|------|------|------|
+| member | method | constructor | destructor |
+
+Access is an overlay (public is bare):
+
+| ![](../../src/qt/icons/public_method.svg) | ![](../../src/qt/icons/protected_method.svg) | ![](../../src/qt/icons/private_method.svg) |
+|------|------|------|
+| public | protected (key) | private (padlock) |
+
+The fill tells the body state — an untouched method keeps its place's shade on the rim:
+
+| ![](../../src/qt/icons/public_method.svg) | ![](../../src/qt/icons/public_inline_method.svg) | ![](../../src/qt/icons/public_empty_method.svg) | ![](../../src/qt/icons/public_empty_inline_method.svg) |
+|------|------|------|------|
+| code in the `.cpp` | inline (darker) | no code yet (hollow) | inline, no code yet |
+
+`virtual` and `= delete` are not on the icon: the tree paints those keywords in magenta in the signature text itself.
+
+**Relations** — the arrow encodes the relation on the node it hangs under. Heads: one = Single, two = Multi. Colour: grey = plain association, black = owned (aggregation), magenta = critical, red = critical **and** owned. The box marks the side: yellow box at the bottom = the *from* (active) side pointing at its targets; blue box at the top = the *to* (passive) side being pointed at. Static relations draw thicker, with a wider box:
+
+| ![](../../src/qt/icons/single_act.svg) | ![](../../src/qt/icons/multi_act.svg) | ![](../../src/qt/icons/owned_multi_act.svg) | ![](../../src/qt/icons/cr_multi_act.svg) | ![](../../src/qt/icons/cr_owned_multi_act.svg) | ![](../../src/qt/icons/static_multi_act.svg) | ![](../../src/qt/icons/multi_pas.svg) |
+|------|------|------|------|------|------|------|
+| single | multi | owned | critical | critical + owned | static | *to*-side (pas) |
+
+**Phases** — with Phase Support on, the phase marker joins the element icon:
+
+| ![](../../src/qt/icons/analysis_phase.svg) | ![](../../src/qt/icons/design_phase.svg) | ![](../../src/qt/icons/implementation_phase.svg) | ![](../../src/qt/icons/test_phase.svg) | ![](../../src/qt/icons/complete_phase.svg) |
+|------|------|------|------|------|
+| Analysis | Design | Implementation | Test | Complete |
 
 ## The context menu
 
