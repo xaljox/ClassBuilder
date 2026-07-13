@@ -898,7 +898,7 @@ Typical use: feature flags (`FEATURE_X`), platform sections, debug-only helpers,
 
 ## Actor
 
-> **[FIGURE: Actor dialog]** — the dialog titled "Actor".
+![](images/Actor_Dialog.png)
 
 Name + note; actors appear under `Actors` and go on sequence diagrams as stick figures.
 
@@ -920,17 +920,17 @@ Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, 
 
 A checkbox list of **every class in the model**: tick to place a class on this diagram, untick to remove its shape. The bulk way to (re)compose a diagram — newly ticked classes are placed on free grid positions (run `Optimize Placement` afterwards).
 
-## Class Shape
+## Select Members & Methods / Class Shape
 
-> **[FIGURE: Class Shape dialog]** — the dialog titled "Class Shape", opened with `Open` on a class shape.
+Controls **which individual members and methods are visible** on a class shape (within what the diagram's access-level flags allow). The context-menu action comes in two tastes, depending on the selection:
 
-The per-shape feature picker: two checkbox lists — the class's **members** and **methods** — each with Select All / Unselect All; ticked items are shown on *this* shape. The same class can show different features on different diagrams.
+- **One class selected** (or `Open` on its shape): the **Class Shape** dialog — two checkbox lists, the class's members and methods, each with Select All / Unselect All; ticked items are shown on *this* shape.
+- **Nothing selected**: the **diagram-wide picker** — a checkbox tree of every class shape with its members and methods beneath; OK/**Apply** commit, Cancel rolls everything back.
 
-## Select Members & Methods
+The same class can show different features on different diagrams.
 
-> **[FIGURE: Select Members & Methods dialog]** — opened from a class shape or the diagram context menu.
-
-Controls **which individual members and methods are visible** on a class shape (within what the diagram's access-level flags allow). Checkbox lists per section, with Select All / Unselect All. Diagram-wide or per-class, depending on where it was opened.
+> **[FIGURE: Class Shape dialog]** — one class selected.
+> **[FIGURE: Select Members & Methods dialog]** — nothing selected: the diagram-wide tree.
 
 ## Reorder Members & Methods
 
