@@ -770,6 +770,8 @@ Every dialog, what it edits, and the fields that need explanation. The screensho
 
 ## Class
 
+`Open` / `Edit Attributes` on a class — in the tree or on its diagram shape; `Add ▸ Class` (`Ctrl+Shift+C`) creates one and opens it.
+
 ![](images/Class_Dialog.png)
 
 Name; **Source File** / **Include File** (output paths); **Template** (+ declaration `template<class T>` and reference `<T>`); properties: **Replace** (generate the replace constructor — chapter 15), **Dll Export**, **Serialize** (chapter 13; locking rules below), **Struct** (emit `struct`), **Relation Macros Last** (move the relation macro block to the end of the class declaration); **Member Prefix** (per-class override of the model default); Note.
@@ -778,11 +780,15 @@ Name; **Source File** / **Include File** (output paths); **Template** (+ declara
 
 ## External Class
 
+`Open` / `Edit Attributes` on an extern-class node; `Add ▸ External Class` (`Ctrl+Shift+E`).
+
 ![](images/Extern_Class_Dialog.png)
 
 Name, template declaration/reference, **Struct**, **Suppress forward declaration** (for types that must not be forward-declared, e.g. typedefs), member prefix (used when generated code calls its getters/setters).
 
 ## Member
+
+`Open` / `Edit Attributes` on a member; `Add ▸ Member` (`Ctrl+Shift+B`) on a class.
 
 ![](images/Member_Dialog.png)
 
@@ -791,6 +797,8 @@ Type (searchable combo of all model types) + name (bare, no prefix); template re
 **Generated getters and setters.** Choosing an access level (instead of *None*) generates `GetX()` (inline, `const`, returns the member) and/or `SetX(value)` with that access; the static flag follows the member, and both stay in sync when the member is renamed or retyped. One important special case: **if the member is the key of a tree-implemented relation** (Value Tree / Unique Value Tree / AVL Tree), the generated setter also **repositions the object inside the tree** — changing a key must never be a plain assignment. See chapter 12.7 for the generated code.
 
 ## Method
+
+`Edit Attributes` on a method (`Open` goes to the code editor once the method has a body); `Add ▸ Method` (`Ctrl+Shift+M`) on a class.
 
 ![](images/Method_Dialog.png)
 
@@ -801,6 +809,8 @@ Return type + shape; name (combo remembers names used elsewhere — pick `Serial
 ![Renaming a method offers to update every call site stored in the model — with the possibility to view the code.](images/Replace_Dialog.png)
 
 ## Constructor / Destructor
+
+`Edit Attributes` on the constructor / destructor node; `Add ▸ Constructor` (`Ctrl+Shift+U`) on a class.
 
 ![The Constructor dialog.](images/Constructor_Dialog.png)
 
@@ -820,11 +830,15 @@ A master checkbox *"Method has an exception specification (throw clause)"*, and 
 
 ## Argument
 
+`Open` / `Edit Attributes` on an argument; `Add ▸ Argument` (`Ctrl+Shift+A`) on a method.
+
 ![](images/Argument_Dialog.png)
 
 Type + shape (const/ref/pointer/array), name, **Default Value**, note. Reorder arguments by drag in the tree.
 
 ## Inheritance
+
+`Open` / `Edit Attributes` on an inheritance node; `Add ▸ Inheritance` (`Ctrl+Shift+I`) on a class.
 
 ![](images/Inherit_Dialog.png)
 
@@ -838,6 +852,8 @@ The **Base Classes / Derived Classes** context-menu items open read-only browser
 *Left: the Base Classes browser — everything the class inherits from. Right: the more telling Derived Classes browser — everything that inherits from it.*
 
 ## Relation
+
+`Open` / `Edit Attributes` on a relation node; `Add ▸ Relation` (`Ctrl+Shift+R`) on a class, or **R**+drag between two classes on a diagram.
 
 ![](images/Relation_Dialog.png)
 
@@ -858,17 +874,23 @@ The dialog offers a tree of everything reachable from the iterated object — it
 
 ## Dependency
 
+On a class diagram: `Add ▸ Dependency` (`Ctrl+Shift+D`) or **D**+drag from client to supplier; `Open` on a dependency connection.
+
 ![](images/Dependency_Dialog.png)
 
 **Client Class** (the user) and **Supplier Class** (the used), the **Stereotype** text drawn between `<< >>` guillemets on the dashed arrow, and a **Name**. Like Relation (Diagram Only), a dependency is drawing-only: nothing enters the model's code generation.
 
 ## Relation (Diagram Only)
 
+On a class diagram: `Add ▸ Relation (Diagram Only)` (`Ctrl+Shift+O`) or **O**+drag; `Open` on the connection.
+
 ![](images/Relation_only_Dialog.png)
 
 The drawing-only counterpart of the Relation dialog: both ends get a **Class**, a **Name** and a free **Multiplicity** text; the kind radio buttons (Single / Multi / Static Multi) and **Association / Aggregation / Composition** choose the UML notation drawn. Nothing enters the model and nothing is generated — pure documentation, and notation-wise *richer* than modeled relations (e.g. Composition).
 
 ## Type
+
+`Open` / `Edit Attributes` on a type under *Other Types*; `Add ▸ Type` (`Ctrl+Shift+Y`).
 
 ![](images/Type_Dialog.png)
 
@@ -882,6 +904,8 @@ CbArchive& operator >>(CbArchive& archive, TypeName& typeName);
 ```
 
 ## Group / Meta Group
+
+`Edit Attributes` on a group folder; `Add ▸ Group` (`Ctrl+Shift+G`) / `Add ▸ Meta Group` (`Ctrl+Shift+P`).
 
 ![](images/Group_Dialog.png)
 
@@ -902,17 +926,23 @@ Typical use: feature flags (`FEATURE_X`), platform sections, debug-only helpers,
 
 ## Actor
 
+`Open` / `Edit Attributes` on an actor under *Actors*; `Add ▸ Actor` (`Ctrl+Shift+T`).
+
 ![](images/Actor_Dialog.png)
 
 Name + note; actors appear under `Actors` and go on sequence diagrams as stick figures.
 
 ## Class Diagram
 
+`Edit Attributes` on the diagram node in the tree; `Add ▸ Class Diagram` on the model node creates one and opens this dialog first.
+
 ![](images/CD_Dialog.png)
 
 Name, page size/orientation/scale, multi-page layout (1–16 pages), caption, note — and the **auto-add** matrix: which member/method access levels are automatically shown when a class is placed on this diagram (private/protected/public members and methods, plus Get/Set methods).
 
 ## Sequence Diagram
+
+`Edit Attributes` on the diagram node; `Add ▸ Sequence Diagram` creates one and opens this dialog first.
 
 ![](images/SD_Dialog.png)
 
@@ -949,11 +979,15 @@ Reorders a class's members and methods with the **Move Up / Move Down** buttons.
 
 ## Signal (message)
 
+`Open` on a message in a sequence diagram — it also opens on every message drag-creation (chapter 8.1).
+
 ![](images/Message_Dialog.png)
 
 Name (the displayed call), label/guard (`[...]` — the `*` clause conventionally means "called in a loop"), return text + show-return-arrow, async flag, per-message argument/scope display, note.
 
 ## LifeLine / Note dialogs
+
+`Open` on a lifeline head, or on a note (either diagram kind).
 
 ![The LifeLine dialog.](images/Lifeline_Dialog.png)
 
@@ -977,23 +1011,31 @@ Model name; **Master Include File**; **Namespace** (wrap all generated code); **
 
 ## Add Serialization to project
 
+`Project ▸ Add Serialize...` — on a model that was created without Serialize.
+
 ![](images/Add_Serialize.png)
 
 Adds the full serialization scaffolding to an existing model that was created without it: you supply the **Document Class Name**, and the wizard creates the `CbObject` extern, the document class, the document-object root, their relation, and the `SerializeMembersOnly` machinery (chapter 13.1). One-way — once a model has Serialize, it keeps it.
 
 ## Find
 
+`Ctrl+F` in a tree view (toolbar: the magnifier).
+
 ![](images/Find_Dialog.png)
 
-`Ctrl+F`: search text, match case / whole name, and which element kinds to search (Types / Arguments / Methods / Members). `F3` repeats.
+Search text, match case / whole name, and which element kinds to search (Types / Arguments / Methods / Members). `F3` repeats.
 
 ## Read Source
+
+`File ▸ Read Source...` (toolbar: **Read Source**).
 
 ![](images/Read_Source_Files.png)
 
 Non-modal progress dialog for source read-back: log pane, progress bar, **Read Modifications** (changed files only) vs **Read All**.
 
 ## Save Source
+
+`File ▸ Save Source...` (toolbar: **Write Source**).
 
 ![](images/Save_Source_Files.png)
 
@@ -1002,7 +1044,7 @@ The generation twin of Read Source: **Save Modifications** (only classes changed
 ## Virtual Methods / IsClass Methods / Wrap Member Methods
 
 
-Three generators of one family, all on the `Add ▸` menu. **Virtual Methods** exists in two situations:
+Three generators of one family: `Add ▸ Virtual Methods` (`Ctrl+Shift+V`) and `Add ▸ IsClass Methods` (`Ctrl+Shift+S`) in the tree, Wrap Member Methods from a member's context menu. **Virtual Methods** exists in two situations:
 
 ![On a **class**: the inherited virtuals of all base classes — tick them and overrides with matching signatures land on the class in one click.](images/Add_Virtual_Class.png)
 
