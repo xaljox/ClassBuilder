@@ -862,7 +862,7 @@ Chapter 12 is the background; the dialog fields:
 - **From / To**: the two classes and the two role names (the names appear in all generated identifiers: `GetFirstCell`, `AddCellLast`, `CellIterator`, ...).
 - **Association Type**: **Single** (one pointer), **Multi** (a list), **Static Multi** (one *shared* container across all instances of the from-class).
 - **Association Properties**: **Aggregation** (owned: cascade delete), **Critical** (thread-safe: every operation locks — chapter 12.9), **Filter** (iterators get a predicate variant).
-- **Implementation** (Multi only): **Standard** (doubly-linked intrusive list), **Value Tree** (bit-indexed tree on an **integer-like** member — fastest find, unordered; **Unique** selects the unique-key variant when duplicates are impossible), **AVL Tree** (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` — ints and `CbString` qualify). **Member**: the key member for the tree variants — its generated **setter becomes tree-aware** (chapter 12.7).
+- **Implementation** (Multi only): **Standard** (doubly-linked intrusive list), **Value Tree** (bit-indexed tree on an **integer-like** member — fastest find, unordered; **Unique** selects the unique-key variant when duplicates are impossible), **AVL Tree** (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` — ints and `CbString` qualify). **Member**: the key member for the tree variants — its generated **setter becomes tree-aware** (chapter 12.8).
 
 ## Find Method (on a relation)
 
@@ -1072,18 +1072,15 @@ The constructor's two-pane variant — initializer list above the body, divided 
 
 ## Code-editing helper wizards
 
-Launched **from the code editor** (method/constructor code dialogs), these insert correct code instead of making you type it:
+Launched **from the code editor** (method/constructor code dialogs, `Insert` menu), these insert correct code instead of making you type it.
 
-- **Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates is offered, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.
-- **Type Variable Wizard** — declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.
-- **Variable→Method() Wizard** — pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.
-- **Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.
+![**Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.](images/Iterator_Wizzard.png)
 
+![**Type Variable Wizard** — declare a local variable: pick the **type** (with const/reference/array/pointer modifiers) and **name**; the declaration is inserted.](images/Type_Variable_Wizzard.png)
 
-![](images/Iterator_Wizzard.png)
-![](images/Type_Variable_Wizzard.png)
-![](images/Variable-Method_Wizzard.png)
-![](images/Similar_Lines_Wizzard.png)
+![**Variable→Method() Wizard** — pick a reachable variable, then one of the methods of its class; the call expression is inserted through that variable.](images/Variable-Method_Wizzard.png)
+
+![**Similar Lines** — works against the *Similar Lines List* patterns from Project Settings: shows where bodies contain matching recurring lines, for reviewing/harmonizing repeated hand-written idioms.](images/Similar_Lines_Wizzard.png)
 
 
 # Reference: the code editor
