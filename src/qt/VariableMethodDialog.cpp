@@ -164,6 +164,11 @@ void VariableMethodDialog::fillVariableTree(BaseClass* pBaseClass,
     BaseClass::MethodIterator iMethod(pBaseClass);
     while (++iMethod)
     {
+        // A deleted method (= delete, e.g. the deleted copy operator=)
+        // cannot be called -- never offer it (JV 2026-07-13).
+        if (iMethod->GetDelete())
+            continue;
+
         if ((!iMethod->IsConstructor() && !iMethod->IsDestructor() &&
              !iMethod->IsMemberMethod() && !iMethod->IsFixed()) ||
             iMethod->IsIsClassMethod() ||
@@ -188,6 +193,9 @@ void VariableMethodDialog::fillVariableTree(BaseClass* pBaseClass,
         Member::MethodIterator iMemberMethod(iMember);
         while (++iMemberMethod)
         {
+            if (iMemberMethod->GetDelete())
+                continue;
+
             QTreeWidgetItem* m = new QTreeWidgetItem(item);
             m->setText(0, methodString(iMemberMethod));
             m->setIcon(0, Qt_ModelIcon(iMemberMethod->GetIcon()));
