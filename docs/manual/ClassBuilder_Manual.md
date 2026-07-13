@@ -704,6 +704,9 @@ Sequence diagrams show *interactions*: which object calls what, in which order. 
 ## Building one
 
 1. `Add ▸ Sequence Diagram` on the model/class/group node; the dialog sets numbering style (`1`, `1.1.1`, `a`, ...), whether message labels show argument types/names/scope, caption, scale.
+
+    ![](images/SD_Dialog.png)
+
 2. Add lifelines: `Add ▸ Lifeline` (`Ctrl+Shift+L`) then click on the lifeline row, `Ctrl`+drag classes/actors in from the tree, or `Add ▸ Class` to create a class and its lifeline in one go.
 3. Create messages **by dragging**: press on a sender activation and drag onto a target — another activation, or a lifeline body (which creates the receiving activation). A dashed preview line follows the drag and the cursor becomes a pointing hand over a valid target; on drop the message dialog opens to bind a method (`Cancel` creates nothing). Creation/destruction flags mark constructor/destructor semantics. Self-calls and cycles are refused.
 4. Notes: free boxes with attach-lines — see below.
@@ -753,9 +756,7 @@ Three context-menu layout commands (each one undo step):
 | `Enter` | open the selected shape (as double-click) |
 | `Del` / `Esc` / `Ctrl+A` | delete / cancel-or-clear / select all |
 
-A power feature for documentation: **call traces**. Via the command interface (`add_call_trace`, chapter 16), ClassBuilder scans a method body, resolves the calls against the model, and generates a whole sequence diagram of the call tree automatically — the figure below was made that way from `Matrix::Matrix(int, int)`.
-
-![A pipe-generated call trace of the Matrix constructor ("Matrix constructor walkthrough").](images/sd-ctor-walkthrough.svg)
+A power feature for documentation: **call traces**. Via the command interface (`add_call_trace`, chapter 16), ClassBuilder scans a method body, resolves the calls against the model, and generates a whole sequence diagram of the call tree automatically — a starting sketch to refine by hand.
 
 # Reference: dialogs
 
@@ -890,13 +891,13 @@ Name + note; actors appear under `Actors` and go on sequence diagrams as stick f
 
 ## Class Diagram
 
-> **[FIGURE: Class Diagram dialog]** — the diagram-properties dialog titled "Class Diagram".
+![](images/CD_Dialog.png)
 
 Name, page size/orientation/scale, multi-page layout (1–16 pages), caption, note — and the **auto-add** matrix: which member/method access levels are automatically shown when a class is placed on this diagram (private/protected/public members and methods, plus Get/Set methods).
 
 ## Sequence Diagram
 
-> **[FIGURE: SequenceDiagram dialog]** — the diagram-properties dialog titled "SequenceDiagram".
+The dialog itself is shown in the sequence-diagram chapter (8.1).
 
 Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, `a.a.a`, `A.A.A`); **Message Name** options (argument types, argument names, scope). Per-message overrides exist on each signal's own dialog.
 
