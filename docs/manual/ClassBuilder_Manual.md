@@ -1009,19 +1009,15 @@ A third generator of the same family lives on a **member whose type is a class**
 
 The six per-class user sections and the method-body editor both embed the code editor — see the next chapter.
 
-The user-section editor pins the `//@START_USER`/`//@END_USER` marker bands above and below your text. `Edit User Sections` shows all six regions of the class — three in the `.h`, three in the `.cpp` — in one dialog:
+The user-section editor pins the `//@START_USER`/`//@END_USER` marker bands above and below your text.
 
-![](images/User_Sections.png)
+![`Edit User Sections` shows all six regions of the class — three in the `.h`, three in the `.cpp` — in one dialog.](images/User_Sections.png)
 
-The `Edit Section ▸` submenu jumps straight to one section, in its own editor:
+![The `Edit Section ▸` submenu jumps straight to one section.](images/Edit_US_Context_Menu.png)
 
-![](images/Edit_US_Context_Menu.png)
+![One section in its own editor.](images/Edit_User_Section.png)
 
-![](images/Edit_User_Section.png)
-
-The method-body editor edits exactly the text between the `@CODE` markers:
-
-![](images/Code_Editor_Method.png)
+![The method-body editor edits exactly the text between the `@CODE` markers.](images/Code_Editor_Method.png)
 
 The constructor's two-pane variant — initializer list above the body, divided by a splitter — has its own section in the next chapter.
 
