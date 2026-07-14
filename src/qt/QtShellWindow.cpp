@@ -274,6 +274,28 @@ public:
         return QProxyStyle::pixelMetric(m, opt, w);
     }
 
+#ifdef __APPLE__
+    // QMacStyle lays the dock title bar's close/float buttons out on the LEFT
+    // (its window-chrome convention); Windows/Linux put them on the RIGHT. Our
+    // CE_DockWidgetTitle text is drawn left-aligned, so on mac the title ran
+    // straight under those buttons. Mirror just those two sub-elements to the
+    // right edge so the button layout -- and the clear space for the title --
+    // matches the other platforms. QDockWidgetLayout positions the (child)
+    // buttons via these rects, so this actually moves them. mac-only.
+    QRect subElementRect(SubElement se, const QStyleOption* opt,
+                         const QWidget* w) const override
+    {
+        QRect r = QProxyStyle::subElementRect(se, opt, w);
+        if ((se == SE_DockWidgetCloseButton || se == SE_DockWidgetFloatButton)
+            && opt && opt->rect.isValid() && r.isValid())
+        {
+            const QRect full = opt->rect;
+            r.moveLeft(full.left() + full.right() - r.right());  // mirror X within the bar
+        }
+        return r;
+    }
+#endif
+
     void drawControl(ControlElement el, const QStyleOption* opt,
                       QPainter* p, const QWidget* w) const override
     {
