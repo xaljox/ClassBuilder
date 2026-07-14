@@ -327,10 +327,12 @@ void Qt_EnsureApplication()
     // App-wide window/taskbar icon. The EXE's Win32 resource icon
     // (ClassBuilder_app.rc) is what the shell shows for the file and a pinned
     // taskbar button; the RUNNING window's titlebar + taskbar icon is a
-    // separate Qt notion that defaults to nothing, so set it explicitly. Reuse
-    // the already-embedded :/classbuilder.png (the About box uses it too).
+    // separate Qt notion that defaults to nothing, so set it explicitly. Use
+    // the vector app icon :/icons/class.svg (the class-glyph, also the base for
+    // the derived platform icons -- .icns / hicolor PNGs); the About box uses it
+    // too. SVG keeps the titlebar/taskbar icon crisp at any DPR.
     // setWindowIcon on the QApplication applies to every top-level window.
-    qApp->setWindowIcon(QIcon(QStringLiteral(":/classbuilder.png")));
+    qApp->setWindowIcon(QIcon(QStringLiteral(":/icons/class.svg")));
 
     // Wayland (GNOME/Ubuntu) ignores setWindowIcon for the dock/taskbar -- it
     // binds a running window to a .desktop file by app-id, not the window's own

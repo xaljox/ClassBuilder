@@ -21,13 +21,15 @@ AboutDialog::AboutDialog(QWidget* parent)
     setWindowTitle(QStringLiteral("About ClassBuilder"));
     setModal(true);
 
-    const QIcon appIcon(QStringLiteral(":/classbuilder.png"));
+    const QIcon appIcon(QStringLiteral(":/icons/class.svg"));
     setWindowIcon(appIcon);
 
     // The app icon (IDI_CLASS in the MFC build), shown left of the title --
-    // the MFC About box had it as a static control in the same position.
+    // the MFC About box had it as a static control in the same position. Render
+    // the vector icon at a fixed logical size (DPR-aware, so it stays crisp on
+    // HiDPI) instead of the old fixed 32x32 raster.
     auto* icon = new QLabel(this);
-    icon->setPixmap(QPixmap(QStringLiteral(":/classbuilder.png")));
+    icon->setPixmap(appIcon.pixmap(48, 48));
 
     auto* title = new QLabel(QStringLiteral("ClassBuilder"), this);
     {
