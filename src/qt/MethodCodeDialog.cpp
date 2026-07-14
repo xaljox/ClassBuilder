@@ -23,6 +23,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QTextCursor>
+#include <QTimer>
 #include <string>
 
 
@@ -42,6 +43,40 @@ void insertControl(CodeEditor* ed, const QString& snippet,
     cur.setPosition(fromEnd ? cur.position() - caretOffset
                             : start + caretOffset);
     ed->setTextCursor(cur);
+}
+
+// Replace the whole editor text as one editor-undo step, keeping the caret's
+// character offset (setPlainText would wipe the editor's undo history).
+void setEditorText(CodeEditor* ed, const QString& text)
+{
+    QTextCursor cur = ed->textCursor();
+    const int pos = cur.position();
+    cur.select(QTextCursor::Document);
+    cur.insertText(text);
+    cur.setPosition(qMin(pos, cur.position()));
+    ed->setTextCursor(cur);
+}
+
+// Mirror a model-side rename into an editor: run the model's own ReplaceInStr
+// (same whole-identifier matching) on the editor text, as one undo step,
+// keeping the caret's character offset. saveState=false -- the editor text is
+// not model state, the undo entry for the rename is pushed by the model side.
+void replaceInEditor(CodeEditor* ed, Method* pMethod,
+                     const CbString& oldStr, const CbString& newStr)
+{
+    CbString text = toCb(ed->toPlainText());
+    if (pMethod->ReplaceInStr(text, oldStr, newStr, false))
+        setEditorText(ed, toQ(text));
+}
+
+// Undo/redo swapped the stored code under the editor. Reload only when the
+// editor was unedited (its text is the pre-restore code) -- unsaved edits are
+// never overwritten; the close prompt then reports a real difference.
+void undoRedoEditor(CodeEditor* ed, const CbString& oldCode,
+                    const CbString& newCode)
+{
+    if (newCode != oldCode && toCb(ed->toPlainText()) == oldCode)
+        setEditorText(ed, toQ(newCode));
 }
 }
 
@@ -101,6 +136,26 @@ void MethodCodeDialog::detachForDelete()
     _pMethod = nullptr;     // the method is being freed -- never touch it again
     _closing = true;
     close();                // WA_DeleteOnClose deletes us; closeEvent sees null
+}
+
+void MethodCodeDialog::modelReplacedInCode(const CbString& oldStr,
+                                           const CbString& newStr)
+{
+    replaceInEditor(_ui->editCode, _pMethod, oldStr, newStr);
+
+    // The hook fires mid-mutation (Argument::SetName replaces in code BEFORE
+    // renaming the argument itself) -- re-read the signature strip once the
+    // whole model change has settled.
+    QTimer::singleShot(0, this, [this] { if (_pMethod) refreshSignature(); });
+}
+
+void MethodCodeDialog::modelStateRestored(Method* pOldState)
+{
+    undoRedoEditor(_ui->editCode, pOldState->GetCode(), _pMethod->GetCode());
+
+    // Other objects in the undo transaction (arguments, types) may not be
+    // restored yet -- re-read the signature strip after it settles.
+    QTimer::singleShot(0, this, [this] { if (_pMethod) refreshSignature(); });
 }
 
 void MethodCodeDialog::buildMenu()

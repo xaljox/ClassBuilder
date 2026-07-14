@@ -48,6 +48,40 @@ void insertControl(CodeEditor* ed, const QString& snippet,
                             : start + caretOffset);
     ed->setTextCursor(cur);
 }
+
+// Replace the whole editor text as one editor-undo step, keeping the caret's
+// character offset (setPlainText would wipe the editor's undo history).
+void setEditorText(CodeEditor* ed, const QString& text)
+{
+    QTextCursor cur = ed->textCursor();
+    const int pos = cur.position();
+    cur.select(QTextCursor::Document);
+    cur.insertText(text);
+    cur.setPosition(qMin(pos, cur.position()));
+    ed->setTextCursor(cur);
+}
+
+// Mirror a model-side rename into an editor: run the model's own ReplaceInStr
+// (same whole-identifier matching) on the editor text, as one undo step,
+// keeping the caret's character offset. saveState=false -- the editor text is
+// not model state, the undo entry for the rename is pushed by the model side.
+void replaceInEditor(CodeEditor* ed, Method* pMethod,
+                     const CbString& oldStr, const CbString& newStr)
+{
+    CbString text = toCb(ed->toPlainText());
+    if (pMethod->ReplaceInStr(text, oldStr, newStr, false))
+        setEditorText(ed, toQ(text));
+}
+
+// Undo/redo swapped the stored code under the editor. Reload only when the
+// editor was unedited (its text is the pre-restore code) -- unsaved edits are
+// never overwritten; the close prompt then reports a real difference.
+void undoRedoEditor(CodeEditor* ed, const CbString& oldCode,
+                    const CbString& newCode)
+{
+    if (newCode != oldCode && toCb(ed->toPlainText()) == oldCode)
+        setEditorText(ed, toQ(newCode));
+}
 }
 
 ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
@@ -120,6 +154,32 @@ void ConstructorCodeDialog::detachForDelete()
 {
     _pConstructor = nullptr;   // the ctor is being freed -- never touch it again
     close();                   // WA_DeleteOnClose deletes us; closeEvent sees null
+}
+
+void ConstructorCodeDialog::modelReplacedInCode(const CbString& oldStr,
+                                                const CbString& newStr)
+{
+    replaceInEditor(_ui->editInit, _pConstructor, oldStr, newStr);
+    replaceInEditor(_ui->editCode, _pConstructor, oldStr, newStr);
+
+    // The hook fires mid-mutation (Argument::SetName replaces in code BEFORE
+    // renaming the argument itself) -- re-read the signature strip once the
+    // whole model change has settled.
+    QTimer::singleShot(0, this, [this]
+        { if (_pConstructor) refreshSignature(); });
+}
+
+void ConstructorCodeDialog::modelStateRestored(Method* pOldState)
+{
+    // The pre-restore state of a Constructor is itself a Constructor.
+    Constructor* pOld = (Constructor*)pOldState;
+    undoRedoEditor(_ui->editInit, pOld->GetInit(), _pConstructor->GetInit());
+    undoRedoEditor(_ui->editCode, pOld->GetCode(), _pConstructor->GetCode());
+
+    // Other objects in the undo transaction (arguments, types) may not be
+    // restored yet -- re-read the signature strip after it settles.
+    QTimer::singleShot(0, this, [this]
+        { if (_pConstructor) refreshSignature(); });
 }
 
 bool ConstructorCodeDialog::eventFilter(QObject* obj, QEvent* event)

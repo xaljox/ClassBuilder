@@ -11,8 +11,26 @@
 #pragma once
 
 class QDialog;
+class CbString;
+class Method;
 
 // Force-close the open code editor returned by Method::GetOpenDialog().
 // Detaches it from the model first, so no save prompt runs and the dying
 // method is never touched again. No-op on null.
 void Qt_CloseCodeEditor(QDialog* pDialog);
+
+// The model rewrote this method's stored code with a whole-identifier
+// replacement (argument / member / type rename -- Method::ReplaceInCode).
+// Mirror that replacement into the open editor's text so the window tracks
+// the model: unsaved edits get the rename applied too, and an unedited
+// editor stays byte-identical to the stored code (no phantom save prompt
+// on close). No-op on null.
+void Qt_ReplaceInOpenCodeEditor(QDialog* pDialog, const CbString& oldString,
+                                const CbString& newString);
+
+// Undo/redo restored this method's state behind the open editor
+// (Method/Constructor::OnUndoRedoChanged). pOldState is the pre-restore
+// state object. If the editor text matches the pre-restore code (no unsaved
+// edits) it silently reloads the restored code; edited text is left alone --
+// the close prompt then reports a real difference. No-op on null.
+void Qt_UndoRedoOpenCodeEditor(QDialog* pDialog, Method* pOldState);

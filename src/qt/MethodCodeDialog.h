@@ -10,6 +10,7 @@
 
 #include <QDialog>
 
+class CbString;
 class Method;
 class QMenu;
 class QPoint;
@@ -26,6 +27,17 @@ public:
     // The model is destroying this editor's method: detach (forget the method,
     // skip the save prompt) and close. Called via Qt_CloseCodeEditor.
     void detachForDelete();
+
+    // The model rewrote the stored code (argument / member / type rename):
+    // apply the same whole-identifier replacement to the editor text, so an
+    // unedited editor stays identical to the stored code and unsaved edits
+    // get the rename too. Called via Qt_ReplaceInOpenCodeEditor.
+    void modelReplacedInCode(const CbString& oldStr, const CbString& newStr);
+
+    // Undo/redo restored the method's state: reload the editor if it was
+    // unedited (its text matches pOldState's code); unsaved edits are left
+    // alone. Called via Qt_UndoRedoOpenCodeEditor.
+    void modelStateRestored(Method* pOldState);
 
 protected:
     void closeEvent(QCloseEvent* event) override;

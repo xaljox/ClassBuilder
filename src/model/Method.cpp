@@ -1478,7 +1478,7 @@ or change the default behaviour.
 void Method::OnUndoRedoChanged(DataModelDocObject* pOldState)
 {//@CODE_22959
     Gti::OnUndoRedoChanged(pOldState);
-    
+
     Method* pMethod = (Method*)pOldState;
     if (GetMemberAndMethodGroup())
     {
@@ -1488,6 +1488,11 @@ void Method::OnUndoRedoChanged(DataModelDocObject* pOldState)
     {
         pMethod->GetMemberAndMethodGroup()->Update();
     }
+
+    // The restore may have swapped the stored code behind an open modeless
+    // code editor -- let it reload (only if it holds no unsaved edits).
+    if (GetOpenDialog() && pMethod)
+        Qt_UndoRedoOpenCodeEditor(GetOpenDialog(), pMethod);
 
 }//@CODE_22959
 
@@ -1519,7 +1524,7 @@ void Method::OnUndoRedoRemoved()
 void Method::ReplaceInCode(const CbString& oldString, const CbString& newString)
 {//@CODE_1400
     ReplaceInNote(oldString, newString);
-    
+
     // If code is adjusted, check for open dialogs and update code in it
     if (ReplaceInStr(_code, oldString, newString))
     {
@@ -1530,6 +1535,15 @@ void Method::ReplaceInCode(const CbString& oldString, const CbString& newString)
         }
 
     }
+
+    // Mirror the replacement into an open modeless code editor, so the
+    // window tracks the model and an unedited editor stays identical to the
+    // stored code (no phantom save prompt on close). Fired even when the
+    // stored code had no hit -- unsaved editor text may have one. For a
+    // Constructor this also covers the init editor (the dialog applies the
+    // replacement to both of its editors).
+    if (GetOpenDialog())
+        Qt_ReplaceInOpenCodeEditor(GetOpenDialog(), oldString, newString);
 }//@CODE_1400
 
 

@@ -26,6 +26,7 @@
 //@START_USER2
 #include "qt/QtConstructorDialog.h"
 #include "qt/QtConstructorCodeDialog.h"
+#include "qt/QtCodeEditor.h"   // Qt_UndoRedoOpenCodeEditor (undo behind an open editor)
 //@END_USER2
 
 
@@ -563,7 +564,7 @@ or change the default behaviour.
 void Constructor::OnUndoRedoChanged(DataModelDocObject* pOldState)
 {//@CODE_22961
     Gti::OnUndoRedoChanged(pOldState);
-    
+
     Constructor* pConstructor = (Constructor*)pOldState;
     if (GetMemberAndMethodGroup())
     {
@@ -573,6 +574,12 @@ void Constructor::OnUndoRedoChanged(DataModelDocObject* pOldState)
     {
         pConstructor->GetMemberAndMethodGroup()->Update();
     }
+
+    // The restore may have swapped the stored code/init behind an open
+    // modeless code editor -- let it reload (only editors with no unsaved
+    // edits). The dialog casts the old state back to Constructor.
+    if (GetOpenDialog() && pConstructor)
+        Qt_UndoRedoOpenCodeEditor(GetOpenDialog(), pConstructor);
 
 }//@CODE_22961
 

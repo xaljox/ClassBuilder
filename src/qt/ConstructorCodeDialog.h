@@ -11,7 +11,9 @@
 
 #include <QDialog>
 
+class CbString;
 class Constructor;
+class Method;
 class CodeEditor;
 class QMenu;
 class QPoint;
@@ -28,6 +30,16 @@ public:
 
     // The model is destroying this editor's constructor: detach + close.
     void detachForDelete();
+
+    // The model rewrote the stored code/init (argument / member / type
+    // rename): apply the same whole-identifier replacement to both editors.
+    // Called via Qt_ReplaceInOpenCodeEditor.
+    void modelReplacedInCode(const CbString& oldStr, const CbString& newStr);
+
+    // Undo/redo restored the constructor's state: reload each editor that was
+    // unedited (its text matches pOldState's code/init); unsaved edits are
+    // left alone. Called via Qt_UndoRedoOpenCodeEditor.
+    void modelStateRestored(Method* pOldState);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
