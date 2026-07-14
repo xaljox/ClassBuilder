@@ -5,14 +5,18 @@
 // and GetNextLineIndent predicts the indent of the line that follows each.
 
 #include "CodeEditor.h"
+#include "CppHighlighter.h"
 
+#include <QColor>
 #include <QFont>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QList>
 #include <QPalette>
 #include <QResizeEvent>
 #include <QTextBlock>
 #include <QTextCursor>
+#include <QTextEdit>
 
 namespace {
 
@@ -158,6 +162,12 @@ CodeEditor::CodeEditor(QWidget* parent)
 
     QFontMetricsF fm(font());
     setTabStopDistance(fm.horizontalAdvance(' ') * _indentSize);
+
+    _highlighter = new CppHighlighter(document());
+
+    connect(this, &QPlainTextEdit::cursorPositionChanged,
+            this, &CodeEditor::updateExtraSelections);
+    updateExtraSelections();
 }
 
 void CodeEditor::setIndentSize(int spaces)
@@ -393,6 +403,120 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
     QPlainTextEdit::keyPressEvent(event);
 }
 
+// --- Current line + brace matching -----------------------------------------
+//
+// Both are drawn as QPlainTextEdit "extra selections": a full-width tint on
+// the caret's line, plus -- when the caret sits next to a brace -- a box on
+// that brace and its partner. Recomputed on every cursor move.
+
+// Walk out from the brace at `pos` to its match, tracking nesting depth.
+// `forward` means the brace is the char at `pos` and we scan right for its
+// closer; otherwise it is the char before `pos` and we scan left. Skips
+// nothing (a brace inside a string counts) -- good enough for editing feedback.
+// Bounds-safe char accessor (QString::at asserts; QString has no value()).
+static QChar charAt(const QString& s, int i)
+{
+    return (i >= 0 && i < s.length()) ? s.at(i) : QChar();
+}
+
+int CodeEditor::matchingBrace(int pos, bool forward) const
+{
+    const QString text = toPlainText();
+    const QChar open  = forward ? charAt(text, pos) : charAt(text, pos - 1);
+    const QChar close = (open == '{') ? '}'
+                      : (open == '(') ? ')'
+                      : (open == '[') ? ']' : QChar();
+    const QChar openC = (open == '}') ? '{'
+                      : (open == ')') ? '('
+                      : (open == ']') ? '[' : QChar();
+
+    if (forward && !close.isNull())
+    {
+        int depth = 0;
+        for (int i = pos; i < text.length(); ++i)
+        {
+            if (text[i] == open)  ++depth;
+            if (text[i] == close) { if (--depth == 0) return i; }
+        }
+    }
+    else if (!forward && !openC.isNull())
+    {
+        int depth = 0;
+        for (int i = pos - 1; i >= 0; --i)
+        {
+            if (text[i] == open)  ++depth;
+            if (text[i] == openC) { if (--depth == 0) return i; }
+        }
+    }
+    return -1;
+}
+
+void CodeEditor::updateExtraSelections()
+{
+    QList<QTextEdit::ExtraSelection> selections;
+
+    // Only the focused editor shows caret decorations -- dialogs with two
+    // editors (ConstructorCodeDialog: init list + body) would otherwise tint
+    // a "current" line in both at once.
+    if (!hasFocus())
+    {
+        setExtraSelections(selections);
+        return;
+    }
+
+    // Current-line tint -- a faint blue-grey band the full editor width.
+    if (!isReadOnly())
+    {
+        QTextEdit::ExtraSelection line;
+        line.format.setBackground(QColor(232, 242, 254));
+        line.format.setProperty(QTextFormat::FullWidthSelection, true);
+        line.cursor = textCursor();
+        line.cursor.clearSelection();
+        selections.append(line);
+    }
+
+    // Brace match -- look for an opening/closing brace touching the caret,
+    // preferring the char just before it (where you land after typing one).
+    const int pos = textCursor().position();
+    const QString text = toPlainText();
+    int braceAt = -1, matchAt = -1;
+
+    auto isBrace = [](QChar c) {
+        return c == '{' || c == '}' || c == '(' || c == ')' ||
+               c == '[' || c == ']';
+    };
+    auto isOpen = [](QChar c) { return c == '{' || c == '(' || c == '['; };
+
+    if (pos > 0 && isBrace(charAt(text, pos - 1)))
+    {
+        braceAt = pos - 1;
+        matchAt = matchingBrace(pos, isOpen(charAt(text, pos - 1)));
+    }
+    else if (pos < text.length() && isBrace(charAt(text, pos)))
+    {
+        braceAt = pos;
+        matchAt = matchingBrace(pos, isOpen(charAt(text, pos)));
+    }
+
+    if (braceAt != -1 && matchAt != -1)
+    {
+        QTextCharFormat fmt;
+        fmt.setBackground(QColor(179, 229, 179));   // soft green
+        fmt.setFontWeight(QFont::Bold);
+        for (int p : {braceAt, matchAt})
+        {
+            QTextEdit::ExtraSelection sel;
+            sel.format = fmt;
+            sel.cursor = textCursor();
+            sel.cursor.setPosition(p);
+            sel.cursor.setPosition(p + 1, QTextCursor::KeepAnchor);
+            selections.append(sel);
+        }
+    }
+
+    setExtraSelections(selections);
+}
+
 // --- Marker bands ----------------------------------------------------------
 //
 // A header / footer band is a QLabel child of the editor, placed inside the
@@ -477,4 +601,16 @@ void CodeEditor::showEvent(QShowEvent* event)
 {
     QPlainTextEdit::showEvent(event);
     layoutBands();
+}
+
+void CodeEditor::focusInEvent(QFocusEvent* event)
+{
+    QPlainTextEdit::focusInEvent(event);
+    updateExtraSelections();
+}
+
+void CodeEditor::focusOutEvent(QFocusEvent* event)
+{
+    QPlainTextEdit::focusOutEvent(event);
+    updateExtraSelections();
 }

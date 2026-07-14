@@ -19,10 +19,12 @@
 #include <QPlainTextEdit>
 #include <QFont>
 
+class QFocusEvent;
 class QKeyEvent;
 class QResizeEvent;
 class QShowEvent;
 class QLabel;
+class CppHighlighter;
 
 class CodeEditor : public QPlainTextEdit
 {
@@ -63,6 +65,8 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    void focusInEvent(QFocusEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
 
 private:
     // Predicted indent (in spaces) for a fresh line at the cursor -- the MFC
@@ -77,8 +81,18 @@ private:
     void updateBandMargins();
     void layoutBands();
 
+    // Recompute the extra selections: the current-line tint plus, when the
+    // caret abuts a brace, the highlight of it and its match.
+    void updateExtraSelections();
+
+    // Index in the document of the brace matching the one at `pos` (the char
+    // just after `pos` if `forward`, else just before), or -1 if none / unbalanced.
+    int matchingBrace(int pos, bool forward) const;
+
     int _indentSize = 4;
 
     QLabel* _header = nullptr;       // top marker band, null until first set
     QLabel* _footer = nullptr;       // bottom marker band
+
+    CppHighlighter* _highlighter = nullptr;
 };
