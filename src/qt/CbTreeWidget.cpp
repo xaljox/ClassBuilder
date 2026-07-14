@@ -42,9 +42,14 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
     // still the app font (set before any widget exists), so pointSize() == the
     // app's CB_UI_FONT_PT. (rowHeight above was measured from that same font.)
     const int ptSize = font().pointSize();
-    QString sheet = QString("QTreeView { font-size: %2pt; }"
+    // Re-assert the app font WEIGHT too. A QSS font rule (the font-size above)
+    // otherwise resets the weight to Normal(400), so the app's chosen weight
+    // (CB_UI_FONT_WEIGHT) never reached the tree -- which is most of the UI text.
+    // Passing font().weight() makes the tree follow that one knob on every OS.
+    const int wt = font().weight();
+    QString sheet = QString("QTreeView { font-size: %2pt; font-weight: %3; }"
                             "QTreeView::item { height: %1px; }")
-                        .arg(rowHeight).arg(ptSize);
+                        .arg(rowHeight).arg(ptSize).arg(wt);
 #ifdef __APPLE__
     // macOS' style does NOT hover-highlight item-view rows (Windows does), so the
     // row under the cursor gave no feedback here. Add a subtle hover background so

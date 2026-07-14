@@ -28,6 +28,10 @@
 #include "CbShellHooks.h"   // Cb_ShellOpenDocument (Finder file association)
 #endif
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>   // Cb_MacDisableFontSmoothing
+#endif
+
 // Static Qt: the platform plugin (qwindows) and the native style are baked
 // into the EXE instead of loaded as DLLs at runtime, so they must be
 // registered explicitly. CB_STATIC_QT is defined by CMake only when the
@@ -89,10 +93,15 @@ static const int CB_UI_FONT_PT = 11;
 // spacing are unaffected. One knob, applied both ways like the size below.
 //
 // Windows renders the UI font too light, so it's bumped to Medium(500) there.
-// macOS renders the same weight noticeably heavier (Core Text), so 500 looks
-// half-bold in the tree -- keep macOS at Normal(400).
+// macOS renders heavier (Core Text), so it stays at Normal(400) -- 500 looks
+// half-bold. (The old 350 was a no-op: the system font snaps it to 400 and the
+// tree QSS reset it to 400 anyway; it now reaches the tree explicitly, see
+// CbTreeWidget.) The remaining Core Text stem-darkening -- what made mac text
+// read heavier than the other platforms -- is removed separately by disabling
+// font smoothing at startup (Cb_MacDisableFontSmoothing), which is what brings
+// mac into line with Windows/Linux.
 #ifdef __APPLE__
-static const int CB_UI_FONT_WEIGHT = 350;   // 300=Light, 400=Normal -- 350 chosen
+static const int CB_UI_FONT_WEIGHT = 400;   // Normal
 #else
 static const int CB_UI_FONT_WEIGHT = 500;
 #endif
@@ -268,10 +277,32 @@ protected:
 
 #endif // _WIN32
 
+#ifdef __APPLE__
+// Turn OFF Core Text font smoothing (stem-darkening) for THIS app. On macOS the
+// same glyphs render a touch heavier than on Windows/Linux; writing our own
+// AppleFontSmoothing default to 0 -- exactly what `defaults write <bundle-id>
+// AppleFontSmoothing 0` does, but baked in so it ships and needs no per-machine
+// setup -- lightens the whole UI to match. CoreGraphics reads this from the
+// app's own preference domain; set it BEFORE the QApplication so it is in place
+// before the first glyph is painted. CoreFoundation only; no Obj-C.
+static void Cb_MacDisableFontSmoothing()
+{
+    const int zero = 0;
+    CFNumberRef v = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &zero);
+    CFPreferencesSetAppValue(CFSTR("AppleFontSmoothing"), v, kCFPreferencesCurrentApplication);
+    CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
+    CFRelease(v);
+}
+#endif
+
 void Qt_EnsureApplication()
 {
     if (qApp)
         return;
+
+#ifdef __APPLE__
+    Cb_MacDisableFontSmoothing();   // lighten Core Text stem-darkening (see above)
+#endif
 
     // Whole-app UI scale (QtShellWindow's View > UI Scale menu): Qt only reads
     // QT_SCALE_FACTOR at QApplication construction, so the persisted choice has
