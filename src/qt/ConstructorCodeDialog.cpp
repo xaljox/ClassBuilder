@@ -23,6 +23,7 @@
 #include <QShowEvent>
 #include <QFocusEvent>
 #include <QFontMetrics>
+#include <QInputDialog>
 #include <QTimer>
 #include <QMenuBar>
 #include <QMenu>
@@ -81,6 +82,29 @@ void undoRedoEditor(CodeEditor* ed, const CbString& oldCode,
 {
     if (newCode != oldCode && toCb(ed->toPlainText()) == oldCode)
         setEditorText(ed, toQ(newCode));
+}
+
+// Prompt for a new name for `name`; empty result means cancelled or invalid.
+QString promptRename(QWidget* parent, const QString& name)
+{
+    bool ok = false;
+    const QString newName = QInputDialog::getText(parent, "Rename",
+        QString("Rename '%1' to:").arg(name), QLineEdit::Normal, name, &ok)
+        .trimmed();
+    if (!ok || newName.isEmpty() || newName == name)
+        return QString();
+
+    bool valid = newName[0].isLetter() || newName[0] == '_';
+    for (QChar c : newName)
+        if (!c.isLetterOrNumber() && c != '_')
+            valid = false;
+    if (!valid)
+    {
+        QMessageBox::warning(parent, "Rename",
+            QString("'%1' is not a valid identifier").arg(newName));
+        return QString();
+    }
+    return newName;
 }
 }
 
@@ -169,6 +193,49 @@ void ConstructorCodeDialog::modelReplacedInCode(const CbString& oldStr,
         { if (_pConstructor) refreshSignature(); });
 }
 
+// Rename the identifier at the caret everywhere. An argument goes through
+// the model (Argument::SetName rewrites the stored code/init and mirrors
+// into both editors via Qt_ReplaceInOpenCodeEditor, and the signature
+// follows); anything else -- a local variable -- is a whole-identifier
+// replace across both editors' text only.
+void ConstructorCodeDialog::renameIdentifierAtCursor()
+{
+    const QString name = _focusEdit->identifierUnderCursor();
+    if (name.isEmpty())
+        return;
+
+    const QString newName = promptRename(this, name);
+    if (newName.isEmpty())
+        return;
+
+    Method::ArgumentIterator iCollision(_pConstructor);
+    while (++iCollision)
+    {
+        if (toQ(iCollision->GetName()) == newName)
+        {
+            QMessageBox::warning(this, "Rename",
+                QString("There is already an argument named '%1'")
+                    .arg(newName));
+            return;
+        }
+    }
+
+    Method::ArgumentIterator iArgument(_pConstructor);
+    while (++iArgument)
+    {
+        if (toQ(iArgument->GetName()) == name)
+        {
+            iArgument->SetName(toCb(newName));
+            iArgument->Update();
+            _pConstructor->GetDataModelDoc()->MarkLastUndo();
+            return;
+        }
+    }
+
+    _ui->editInit->renameIdentifier(name, newName);
+    _ui->editCode->renameIdentifier(name, newName);
+}
+
 void ConstructorCodeDialog::modelStateRestored(Method* pOldState)
 {
     // The pre-restore state of a Constructor is itself a Constructor.
@@ -223,6 +290,9 @@ void ConstructorCodeDialog::buildMenu()
     edit->addSeparator();
     edit->addAction("Select &All", QKeySequence::SelectAll,
                     this, [this] { _focusEdit->selectAll(); });
+    edit->addSeparator();
+    edit->addAction("Re&name identifier...", QKeySequence(Qt::Key_F2),
+                    this, [this] { renameIdentifierAtCursor(); });
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs

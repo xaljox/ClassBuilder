@@ -19,6 +19,7 @@
 #include "QtSimilarLinesDialog.h"
 
 #include <QCloseEvent>
+#include <QInputDialog>
 #include <QMenuBar>
 #include <QMenu>
 #include <QMessageBox>
@@ -77,6 +78,29 @@ void undoRedoEditor(CodeEditor* ed, const CbString& oldCode,
 {
     if (newCode != oldCode && toCb(ed->toPlainText()) == oldCode)
         setEditorText(ed, toQ(newCode));
+}
+
+// Prompt for a new name for `name`; empty result means cancelled or invalid.
+QString promptRename(QWidget* parent, const QString& name)
+{
+    bool ok = false;
+    const QString newName = QInputDialog::getText(parent, "Rename",
+        QString("Rename '%1' to:").arg(name), QLineEdit::Normal, name, &ok)
+        .trimmed();
+    if (!ok || newName.isEmpty() || newName == name)
+        return QString();
+
+    bool valid = newName[0].isLetter() || newName[0] == '_';
+    for (QChar c : newName)
+        if (!c.isLetterOrNumber() && c != '_')
+            valid = false;
+    if (!valid)
+    {
+        QMessageBox::warning(parent, "Rename",
+            QString("'%1' is not a valid identifier").arg(newName));
+        return QString();
+    }
+    return newName;
 }
 }
 
@@ -149,6 +173,49 @@ void MethodCodeDialog::modelReplacedInCode(const CbString& oldStr,
     QTimer::singleShot(0, this, [this] { if (_pMethod) refreshSignature(); });
 }
 
+// Rename the identifier at the caret everywhere. An argument goes through
+// the model (Argument::SetName rewrites the stored code and mirrors into
+// this editor via Qt_ReplaceInOpenCodeEditor, and the signature follows);
+// anything else -- a local variable -- is a plain whole-identifier replace
+// in the editor text only.
+void MethodCodeDialog::renameIdentifierAtCursor()
+{
+    CodeEditor* ed = _ui->editCode;
+    const QString name = ed->identifierUnderCursor();
+    if (name.isEmpty())
+        return;
+
+    const QString newName = promptRename(this, name);
+    if (newName.isEmpty())
+        return;
+
+    Method::ArgumentIterator iCollision(_pMethod);
+    while (++iCollision)
+    {
+        if (toQ(iCollision->GetName()) == newName)
+        {
+            QMessageBox::warning(this, "Rename",
+                QString("There is already an argument named '%1'")
+                    .arg(newName));
+            return;
+        }
+    }
+
+    Method::ArgumentIterator iArgument(_pMethod);
+    while (++iArgument)
+    {
+        if (toQ(iArgument->GetName()) == name)
+        {
+            iArgument->SetName(toCb(newName));
+            iArgument->Update();
+            _pMethod->GetDataModelDoc()->MarkLastUndo();
+            return;
+        }
+    }
+
+    ed->renameIdentifier(name, newName);
+}
+
 void MethodCodeDialog::modelStateRestored(Method* pOldState)
 {
     undoRedoEditor(_ui->editCode, pOldState->GetCode(), _pMethod->GetCode());
@@ -189,6 +256,11 @@ void MethodCodeDialog::buildMenu()
     edit->addSeparator();
     edit->addAction("Select &All", QKeySequence::SelectAll,
                     ed, &QPlainTextEdit::selectAll);
+    edit->addSeparator();
+    QAction* aRename = edit->addAction("Re&name identifier...",
+        QKeySequence(Qt::Key_F2), this,
+        [this] { renameIdentifierAtCursor(); });
+    aRename->setEnabled(!fixed);
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs

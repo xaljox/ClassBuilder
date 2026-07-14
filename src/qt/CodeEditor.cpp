@@ -79,6 +79,28 @@ int leadingIndent(const QString& line)
     return indent;
 }
 
+bool isIdentChar(QChar c) { return c.isLetterOrNumber() || c == '_'; }
+
+// Start indices of every whole-identifier occurrence of `word` in `text` --
+// the same boundary rule as the model's FindStringInStr (no C-symbol char on
+// either side, so "row" does not hit inside "rowCount").
+QList<int> identifierOccurrences(const QString& text, const QString& word)
+{
+    QList<int> hits;
+    const int wordLen = word.length();
+    int from = 0;
+    int i;
+    while ((i = text.indexOf(word, from)) != -1)
+    {
+        const int after = i + wordLen;
+        if ((i == 0 || !isIdentChar(text[i - 1])) &&
+            (after >= text.length() || !isIdentChar(text[after])))
+            hits.append(i);
+        from = i + 1;
+    }
+    return hits;
+}
+
 // Carries the predictor state across the line-by-line walk -- the statics in
 // the MFC GetNextLineIndent (refIndent / indent / prevLastChar).
 struct IndentState
@@ -166,6 +188,8 @@ CodeEditor::CodeEditor(QWidget* parent)
     _highlighter = new CppHighlighter(document());
 
     connect(this, &QPlainTextEdit::cursorPositionChanged,
+            this, &CodeEditor::updateExtraSelections);
+    connect(this, &QPlainTextEdit::selectionChanged,
             this, &CodeEditor::updateExtraSelections);
     updateExtraSelections();
 }
@@ -403,6 +427,59 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
     QPlainTextEdit::keyPressEvent(event);
 }
 
+// The identifier the caret is in or touching. An explicit selection is used
+// only when it is exactly an identifier (a double-clicked word); a partial or
+// multi-word selection means "no identifier".
+QString CodeEditor::identifierUnderCursor() const
+{
+    const QTextCursor cur = textCursor();
+    if (cur.hasSelection())
+    {
+        const QString sel = cur.selectedText();
+        if (sel.isEmpty() || sel[0].isDigit())
+            return QString();
+        for (QChar c : sel)
+            if (!isIdentChar(c))
+                return QString();
+        return sel;
+    }
+
+    const QString block = cur.block().text();
+    int left  = cur.positionInBlock();
+    int right = left;
+    while (left > 0 && isIdentChar(block[left - 1]))
+        --left;
+    while (right < block.length() && isIdentChar(block[right]))
+        ++right;
+    if (left == right || block[left].isDigit())
+        return QString();
+    return block.mid(left, right - left);
+}
+
+// Replace every whole-identifier occurrence, back to front (keeps the earlier
+// offsets valid), as one editor-undo step.
+int CodeEditor::renameIdentifier(const QString& oldName, const QString& newName)
+{
+    if (oldName.isEmpty() || oldName == newName)
+        return 0;
+    QString text = toPlainText();
+    const QList<int> hits = identifierOccurrences(text, oldName);
+    if (hits.isEmpty())
+        return 0;
+
+    for (int i = hits.size() - 1; i >= 0; --i)
+        text.replace(hits[i], oldName.length(), newName);
+
+    QTextCursor cur = textCursor();
+    const int pos = cur.position();
+    cur.select(QTextCursor::Document);
+    cur.insertText(text);
+    cur.setPosition(qMin(pos, cur.position()));
+    setTextCursor(cur);
+    updateExtraSelections();
+    return hits.size();
+}
+
 // --- Current line + brace matching -----------------------------------------
 //
 // Both are drawn as QPlainTextEdit "extra selections": a full-width tint on
@@ -475,10 +552,35 @@ void CodeEditor::updateExtraSelections()
         selections.append(line);
     }
 
+    const QString text = toPlainText();
+
+    // All occurrences of the identifier at the caret (or the double-clicked
+    // selection) -- soft yellow. Only when there is more than one: a lone
+    // hit under the caret is noise.
+    const QString word = identifierUnderCursor();
+    if (!word.isEmpty())
+    {
+        const QList<int> hits = identifierOccurrences(text, word);
+        if (hits.size() >= 2)
+        {
+            QTextCharFormat fmt;
+            fmt.setBackground(QColor(255, 237, 153));
+            for (int p : hits)
+            {
+                QTextEdit::ExtraSelection sel;
+                sel.format = fmt;
+                sel.cursor = textCursor();
+                sel.cursor.setPosition(p);
+                sel.cursor.setPosition(p + word.length(),
+                                       QTextCursor::KeepAnchor);
+                selections.append(sel);
+            }
+        }
+    }
+
     // Brace match -- look for an opening/closing brace touching the caret,
     // preferring the char just before it (where you land after typing one).
     const int pos = textCursor().position();
-    const QString text = toPlainText();
     int braceAt = -1, matchAt = -1;
 
     auto isBrace = [](QChar c) {

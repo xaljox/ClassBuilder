@@ -55,6 +55,7 @@ private:
     void sizeSplitterToContent();
     void refreshSignature();       // re-read the marker strip from the model
     void showEditorContextMenu(CodeEditor* ed, const QPoint& pos);
+    void renameIdentifierAtCursor();
     void save();
     void regenerateCode();
     void regenerateInit();

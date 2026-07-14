@@ -61,6 +61,16 @@ public:
     // line inside it (the logical spot to start typing the body).
     void insertWizardSnippet(const QString& text);
 
+    // The identifier the caret is in or touching (or the exact selected
+    // identifier); empty if none. Drives the occurrence highlight and the
+    // dialogs' Rename action.
+    QString identifierUnderCursor() const;
+
+    // Replace every whole-identifier occurrence of oldName with newName, as
+    // one editor-undo step, keeping the caret offset. Returns the number of
+    // occurrences replaced.
+    int renameIdentifier(const QString& oldName, const QString& newName);
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;

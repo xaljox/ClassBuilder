@@ -47,6 +47,7 @@ private:
     void buildMenu();
     void refreshSignature();       // re-read the marker strip from the model
     void showEditorContextMenu(const QPoint& pos);
+    void renameIdentifierAtCursor();
     void save();
     void regenerateCode();
     bool codeChanged() const;
