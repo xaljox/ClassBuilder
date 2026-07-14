@@ -493,7 +493,7 @@ void QtShellWindow::buildMenus()
     });
     file->addAction("&Open...", QKeySequence::Open, this, [this] {
         const QString path = QFileDialog::getOpenFileName(
-            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)",
+            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
             nullptr, kCbFileDialogOpts);
         if (!path.isEmpty())
             openDocument(path);
@@ -660,7 +660,7 @@ void QtShellWindow::buildToolBar()
     _tbOpen = tb->addAction(QIcon::fromTheme(QStringLiteral("document-open"), Qt_ToolBarIcon(TG_FILE_OPEN)),
                             "Open", this, [this] {
         const QString path = QFileDialog::getOpenFileName(
-            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz)",
+            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
             nullptr, kCbFileDialogOpts);
         if (!path.isEmpty())
             openDocument(path);
@@ -1264,7 +1264,7 @@ bool QtShellWindow::saveDocumentAs()
         return false;
     QString initial = toQ(doc->GetPathName());
     QString path = QFileDialog::getSaveFileName(
-        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz)",
+        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz *.CBZ)",
         nullptr, kCbFileDialogOpts);
     if (path.isEmpty())
         return false;
