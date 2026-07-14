@@ -18,6 +18,7 @@
 
 #include <QPlainTextEdit>
 #include <QFont>
+#include <QSet>
 
 class QFocusEvent;
 class QKeyEvent;
@@ -70,6 +71,11 @@ public:
     // one editor-undo step, keeping the caret offset. Returns the number of
     // occurrences replaced.
     int renameIdentifier(const QString& oldName, const QString& newName);
+
+    // Model-known names for the highlighter: model types colour like the
+    // built-in types; the method's arguments render italic.
+    void setModelTypes(const QSet<QString>& names);
+    void setArgumentNames(const QSet<QString>& names);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;

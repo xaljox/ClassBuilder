@@ -364,13 +364,41 @@ void MethodCodeDialog::showEditorContextMenu(const QPoint& pos)
 }
 
 // Re-read the signature marker from the model -- after Add Argument / Throw
-// list the interface changes, so the strip must follow.
+// list the interface changes, so the strip must follow. Also re-feeds the
+// highlighter's model-known names (types + this method's arguments), which
+// change on the same events.
 void MethodCodeDialog::refreshSignature()
 {
     const QString id = _pMethod->IsFixed()
         ? QString() : QString("//@CODE_%1").arg(_pMethod->GetId());
     _ui->editCode->setHeaderText(
         toQ(_pMethod->GetInterfaceCpp()) + "\n{" + id);
+
+    QSet<QString> typeNames;
+    DataModelDoc::TypeIterator iType(_pMethod->GetDataModelDoc());
+    while (++iType)
+    {
+        if (iType->GetName() != "")
+            typeNames.insert(toQ(iType->GetName()));
+    }
+
+    // The relation-generated iterator types (RowIterator etc.) -- nested in
+    // the from-class, named <ToName>Iterator (see the Iterator wizard).
+    DataModel::ClassIterator iClass(
+        _pMethod->GetDataModelDoc()->GetDataModel());
+    while (++iClass)
+    {
+        Class::FromRelationIterator iRelation(iClass, &Relation::GetMulti);
+        while (++iRelation)
+            typeNames.insert(toQ(iRelation->GetToName()) + "Iterator");
+    }
+    _ui->editCode->setModelTypes(typeNames);
+
+    QSet<QString> argNames;
+    Method::ArgumentIterator iArgument(_pMethod);
+    while (++iArgument)
+        argNames.insert(toQ(iArgument->GetName()));
+    _ui->editCode->setArgumentNames(argNames);
 }
 
 bool MethodCodeDialog::codeChanged() const

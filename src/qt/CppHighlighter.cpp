@@ -61,6 +61,23 @@ CppHighlighter::CppHighlighter(QTextDocument* document)
     _string.setForeground(QColor(163, 21, 21));      // dark red
     _number.setForeground(QColor(128, 0, 128));      // purple
     _preprocessor.setForeground(QColor(128, 128, 128)); // grey
+    _argument.setFontItalic(true);                   // emphasis, no colour
+}
+
+void CppHighlighter::setModelTypes(const QSet<QString>& names)
+{
+    if (_modelTypes == names)
+        return;
+    _modelTypes = names;
+    rehighlight();
+}
+
+void CppHighlighter::setArgumentNames(const QSet<QString>& names)
+{
+    if (_argumentNames == names)
+        return;
+    _argumentNames = names;
+    rehighlight();
 }
 
 // Block state: 1 == this block ended inside an unterminated /* block comment.
@@ -178,8 +195,10 @@ int CppHighlighter::scanIdentifier(const QString& text, int i)
     const QString word = text.mid(i, j - i);
     if (keywords().contains(word))
         setFormat(i, j - i, _keyword);
-    else if (types().contains(word))
+    else if (types().contains(word) || _modelTypes.contains(word))
         setFormat(i, j - i, _type);
+    else if (_argumentNames.contains(word))
+        setFormat(i, j - i, _argument);
     return j;
 }
 

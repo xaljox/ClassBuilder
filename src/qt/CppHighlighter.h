@@ -16,6 +16,8 @@
 // better spent on completion than on tinting names.
 #pragma once
 
+#include <QSet>
+#include <QString>
 #include <QSyntaxHighlighter>
 #include <QTextCharFormat>
 
@@ -26,6 +28,12 @@ class CppHighlighter : public QSyntaxHighlighter
     Q_OBJECT
 public:
     explicit CppHighlighter(QTextDocument* document);
+
+    // Names known from the data model. Model types take the same teal as the
+    // built-in types (one consistent "known type" signal, no extra colour);
+    // the method's own arguments render italic (emphasis without noise).
+    void setModelTypes(const QSet<QString>& names);
+    void setArgumentNames(const QSet<QString>& names);
 
 protected:
     void highlightBlock(const QString& text) override;
@@ -46,4 +54,8 @@ private:
     QTextCharFormat _string;
     QTextCharFormat _number;
     QTextCharFormat _preprocessor;
+    QTextCharFormat _argument;
+
+    QSet<QString> _modelTypes;      // model class/type names -> _type teal
+    QSet<QString> _argumentNames;   // this method's arguments -> italic
 };

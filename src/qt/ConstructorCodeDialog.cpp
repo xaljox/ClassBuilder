@@ -406,6 +406,38 @@ void ConstructorCodeDialog::showEditorContextMenu(CodeEditor* ed,
 void ConstructorCodeDialog::refreshSignature()
 {
     _ui->editInit->setHeaderText(toQ(_pConstructor->GetInterfaceCpp()));
+
+    // Re-feed the highlighter's model-known names (types + this constructor's
+    // arguments), which change on the same events as the signature.
+    QSet<QString> typeNames;
+    DataModelDoc::TypeIterator iType(_pConstructor->GetDataModelDoc());
+    while (++iType)
+    {
+        if (iType->GetName() != "")
+            typeNames.insert(toQ(iType->GetName()));
+    }
+
+    // The relation-generated iterator types (RowIterator etc.) -- nested in
+    // the from-class, named <ToName>Iterator (see the Iterator wizard).
+    DataModel::ClassIterator iClass(
+        _pConstructor->GetDataModelDoc()->GetDataModel());
+    while (++iClass)
+    {
+        Class::FromRelationIterator iRelation(iClass, &Relation::GetMulti);
+        while (++iRelation)
+            typeNames.insert(toQ(iRelation->GetToName()) + "Iterator");
+    }
+
+    QSet<QString> argNames;
+    Method::ArgumentIterator iArgument(_pConstructor);
+    while (++iArgument)
+        argNames.insert(toQ(iArgument->GetName()));
+
+    for (CodeEditor* ed : { _ui->editInit, _ui->editCode })
+    {
+        ed->setModelTypes(typeNames);
+        ed->setArgumentNames(argNames);
+    }
 }
 
 bool ConstructorCodeDialog::changed() const

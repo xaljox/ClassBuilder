@@ -194,6 +194,16 @@ CodeEditor::CodeEditor(QWidget* parent)
     updateExtraSelections();
 }
 
+void CodeEditor::setModelTypes(const QSet<QString>& names)
+{
+    _highlighter->setModelTypes(names);
+}
+
+void CodeEditor::setArgumentNames(const QSet<QString>& names)
+{
+    _highlighter->setArgumentNames(names);
+}
+
 void CodeEditor::setIndentSize(int spaces)
 {
     if (spaces > 0)
