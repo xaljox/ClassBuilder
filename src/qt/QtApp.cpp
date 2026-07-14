@@ -17,6 +17,7 @@
 #include <QDialog>
 #include <QEvent>
 #include <QIcon>
+#include <QScreen>
 #include <QSettings>
 #include <QString>
 #include <QWidget>
@@ -277,32 +278,44 @@ void Qt_EnsureApplication()
     // to land in the environment HERE -- there is no later, in-process way to
     // rescale an already-built widget tree. QSettings works fine with no
     // QApplication yet (explicit org/app name form).
-    {
-        const double scale =
-            QSettings("ClassBuilder", "ClassBuilder").value("shell/uiScale", 1.0).toDouble();
-        if (scale != 1.0)
-        {
-            qputenv("QT_SCALE_FACTOR", QByteArray::number(scale, 'g', 3));
-
-            // QT_SCALE_FACTOR only rescales what Qt itself paints -- the X11/
-            // Xcursor pointer theme is a separate, fixed-pixel-size resource
-            // (XCURSOR_SIZE) that libXcursor reads independent of Qt, so the
-            // cursor renders at its normal native size and looks shrunk the
-            // moment it enters a CB window sitting next to now-1.5x content.
-            // Scale it to match, off whatever base size is already set (falls
-            // back to Xcursor's own default, 24, if unset). This only touches
-            // OUR process's environment, not the rest of the desktop. No-op on
-            // Windows/macOS -- neither reads XCURSOR_SIZE.
-            const int baseCursor = qEnvironmentVariableIntValue("XCURSOR_SIZE") > 0
-                ? qEnvironmentVariableIntValue("XCURSOR_SIZE") : 24;
-            qputenv("XCURSOR_SIZE", QByteArray::number(qRound(baseCursor * scale)));
-        }
-    }
+    const double uiScale =
+        QSettings("ClassBuilder", "ClassBuilder").value("shell/uiScale", 1.0).toDouble();
+    if (uiScale != 1.0)
+        qputenv("QT_SCALE_FACTOR", QByteArray::number(uiScale, 'g', 3));
 
     static int   argc    = 1;
     static char  argv0[] = "ClassBuilder";
     static char* argv[]  = { argv0, nullptr };
     new CbApplication(argc, argv);
+
+    // QT_SCALE_FACTOR only rescales what Qt itself paints -- the X11/Xcursor
+    // pointer is a separate resource (XCURSOR_SIZE) that libXcursor reads
+    // independently of Qt, so without this the pointer keeps the DESKTOP's size
+    // and mismatches CB's uiScale-d content the moment it enters a CB window.
+    //
+    // XCURSOR_SIZE is in DEVICE pixels, but the desktop's cursor-size (24) is a
+    // LOGICAL size -- the device size the desktop actually paints is 24 * DPR
+    // (48 on a 2x screen). The old code used the logical 24 as its device base
+    // and so emitted 24*1.25 = 30 at uiScale 1.25 -- BELOW the desktop's 48, so
+    // the pointer visibly SHRANK on entering CB on a HiDPI screen. It only ever
+    // looked right back when XWayland forced DPR 1 (device == logical).
+    //
+    // Set it AFTER the QApplication: devicePixelRatio() then already folds in
+    // QT_SCALE_FACTOR (2 * 1.25 = 2.5), so 24 * dpr IS the wanted device size
+    // (60). libXcursor reads the variable lazily, when a cursor is first
+    // materialised, which is after this point. An explicit XCURSOR_SIZE from the
+    // environment is already a device size, so that path only applies uiScale.
+    // This touches OUR process's environment only, not the rest of the desktop.
+    // No-op on Windows/macOS -- neither reads XCURSOR_SIZE.
+    if (uiScale != 1.0)
+    {
+        const int    envSize = qEnvironmentVariableIntValue("XCURSOR_SIZE");
+        const QScreen* scr   = QGuiApplication::primaryScreen();
+        const qreal  dpr     = scr ? scr->devicePixelRatio() : 1.0;
+        const int    size    = (envSize > 0) ? qRound(envSize * uiScale)
+                                             : qRound(24.0 * dpr);
+        qputenv("XCURSOR_SIZE", QByteArray::number(size));
+    }
 
     // Show shortcut text (e.g. "Ctrl+Shift+M") next to CONTEXT-menu items, as on
     // Windows. macOS defaults this attribute ON (shortcuts hidden in context
