@@ -460,6 +460,28 @@ void Qt_EnsureApplication()
         "  left: 8px;"
         "  padding: 0 3px;"
         "}";
+#else
+    // macOS gets NO blanket QWidget QSS (it would square the native buttons and
+    // strip the native focus ring -- see above). But QMacStyle draws the
+    // QGroupBox title in a small system font that reads tiny and faint next to
+    // the 15pt UI everywhere else. Scope a QSS rule to JUST QGroupBox (buttons /
+    // edits / combos stay native) to give the title the app font size + weight,
+    // and match the Windows/Linux soft-border group look at the same time.
+    sheet += QString("QGroupBox {"
+                     "  font-size: %1pt;"
+                     "  font-weight: %2;"
+                     "  border: 1px solid palette(mid);"
+                     "  border-radius: 4px;"
+                     "  margin-top: 1.4ex;"
+                     "}")
+                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
+    sheet +=
+        "QGroupBox::title {"
+        "  subcontrol-origin: margin;"
+        "  subcontrol-position: top left;"
+        "  left: 8px;"
+        "  padding: 0 3px;"
+        "}";
 #endif
     if (!sheet.isEmpty())
         qApp->setStyleSheet(sheet);
