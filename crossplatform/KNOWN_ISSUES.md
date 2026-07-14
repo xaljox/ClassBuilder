@@ -150,6 +150,17 @@ experimental**. On GNOME 50 `org.gnome.mutter experimental-features` lists only
 **not** try to "enable" it — an earlier revision of this file wrongly recorded a
 `gsettings ... xwayland-native-scaling` line, which does nothing here.
 
+**This resolution is GNOME-ONLY — it does NOT transfer to the other Linux box.**
+mutter is GNOME's compositor; Raspberry Pi OS (the Debian/Pi target) runs the PIXEL
+desktop on **labwc / Wayfire**, which are unrelated compositors with their own XWayland
+scaling behaviour. The underlying trap — *CB forces `xcb`, and a scaled desktop whose
+compositor does not scale XWayland natively hands Qt DPR 1* — is **compositor-agnostic**
+and can still bite there. The durable, compositor-independent answer is the one the Pi
+already uses: **run the display at NATIVE resolution, unscaled, and enlarge the UI
+instead** (CB's View > UI Scale, which re-renders vectors at full resolution rather than
+magnifying a bitmap). Only reach for a compositor setting if you actually want a scaled
+desktop.
+
 **Symptom (on GNOME <= 46):** the tree + toolbar icons look blurry/mushy while text
 still reads sharp. The same Qt code is sharp on Windows and macOS. Easy to misdiagnose
 as an icon-art or SVG problem — **it is not**. The icon code is fine (SVG is enabled;
