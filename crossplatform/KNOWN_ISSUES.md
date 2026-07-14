@@ -134,11 +134,25 @@ cross-platform-closed. See also the new manual UI-scale feature in
 [PORTING_LINUX.md](PORTING_LINUX.md#manual-ui-scale-view--ui-scale-menu),
 which is likewise untested outside Linux.
 
-## 5. Blurry icons on Linux/HiDPI — **XWayland is half-res; use an Xorg session**
+## 5. Blurry icons on Linux/HiDPI — **RESOLVED by mutter >= 47 (GNOME 47+); was an XWayland half-res artefact**
 
-**Symptom:** on Linux, the tree + toolbar icons look blurry/mushy while text still
-reads sharp. The same Qt code is sharp on Windows and macOS. Easy to misdiagnose as
-an icon-art or SVG problem — **it is not**. The icon code is fine (SVG is enabled;
+**Status (2026-07-14):** fixed by the environment, **no CB code change ever needed**.
+Modern mutter (verified on **GNOME 50 / mutter 50**, Ubuntu 26.04) scales XWayland
+clients at **native resolution by default**, so a plain Wayland session now gives
+Qt/`xcb` **DPR 2 — sharp icons AND draggable floating docks** (both confirmed). The
+"use an Xorg session" workaround below is **obsolete**; keep reading only if you land
+on an old GNOME (<= 46).
+
+The feature is *not* a gsettings flag on modern mutter — it **graduated out of
+experimental**. On GNOME 50 `org.gnome.mutter experimental-features` lists only
+`kms-modifiers` and `autoclose-xwayland`; both `scale-monitor-framebuffer` and
+`xwayland-native-scaling` are gone *because they are now default behaviour*. So do
+**not** try to "enable" it — an earlier revision of this file wrongly recorded a
+`gsettings ... xwayland-native-scaling` line, which does nothing here.
+
+**Symptom (on GNOME <= 46):** the tree + toolbar icons look blurry/mushy while text
+still reads sharp. The same Qt code is sharp on Windows and macOS. Easy to misdiagnose
+as an icon-art or SVG problem — **it is not**. The icon code is fine (SVG is enabled;
 `CB_HAVE_SVG` is defined, `-- Qt: Svg module found` at configure).
 
 **Root cause:** CB forces `QT_QPA_PLATFORM=xcb` on a Wayland session
@@ -175,19 +189,26 @@ limitation the forced-`xcb` guard exists for.
 **Bonus:** a pure Xorg session has no XWayland X-selection bridge, so it should also
 sidestep **item 2** (the intermittent XWayland clipboard use-after-free crash).
 
-**The Xorg session is INTERIM — GNOME is retiring the X11 session** (removal landed
-around GNOME 49). So on a newer GNOME this fix can simply disappear, and the blur
-returns. The durable replacement needs **no CB change**: mutter **>= 47** adds the
-`xwayland-native-scaling` experimental feature, which renders XWayland clients at
-native resolution — so a **Wayland session** gives Qt/xcb DPR 2 (sharp) while XWayland
-still supplies the X11 window semantics CB's floating docks need. It is **off by
-default**, so after such an upgrade the blur looks like a regression when it is really
-one line:
+**The real fix is simply a newer GNOME** — see the Status note at the top. Upgrade
+(GNOME >= 47; verified on 50) and the blur is gone with no session games and no code
+change. The Xorg session was only ever an interim measure for GNOME <= 46, and GNOME
+is retiring the X11 session anyway.
 
-```
-gsettings set org.gnome.mutter experimental-features \
-    "['scale-monitor-framebuffer', 'xwayland-native-scaling']"
-```
+### Latent HiDPI bugs this uncovered (both since FIXED in CB)
+
+Running on a genuinely DPR-2 Linux desktop exposed two real port bugs that were
+invisible while XWayland forced DPR 1. Recorded because the *class* will recur:
+
+- **Mouse cursor SHRANK on entering a CB window** (`QtApp.cpp`). `XCURSOR_SIZE` is in
+  **device** pixels, but the code used the desktop's **logical** cursor size (24) as
+  its base, emitting `24 * uiScale` = 30 at 125% — *below* the desktop's real device
+  size of `24 * DPR` = 48. Fixed by setting `XCURSOR_SIZE` **after** the QApplication,
+  where `devicePixelRatio()` already folds in `QT_SCALE_FACTOR` (2 * 1.25 = 2.5), so
+  `24 * dpr` = 60 is correct at any UI scale and any DPR. (libXcursor reads the var
+  lazily, so post-construction is in time — verified.)
+- **Window-edge resize hot zone sits outside the visible edge:** **NOT a CB bug.** That
+  is mutter's *invisible resize border*, by design; the file manager behaves
+  identically. Do not "fix" it.
 
 Not available on GNOME/mutter **46** (this box): its `experimental-features` schema
 offers only `scale-monitor-framebuffer`, `kms-modifiers`, `autoclose-xwayland`,
@@ -195,6 +216,62 @@ offers only `scale-monitor-framebuffer`, `kms-modifiers`, `autoclose-xwayland`,
 `apt` — within an Ubuntu release GNOME stays on its shipped major, so 24.04 is capped
 at mutter **46.x** (the package name encodes the major: `libmutter-14-0` *is* mutter
 46; no `libmutter-15/16` exists in the archive). It takes a distro release upgrade.
+
+## 6. A distro upgrade can stop CB starting — from-source Qt hard-links `libicu*.so.<N>`
+
+**Symptom:** after a major distro upgrade, CB **does not start at all** — a busy mouse
+cursor, then nothing, no window, no message box. (Hit on Ubuntu 24.04 -> 26.04,
+2026-07-14.) Easy to mistake for a GUI/scaling bug; it is neither — the process dies
+in the **dynamic loader**, before it paints a single pixel.
+
+**Diagnose (always do this FIRST when CB won't start on Linux):**
+
+```
+ldd out/build/linux-x64/bin/Release/ClassBuilder | grep "not found"
+./out/build/linux-x64/bin/Release/ClassBuilder        # run it, read stderr
+```
+
+which said:
+
+```
+libicui18n.so.74 => not found
+error while loading shared libraries: libicui18n.so.74
+```
+
+**Root cause:** the from-source Qt at `~/Qt-6.11.1-patched` was built on 24.04 against
+**ICU 74**, and `libQt6Core.so` carries that soname. 26.04 ships **ICU 78**; ICU has
+**no cross-major ABI compatibility** and the old package is *not* installable
+(`apt policy libicu74` → no candidate). So Qt6Core cannot load. **Do NOT try to symlink
+`.so.78` to `.so.74`** — the symbols are versioned; it would load and then crash.
+It is Qt that is broken here, **not CB**.
+
+**Fix — rebuild the patched Qt, then CB:**
+
+```
+cd ~/qt-build
+cmake --fresh -G Ninja -S src/qtbase-everywhere-src-6.11.1 -B build-qtbase \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/Qt-6.11.1-patched \
+      -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF
+cmake --build build-qtbase --parallel && cmake --install build-qtbase
+# then the same --fresh / build / install for qtsvg and qtwayland
+cd <repo> && cmake --preset linux-x64 --fresh && cmake --build --preset linux-release
+```
+
+`--fresh` matters: the old CMake caches pin the previous compiler (GCC 13 -> 15) and the
+now-missing ICU 74 paths. **The two dock patches survive** in the source tree (they are
+hand-applied; verify by grepping for `restore(QInternal::ClearSavedState)` in
+`qdockwidget.cpp` and `mwLayout->savedState.clear();` in `qmainwindowlayout.cpp` — the
+`.patch` files have prose headers and no `@@` line ranges, so `patch --dry-run` cannot
+check them).
+
+**Bonus — the rebuild made this unrepeatable:** with no `libicu-dev` present, Qt now
+configures **`ICU ... no`** and uses its own built-in Unicode support (all CB needs).
+The resulting Qt has **no `libicu` dependency at all**, so the next ICU bump cannot
+break it. Do not "helpfully" reinstall `libicu-dev` and reintroduce the coupling.
+
+**Applies to every from-source-Qt Linux box** — the Pi (Debian) will hit exactly this on
+its next major upgrade. Verify after any distro upgrade with the `ldd | grep "not found"`
+one-liner above.
 
 ## Working rule this file encodes
 
