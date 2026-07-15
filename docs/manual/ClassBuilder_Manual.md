@@ -1135,14 +1135,58 @@ Launched **from the code editor** (method/constructor code dialogs, `Insert` men
 
 # Reference: the code editor
 
-Method bodies, constructor/destructor bodies and the user sections are edited in ClassBuilder's built-in code editor (a fixed-pitch C++ editor; Consolas 11 pt on Windows).
+Method bodies, constructor/destructor bodies and the user sections are edited in ClassBuilder's built-in code editor (a fixed-pitch C++ editor; Consolas 11 pt on Windows). It is a *model-aware* editor: syntax colours, the rename command and the code completion all draw on the live data model, not on text heuristics.
 
 ## Editing behavior
 
 - **Enter** inserts a newline with a *predicted* indent: after a line ending in `{` it indents one level deeper; after `}` it returns to the closing brace's level; after `;` it keeps the statement level; after `:` (labels, initializer lists) it indents one level.
-- Typing **`}`** on an otherwise-blank line re-indents that line to the matching level.
+- Typing **`{`** on an otherwise-blank line re-indents it to the construct it belongs to — the previous non-blank line's level (the `if`/`for`/function header, Allman style); only a block nested directly under another `{` keeps the deeper predicted indent. Typing **`}`** on an otherwise-blank line re-indents it one level out from the block body, aligning it with its opening brace.
 - **Tab** indents — with a selection, all selected lines shift one indent level; without, spaces are inserted to the next indent stop. **Shift+Tab** un-indents. Indentation is spaces (the width follows the model's *Indent size* setting, default 4).
+- **Move lines up / down** (`Alt+Up` / `Alt+Down`, also on the `Edit` menu) moves the selected lines — or the caret's line — as a block, one line per press, keeping the selection on the moved block so repeated presses keep walking it. A selection ending at column 0 does not drag that last line along.
+- **Reformat code** (`Ctrl+Shift+R`, `Edit` menu) re-indents the selection — or, without a selection, the whole text — with the same rules that drive typing: predictor indent for ordinary lines, `}` one level out, `{` per the Allman rule above, preprocessor lines to column 0. Lines inside block comments are left untouched. One undo step.
 - No line wrapping; long lines scroll.
+
+## Syntax colours
+
+The highlighter colours C++ — keywords (blue), built-in types (teal), strings (dark red), numbers (purple), preprocessor lines (grey), comments (green, including multi-line `/* */`) — and extends the same signals with what the **model** knows:
+
+- **Model types** — every named type in the model (classes, extern classes, typedefs) *and* the relation-generated iterator types (`RowIterator`, both bare and as `Matrix::RowIterator`) — take the same teal as the built-in types: one consistent "known type" signal.
+- **Arguments** of the edited method render *italic* — in the code, and in the signature strip above the editor. Renaming or adding an argument updates the italics immediately.
+
+The caret's line carries a faint blue tint; when the caret touches a `{}`, `()` or `[]`, the brace and its match get a soft green box.
+
+## The occurrence highlight and Rename (F2)
+
+Put the caret in (or double-click) an identifier and every whole-identifier occurrence is highlighted soft yellow — *whole-identifier*, so `row` never lights up inside `rowCount`. The highlight deliberately shows the **full rename set**: it spans the body, the constructor's initializer pane, *and* the signature strip. A single lone hit shows nothing (noise, not information).
+
+**Rename identifier** (`F2`, `Edit` menu, right-click menu) renames exactly the yellow set. The menu entry is enabled only while something is highlighted and names its target (*Rename 'row'…*). What happens depends on what the identifier is:
+
+- An **argument** of the method is renamed *through the model* — as if renamed in the argument dialog: the stored code, the signature, and (in a constructor) the initializer list all follow, with a model-level undo step. Colliding with an existing argument name is refused.
+- A **member** of the owning class is renamed through the model too — `Member::SetName` fans the rename out through **all** methods of the class (and of derived classes, for non-private members) and renames the `Get`/`Set` accessor stems; every open code editor updates live. The member prefix (`_`) is handled whether you type the new name with or without it.
+- Anything else — a **local variable**, or in fact any word, e.g. bulk-changing `int` to `uint` — is a text-only whole-identifier replace in the editor (both panes of a constructor), as a single editor-undo step. The method-body scope is what makes such bulk swaps controllable.
+
+A model-involved rename (argument or member) **saves the editor first**, so a later model undo restores editor and model together: the first undo reverts the rename everywhere, a second one the save.
+
+## Code completion
+
+The completion popup opens automatically after `.`, `->` or `::`, after the second character of a word, and on demand with `Ctrl+Space` (the physical `Ctrl` key on every platform). `Esc` closes it; `Enter`/`Tab` accepts; typing keeps filtering (case-insensitive). It stays silent inside comments and string literals. What it offers is resolved from the model per keystroke — it is never stale:
+
+- **`var.` / `var->`** — the variable's type is resolved (from `this`, the method's arguments, `TypeName var` declarations in the code, or a member of the class) and that class's **public methods** are offered, inherited and relation-generated ones included. An **iterator variable** dereferences to its target class: after `RowIterator iRow(...)`, `iRow->` offers `Row`'s methods. Call **chains** resolve through return types: `GetRow(i)->` offers `Row`'s methods too.
+- **`Class::`** — the class's static methods and its relation iterator types.
+- **Plain typing** — arguments, declared locals, the owning class's methods and members, all model types and iterator types, and `this`.
+
+A method is displayed with its argument **types** — `GetCell(int, int)` — so overloads appear as separate entries; accepting it inserts the argument **names** — `GetCell(row, col)` — with the first name pre-selected, ready to be overtyped. The names document the remaining slots.
+
+Every iterator type also offers a **`… loop`** entry that inserts the complete pattern, correctly indented, caret inside the body:
+
+```cpp
+RowIterator iRow(this);
+while (++iRow)
+{
+}
+```
+
+The constructor argument is pre-filled with something of the relation's owning class found in scope — `this` when the edited class is (or derives from) it, else a suitable argument, local or member. This is the Iterator Wizard's knowledge (see *Code-editing helper wizards*, previous chapter), available inline as you type.
 
 ## Code insertion
 
@@ -1168,6 +1212,14 @@ The `Insert` menu (also on the editor's right-click menu) carries the control-fl
 The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space; the initial division is a best guess from how many lines each part has — the init pane fits its content (never below a few lines, never above 70% of the height) and the body takes the rest. Drag the splitter to change it. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
 
 ![](images/Constructor_Code_Editor.png)
+
+## The open editor and the model
+
+The code editors are modeless — the model can change while they are open. They stay in sync:
+
+- **Renames follow you in.** Renaming an argument, member or type anywhere in the application (dialogs, tree, or F2 in another editor) rewrites the stored bodies — and every *open* editor applies the same whole-identifier replacement to its text, unsaved edits included. An unedited editor stays byte-identical to the stored code, so closing it asks nothing.
+- **Undo/redo follows too.** When a model undo or redo swaps a stored body behind an open editor, the editor reloads **only if it has no unsaved edits** — edits in progress are never overwritten; the save prompt on close then reports the real difference.
+- **Two undo stacks.** The main window's undo drives the *model* (renames, structure); `Undo` inside the code editor (its `Edit` menu) drives the *text you are typing*. Renames that went through the model are undone in the main window; plain text edits in the editor.
 
 ## Where the editor appears
 
