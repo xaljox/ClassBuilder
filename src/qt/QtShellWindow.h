@@ -57,7 +57,7 @@ public:
     // floating like a diagram window. `tabTitle` is the SHORT caption for
     // the tab / dock title bar ("Matrix::GetRow" -- the dialog keeps its
     // long descriptive windowTitle for the no-shell fallback).
-    void hostEditorDock(QDialog* dlg, const QString& tabTitle);
+    void hostEditorDock(QWidget* dlg, const QString& tabTitle);
 
     // Select + reveal a model object in the tree of the document that owns
     // it, raising that tree's dock/tab (Qt_SelectInModelTree entry point --

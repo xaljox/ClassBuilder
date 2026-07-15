@@ -1,9 +1,9 @@
 // qt/MethodCodeDialog.cpp -- the Qt method-body code editor.
 //
-// Ported from the MFC CMethodCodeDialog. Modal (the MFC modeless behaviour
-// waits for the full-Qt stage). A CodeEditor under a marker strip (signature
-// + {//@CODE_<id>), driven by a menu bar: Save / Regenerate, the Edit
-// commands, and the Insert wizards. Drives the model directly.
+// Ported from the MFC CMethodCodeDialog. A modeless QWidget hosted in a
+// shell dock (or standalone as fallback). A CodeEditor under a marker strip
+// (signature + {//@CODE_<id>), driven by a menu bar: Save / Regenerate, the
+// Edit commands, and the Insert wizards. Drives the model directly.
 
 #include "MethodCodeDialog.h"
 #include "ui_MethodCodeDialog.h"
@@ -139,7 +139,7 @@ QString promptRename(QWidget* parent, const QString& name)
 }
 
 MethodCodeDialog::MethodCodeDialog(Method* pMethod, QWidget* parent)
-    : QDialog(parent)
+    : QWidget(parent)
     , _ui(new Ui::MethodCodeDialog)
     , _pMethod(pMethod)
 {
@@ -227,7 +227,7 @@ bool MethodCodeDialog::eventFilter(QObject* obj, QEvent* event)
     if (obj == _ui->editCode && event->type() == QEvent::KeyPress)
         if (triggerMenuKey(_allMenus, static_cast<QKeyEvent*>(event)))
             return true;
-    return QDialog::eventFilter(obj, event);
+    return QWidget::eventFilter(obj, event);
 }
 
 void MethodCodeDialog::detachForDelete()
@@ -702,15 +702,20 @@ void MethodCodeDialog::closeEvent(QCloseEvent* event)
     closeHostDockDeferred(this);
 }
 
-// Esc. As a standalone window: close (through closeEvent, so the save
-// prompt runs). DOCKED: do nothing -- a tab must not vanish on a stray Esc
-// (e.g. a habit-press for the completion popup when it isn't showing); the
-// dock's close button / File > Close are the deliberate ways out.
-void MethodCodeDialog::reject()
+// Esc (QDialog's Esc-reject is gone -- this is a plain QWidget now). As a
+// standalone window: close (through closeEvent, so the save prompt runs).
+// DOCKED: do nothing -- a tab must not vanish on a stray Esc (e.g. a
+// habit-press for the completion popup when it isn't showing); the dock's
+// close button / File > Close are the deliberate ways out.
+void MethodCodeDialog::keyPressEvent(QKeyEvent* event)
 {
-    if (qobject_cast<QDockWidget*>(parentWidget()))
+    if (event->key() == Qt::Key_Escape)
+    {
+        if (!qobject_cast<QDockWidget*>(parentWidget()))
+            close();
         return;
-    close();
+    }
+    QWidget::keyPressEvent(event);
 }
 
 // ---------------------------------------------------------------------------

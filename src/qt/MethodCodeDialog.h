@@ -1,23 +1,24 @@
 // qt/MethodCodeDialog.h -- the Qt method-body code editor.
 //
 // The form lives in MethodCodeDialog.ui. Ported from the MFC
-// CMethodCodeDialog -- the modeless code editor for a method body. This Qt
-// port is MODAL (the MFC host still owns the message loop; modeless waits
-// for the full-Qt stage). A CodeEditor under a marker strip showing the
-// signature + {//@CODE_<id>; a menu bar drives Save / Regenerate / the Edit
-// commands / the Insert wizards. Drives the model directly.
+// CMethodCodeDialog -- the modeless code editor for a method body. A plain
+// QWidget (dock content, not a dialog: no result codes, no Esc-reject, no
+// default button): a CodeEditor under a marker strip showing the signature
+// + {//@CODE_<id>; a menu bar drives Save / Regenerate / the Edit commands /
+// the Insert wizards. Drives the model directly.
 #pragma once
 
-#include <QDialog>
+#include <QWidget>
 
 class CbString;
 class Method;
+class QKeyEvent;
 class QMenu;
 class QPoint;
 
 namespace Ui { class MethodCodeDialog; }
 
-class MethodCodeDialog : public QDialog
+class MethodCodeDialog : public QWidget
 {
     Q_OBJECT
 public:
@@ -41,7 +42,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
-    void reject() override;        // Esc -> route through closeEvent
+    void keyPressEvent(QKeyEvent* event) override;  // Esc -> closeEvent
     bool eventFilter(QObject* obj, QEvent* event) override;  // menu keys
 
 private:

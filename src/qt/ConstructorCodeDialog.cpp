@@ -1,7 +1,7 @@
 // qt/ConstructorCodeDialog.cpp -- the Qt constructor-body code editor.
 //
-// Ported from the MFC CConstructorCodeDialog. Modal (the MFC modeless
-// behaviour waits for the full-Qt stage). Two CodeEditors -- a small init-list
+// Ported from the MFC CConstructorCodeDialog. A modeless QWidget hosted in a
+// shell dock (or standalone as fallback). Two CodeEditors -- a small init-list
 // editor and the large body editor -- each under a marker strip, driven by a
 // menu bar: Save / Regenerate Code / Regenerate Init, the Edit commands, and
 // the Insert wizards. Drives the model directly.
@@ -144,7 +144,7 @@ QString promptRename(QWidget* parent, const QString& name)
 
 ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
                                              QWidget* parent)
-    : QDialog(parent)
+    : QWidget(parent)
     , _ui(new Ui::ConstructorCodeDialog)
     , _pConstructor(pConstructor)
 {
@@ -414,7 +414,7 @@ bool ConstructorCodeDialog::eventFilter(QObject* obj, QEvent* event)
         if (triggerMenuKey(_allMenus, static_cast<QKeyEvent*>(event)))
             return true;
 
-    return QDialog::eventFilter(obj, event);
+    return QWidget::eventFilter(obj, event);
 }
 
 void ConstructorCodeDialog::buildMenu()
@@ -714,7 +714,7 @@ void ConstructorCodeDialog::regenerateInit()
 
 void ConstructorCodeDialog::showEvent(QShowEvent* event)
 {
-    QDialog::showEvent(event);
+    QWidget::showEvent(event);
     if (_splitterSized)
         return;
     _splitterSized = true;
@@ -779,14 +779,19 @@ void ConstructorCodeDialog::closeEvent(QCloseEvent* event)
     closeHostDockDeferred(this);
 }
 
-// Esc. As a standalone window: close (through closeEvent, so the save
-// prompt runs). DOCKED: do nothing -- a tab must not vanish on a stray Esc;
-// the dock's close button / File > Close are the deliberate ways out.
-void ConstructorCodeDialog::reject()
+// Esc (QDialog's Esc-reject is gone -- this is a plain QWidget now). As a
+// standalone window: close (through closeEvent, so the save prompt runs).
+// DOCKED: do nothing -- a tab must not vanish on a stray Esc; the dock's
+// close button / File > Close are the deliberate ways out.
+void ConstructorCodeDialog::keyPressEvent(QKeyEvent* event)
 {
-    if (qobject_cast<QDockWidget*>(parentWidget()))
+    if (event->key() == Qt::Key_Escape)
+    {
+        if (!qobject_cast<QDockWidget*>(parentWidget()))
+            close();
         return;
-    close();
+    }
+    QWidget::keyPressEvent(event);
 }
 
 // ---------------------------------------------------------------------------

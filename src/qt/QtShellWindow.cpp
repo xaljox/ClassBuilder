@@ -257,10 +257,10 @@ bool Qt_HostDiagramDock(QWidget* view)
     return true;
 }
 
-// Host a modeless code-editor dialog in a dockable/tabbable shell dock (see
+// Host a modeless code-editor widget in a dockable/tabbable shell dock (see
 // QtShellWindow::hostEditorDock). False (caller falls back to a standalone
 // window) when there is no shell.
-bool Qt_HostEditorDock(QDialog* dlg, const char* tabTitle)
+bool Qt_HostEditorDock(QWidget* dlg, const char* tabTitle)
 {
     if (!g_shell || !dlg)
         return false;
@@ -1243,10 +1243,10 @@ bool QtShellWindow::selectGtiInTree(DataModelDoc* pDoc, Gti* pGti)
     return false;
 }
 
-// Host a code-editor dialog in an EditorDockWidget. New editors tab onto an
+// Host a code-editor widget in an EditorDockWidget. New editors tab onto an
 // existing docked editor group; the first one opens floating (drag it next
 // to the tree once, and every next editor tabs there).
-void QtShellWindow::hostEditorDock(QDialog* dlg, const QString& tabTitle)
+void QtShellWindow::hostEditorDock(QWidget* dlg, const QString& tabTitle)
 {
     const QSize wantSize = dlg->sizeHint().expandedTo(QSize(720, 540));
 

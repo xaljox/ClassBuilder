@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MethodCodeDialog</class>
- <widget class="QDialog" name="MethodCodeDialog">
+ <widget class="QWidget" name="MethodCodeDialog">
   <property name="geometry">
    <rect>
     <x>0</x>

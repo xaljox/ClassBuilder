@@ -1,26 +1,27 @@
 // qt/ConstructorCodeDialog.h -- the Qt constructor-body code editor.
 //
 // The form lives in ConstructorCodeDialog.ui. Ported from the MFC
-// CConstructorCodeDialog -- the modeless code editor for a constructor. This
-// Qt port is MODAL (the MFC host still owns the message loop; modeless waits
-// for the full-Qt stage). Two CodeEditors: a small init-list editor and the
+// CConstructorCodeDialog -- the modeless code editor for a constructor. A
+// plain QWidget (dock content, not a dialog: no result codes, no Esc-reject,
+// no default button). Two CodeEditors: a small init-list editor and the
 // large body editor, each under a marker strip (signature / {//@CODE_<id>).
 // A menu bar drives Save / Regenerate / the Edit commands / the Insert
 // wizards. Drives the model directly.
 #pragma once
 
-#include <QDialog>
+#include <QWidget>
 
 class CbString;
 class Constructor;
 class Method;
 class CodeEditor;
+class QKeyEvent;
 class QMenu;
 class QPoint;
 
 namespace Ui { class ConstructorCodeDialog; }
 
-class ConstructorCodeDialog : public QDialog
+class ConstructorCodeDialog : public QWidget
 {
     Q_OBJECT
 public:
@@ -43,7 +44,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
-    void reject() override;        // Esc -> route through closeEvent
+    void keyPressEvent(QKeyEvent* event) override;  // Esc -> closeEvent
     bool eventFilter(QObject* obj, QEvent* event) override;
     void showEvent(QShowEvent* event) override;   // first show -> size the splitter
 

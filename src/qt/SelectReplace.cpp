@@ -15,6 +15,7 @@
 #include "MethodCodeDialog.h"
 #include "ConstructorCodeDialog.h"
 
+#include <QEventLoop>
 #include <QPushButton>
 #include <QTreeWidgetItem>
 
@@ -118,7 +119,24 @@ void SelectReplace::setAllChecked(bool checked)
     }
 }
 
-// Double-click a method row -> open its modal code editor.
+namespace {
+// The code editors are plain QWidgets now (dock content elsewhere); the
+// Replace flow needs one MODALLY -- peek at the code while this dialog
+// stays up. Run it as an application-modal window with a local event loop
+// until it closes (its own closeEvent still drives the save prompt).
+void execEditorModal(QWidget* editor)
+{
+    editor->setWindowFlag(Qt::Window, true);
+    editor->setAttribute(Qt::WA_DeleteOnClose, true);
+    editor->setWindowModality(Qt::ApplicationModal);
+    editor->show();
+    QEventLoop loop;
+    QObject::connect(editor, &QObject::destroyed, &loop, &QEventLoop::quit);
+    loop.exec();
+}
+}
+
+// Double-click a method row -> open its code editor modally.
 void SelectReplace::onItemDoubleClicked(QTreeWidgetItem* item, int /*col*/)
 {
     if (!item || !item->parent())          // ignore the class roots
@@ -129,15 +147,9 @@ void SelectReplace::onItemDoubleClicked(QTreeWidgetItem* item, int /*col*/)
         return;
 
     if (Constructor* pConstructor = dynamic_cast<Constructor*>(pMethod))
-    {
-        ConstructorCodeDialog dlg(pConstructor, this);
-        dlg.exec();
-    }
+        execEditorModal(new ConstructorCodeDialog(pConstructor, this));
     else
-    {
-        MethodCodeDialog dlg(pMethod, this);
-        dlg.exec();
-    }
+        execEditorModal(new MethodCodeDialog(pMethod, this));
 }
 
 // OK -- ripple the rename through every checked method body.

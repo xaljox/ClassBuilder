@@ -49,7 +49,7 @@ bool Qt_HostDiagramDock(QWidget* view);
 // floating. `tabTitle` is the short tab caption ("Matrix::GetRow"), local
 // 8-bit (this header stays Qt-free). Returns false when there is no shell --
 // fall back to Qt_ShowModeless.
-bool Qt_HostEditorDock(QDialog* dlg, const char* tabTitle);
+bool Qt_HostEditorDock(QWidget* dlg, const char* tabTitle);
 
 // Raise + activate the dock hosting `dlg` (tab-activates a tabbed editor).
 // Returns false when `dlg` is not dock-hosted.
