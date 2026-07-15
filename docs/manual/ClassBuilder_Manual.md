@@ -1118,7 +1118,7 @@ Launched **from the code editor** (method/constructor code dialogs, `Insert` men
 
 ![](images/Iterator_Wizzard.png)
 
-**Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched.
+**Iterator Wizard** — pick a variable reachable in the current scope (a tree of candidates, derived from the arguments, members and the code so far), then one of its class's relations, optionally a filter predicate — and the correctly-typed iterator loop (`X::YIterator i(...); while (++i) { }`) is inserted at the caret, indentation matched. Two checkboxes tune the loop: **Backward** walks the relation in reverse — the loop advances with `while (--i)` (last to first) instead of `while (++i)`. **Reset** re-uses an iterator that already exists in the body: instead of declaring a new one, the wizard inserts `i.Reset();` followed by the loop, rewinding the existing iterator for another pass — when the chosen name is already in use, pick a fresh name or tick *Reset*.
 
 ![](images/Type_Variable_Wizzard.png)
 
