@@ -68,6 +68,15 @@ public:
         Q_UNUSED(pos)
         return QString();
     }
+
+    // Rich-text parameter hint for the innermost open call at the caret
+    // (`textToCursor` is the editor text up to the caret); empty = no open
+    // call / nothing resolvable -- the editor hides the hint then.
+    virtual QString parameterHint(const QString& textToCursor)
+    {
+        Q_UNUSED(textToCursor)
+        return QString();
+    }
 };
 
 class CodeEditor : public QPlainTextEdit
@@ -198,6 +207,13 @@ private:
     void insertCompletion(const QModelIndex& index);
     int  typedPrefixLength() const;   // identifier chars just before the caret
 
+    // Parameter hint: a tooltip-styled label above the caret's line with the
+    // called method's signature, the active argument bold. Shown on '('/',',
+    // re-resolved on every caret move while visible, hidden when the caret
+    // leaves the call (provider returns empty) / Esc / focus loss.
+    void updateParameterHint(bool allowShow);
+    void hideParameterHint();
+
     // Index in the document of the brace matching the one at `pos` (the char
     // just after `pos` if `forward`, else just before), or -1 if none / unbalanced.
     int matchingBrace(int pos, bool forward) const;
@@ -220,4 +236,6 @@ private:
     CodeCompletionProvider* _provider = nullptr;   // not owned
     QCompleter*             _completer = nullptr;
     QStandardItemModel*     _completionModel = nullptr;
+
+    QLabel* _paramHint = nullptr;    // parameter-hint label, created on demand
 };

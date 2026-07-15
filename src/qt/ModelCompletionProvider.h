@@ -40,6 +40,12 @@ public:
     // resolved like definitionAtCursor. Empty when nothing resolves.
     QString hoverText(const QString& text, int pos) override;
 
+    // Parameter hint: the signature of the call being typed (innermost open
+    // '(' before the caret), active argument bold, default values shown.
+    // The overload is picked by the argument index reached so far. Empty
+    // when the caret is not inside a resolvable call.
+    QString parameterHint(const QString& textToCursor) override;
+
     // The model object named by the identifier at `pos` in `text` (the FULL
     // editor text) -- a Method, with the receiver resolved from what
     // precedes it (`var->Name` / `expr().Name` / `Class::Name`, else the

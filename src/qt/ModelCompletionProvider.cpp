@@ -577,6 +577,42 @@ Method* matchOverload(const QList<Method*>& candidates, const QString& text,
     return nullptr;
 }
 
+// The parameter-hint line: the signature rebuilt from its parts (the flat
+// GetInterfaceCpp string cannot mark the active argument), the active
+// argument bold, default values included, in the editor's code font.
+QString parameterHintHtml(Method* pMethod, int activeArg)
+{
+    const QFont codeFont = CodeEditor::codeFont();
+    QString html = QString("<pre style='margin:0;"
+                           " font-family:\"%1\"; font-size:%2pt'>")
+                       .arg(codeFont.family())
+                       .arg(codeFont.pointSize());
+    html += (toQ(pMethod->GetTypeName()) +
+             toQ(pMethod->GetBaseClass()->GetName()) + "::" +
+             toQ(pMethod->GetName()) + "(").toHtmlEscaped();
+
+    int index = 0;
+    Method::ArgumentIterator iArgument(pMethod);
+    while (++iArgument)
+    {
+        if (index)
+            html += ", ";
+        QString piece = toQ(iArgument->GetTypeName()
+                            + iArgument->GetVariableName());
+        if (!iArgument->GetDefault().IsEmpty())
+            piece += " = " + toQ(iArgument->GetDefault());
+        piece = piece.toHtmlEscaped();
+        html += (index == activeArg) ? "<b>" + piece + "</b>" : piece;
+        ++index;
+    }
+
+    html += ")";
+    if (pMethod->GetConst())
+        html += " const";
+    html += "</pre>";
+    return html;
+}
+
 // All candidates' signatures, one per line -- the undecided-overload hover.
 QString joinedSignatures(const QList<Method*>& candidates)
 {
@@ -595,6 +631,115 @@ QString joinedSignatures(const QList<Method*>& candidates)
 ModelCompletionProvider::ModelCompletionProvider(Method* pMethod)
     : _pMethod(pMethod)
 {
+}
+
+QString ModelCompletionProvider::parameterHint(const QString& textToCursor)
+{
+    const QString& text = textToCursor;
+    if (inCommentOrString(text))
+        return QString();
+
+    // The innermost UNCLOSED '(' before the caret, and how many top-level
+    // commas the caret has passed inside it (= the active argument index).
+    int depth = 0, open = -1, commas = 0;
+    for (int i = text.length() - 1; i >= 0; --i)
+    {
+        const QChar c = text[i];
+        if (c == ')')
+        {
+            ++depth;
+        }
+        else if (c == '(')
+        {
+            if (depth == 0)
+            {
+                open = i;
+                break;
+            }
+            --depth;
+        }
+        else if (c == ',' && depth == 0)
+        {
+            ++commas;
+        }
+        else if ((c == ';' || c == '{' || c == '}') && depth == 0)
+        {
+            return QString();          // statement boundary: no open call
+        }
+    }
+    if (open < 0)
+        return QString();
+    const int activeArg = commas;
+
+    // The called name just before the '('.
+    int nameEnd = open;
+    while (nameEnd > 0 && text[nameEnd - 1].isSpace())
+        --nameEnd;
+    int nameStart = nameEnd;
+    while (nameStart > 0 && isIdentChar(text[nameStart - 1]))
+        --nameStart;
+    if (nameStart == nameEnd)
+        return QString();
+    const QString name = text.mid(nameStart, nameEnd - nameStart);
+    if (name[0].isDigit())
+        return QString();
+    // Control-flow parens are not calls.
+    static const QSet<QString> keywords = { "if", "while", "for", "switch",
+                                            "return", "sizeof", "catch" };
+    if (keywords.contains(name))
+        return QString();
+
+    const TypeMaps maps = buildTypeMaps(_pMethod);
+
+    // The receiver, resolved exactly like definitionAtCursor.
+    BaseClass* pReceiver = nullptr;
+    if (nameStart >= 1 && text[nameStart - 1] == '.')
+        pReceiver = resolveExpressionType(_pMethod, text, nameStart - 1, maps);
+    else if (nameStart >= 2 && text[nameStart - 2] == '-' &&
+             text[nameStart - 1] == '>')
+        pReceiver = resolveExpressionType(_pMethod, text, nameStart - 2, maps);
+    else if (nameStart >= 2 && text[nameStart - 2] == ':' &&
+             text[nameStart - 1] == ':')
+    {
+        int s = nameStart - 2;
+        const int b = s;
+        while (s > 0 && isIdentChar(text[s - 1]))
+            --s;
+        pReceiver = maps.classes.value(text.mid(s, b - s));
+    }
+    else
+    {
+        pReceiver = _pMethod->GetBaseClass();
+    }
+
+    QList<Method*> named;
+    findMethodsInClass(pReceiver, name, named);
+    if (named.isEmpty())
+    {
+        // A class name -- `new Row(`, a declaration: its constructors (they
+        // carry the class's name, so the same lookup applies).
+        if (BaseClass* pClass = maps.classes.value(name))
+            findMethodsInClass(pClass, name, named);
+    }
+    if (named.isEmpty())
+        return QString();
+
+    // The overload that still has room for the argument being typed wins;
+    // with none (too many arguments already), keep the first as anchor.
+    Method* pBest = named.first();
+    for (Method* pCandidate : named)
+    {
+        int total = 0;
+        Method::ArgumentIterator iArgument(pCandidate);
+        while (++iArgument)
+            ++total;
+        if (activeArg < total)
+        {
+            pBest = pCandidate;
+            break;
+        }
+    }
+    return parameterHintHtml(pBest, activeArg);
 }
 
 QString ModelCompletionProvider::hoverText(const QString& text, int pos)

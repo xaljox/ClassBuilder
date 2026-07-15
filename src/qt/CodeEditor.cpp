@@ -206,6 +206,10 @@ CodeEditor::CodeEditor(QWidget* parent)
             this, &CodeEditor::updateExtraSelections);
     connect(this, &QPlainTextEdit::selectionChanged,
             this, &CodeEditor::updateExtraSelections);
+    // A visible parameter hint follows the caret: re-resolved on every move
+    // (typing, click, backspace out of the call), never shown by this path.
+    connect(this, &QPlainTextEdit::cursorPositionChanged,
+            this, [this] { updateParameterHint(false); });
     updateExtraSelections();
 }
 
@@ -632,6 +636,15 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
     if (completionKeyPressEvent(event))
         return;
 
+    // Esc dismisses a visible parameter hint (the completion popup, when
+    // open, already took its Esc above).
+    if (event->key() == Qt::Key_Escape && _paramHint && _paramHint->isVisible())
+    {
+        hideParameterHint();
+        event->accept();
+        return;
+    }
+
     switch (event->key())
     {
     case Qt::Key_Return:
@@ -674,6 +687,11 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
         reindentClosingBrace();
 
     maybeTriggerCompletion(event);
+
+    // '(' / ',' opens (or re-anchors) the parameter hint; every other caret
+    // move only updates an already-visible one (the ctor's connection).
+    if (event->text().contains('(') || event->text().contains(','))
+        updateParameterHint(true);
 }
 
 // Cmd+Click (macOS) / Ctrl+Click: go to definition of the clicked
@@ -690,6 +708,50 @@ void CodeEditor::mousePressEvent(QMouseEvent* event)
         return;
     }
     QPlainTextEdit::mousePressEvent(event);
+}
+
+// Parameter hint. A tooltip-styled label floated above the caret's line;
+// the provider resolves the innermost open call from the text up to the
+// caret. allowShow: only '(' / ',' may POP the hint -- plain caret moves
+// merely re-resolve (or hide) a hint that is already up.
+void CodeEditor::updateParameterHint(bool allowShow)
+{
+    if (!_provider)
+        return;
+    if (!allowShow && (!_paramHint || !_paramHint->isVisible()))
+        return;
+
+    const QString hint =
+        _provider->parameterHint(toPlainText().left(textCursor().position()));
+    if (hint.isEmpty())
+    {
+        hideParameterHint();
+        return;
+    }
+
+    if (!_paramHint)
+    {
+        _paramHint = new QLabel(this, Qt::ToolTip | Qt::FramelessWindowHint);
+        _paramHint->setTextFormat(Qt::RichText);
+        // The classic info-yellow, like the app's tooltips (the QToolTip
+        // stylesheet rule does not reach a plain QLabel).
+        _paramHint->setStyleSheet(
+            "QLabel { background-color: #FFFFE1; color: black;"
+            " border: 1px solid #767676; padding: 2px 6px; }");
+    }
+    _paramHint->setText(hint);
+    _paramHint->adjustSize();
+
+    QPoint pos = viewport()->mapToGlobal(cursorRect().topLeft());
+    pos.ry() -= _paramHint->height() + 6;    // above the line, out of the way
+    _paramHint->move(pos);
+    _paramHint->show();
+}
+
+void CodeEditor::hideParameterHint()
+{
+    if (_paramHint)
+        _paramHint->hide();
 }
 
 // Hover documentation: the provider supplies a rich-text tooltip for the
@@ -1301,4 +1363,5 @@ void CodeEditor::focusOutEvent(QFocusEvent* event)
 {
     QPlainTextEdit::focusOutEvent(event);
     updateExtraSelections();
+    hideParameterHint();
 }
