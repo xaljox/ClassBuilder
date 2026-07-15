@@ -18,10 +18,13 @@ Remaining ideas, roughly by value-per-effort:
 1. **Hover documentation from model notes.** Hover over a method/member →
    tooltip with its signature and its `@NOTE` text. The model's
    documentation becomes live API docs. *Small effort, big payoff.*
-2. **Find usages.** For the identifier at the caret, search every method
-   body in the model (`_code`, whole-identifier) and list `Class::method`
-   hits; double-click opens that editor. The model IS the index — no
-   parsing. Fits a dockable results pane.
+2. **Who calls me.** For the method *being edited*, search every method
+   body in the model (`_code`, whole-identifier) and list the
+   `Class::method` callers; double-click opens that editor. The model IS
+   the index — no parsing. Fits a dockable results pane. No
+   caret-identifier variant: callers of a method you *call* are rarely the
+   question, and when they are, F12 onto it makes it the edited method —
+   then ask there.
 3. **Parameter hints.** While typing inside `Name(...)`, show the full
    signature (`GetInterfaceCpp`) as a tooltip — argument names, types,
    defaults.
@@ -61,4 +64,4 @@ Remaining ideas, roughly by value-per-effort:
 
 Recommended next pick: **1 + 3** (hover docs + parameter hints) — both are
 small, reuse the existing resolver, and make the model's knowledge visible
-exactly where you type. Then **2** (find usages) as the next big one.
+exactly where you type. Then **2** (who calls me) as the next big one.
