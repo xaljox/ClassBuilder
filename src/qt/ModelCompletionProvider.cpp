@@ -577,6 +577,24 @@ Method* matchOverload(const QList<Method*>& candidates, const QString& text,
     return nullptr;
 }
 
+// `Matrix matrix(3, 4)` -- a declaration whose constructor call hangs off
+// the VARIABLE name: the class is the identifier token just before it
+// (across whitespace only -- after '*' or '&' the parens would declare a
+// function, not construct).
+BaseClass* declarationClassBefore(const QString& text, int nameStart,
+                                  const TypeMaps& maps)
+{
+    int e = nameStart;
+    while (e > 0 && (text[e - 1] == ' ' || text[e - 1] == '\t'))
+        --e;
+    int s = e;
+    while (s > 0 && isIdentChar(text[s - 1]))
+        --s;
+    if (s == e)
+        return nullptr;
+    return maps.classes.value(text.mid(s, e - s));
+}
+
 // The parameter-hint line: the signature rebuilt from its parts (the flat
 // GetInterfaceCpp string cannot mark the active argument), the active
 // argument bold, default values included, in the editor's code font.
@@ -720,6 +738,11 @@ QString ModelCompletionProvider::parameterHint(const QString& textToCursor)
         // carry the class's name, so the same lookup applies).
         if (BaseClass* pClass = maps.classes.value(name))
             findMethodsInClass(pClass, name, named);
+        // `Matrix matrix(` -- a declaration whose ctor call hangs off the
+        // VARIABLE name: the class is the token before it.
+        else if (BaseClass* pClass =
+                     declarationClassBefore(text, nameStart, maps))
+            findMethodsInClass(pClass, toQ(pClass->GetName()), named);
     }
     if (named.isEmpty())
         return QString();
@@ -767,6 +790,17 @@ bool ModelCompletionProvider::callsMethod(const QString& code,
             continue;
         while (after < len && (code[after] == ' ' || code[after] == '\t'))
             ++after;
+        bool declForm = false;
+        if (after < len && isIdentChar(code[after]))
+        {
+            // `Matrix matrix(` -- a declaration: the ctor call hangs off
+            // the variable name; skip it, the '(' must still follow.
+            while (after < len && isIdentChar(code[after]))
+                ++after;
+            while (after < len && (code[after] == ' ' || code[after] == '\t'))
+                ++after;
+            declForm = true;
+        }
         if (after >= len || code[after] != '(')
             continue;                     // a mention, not a call
         if (inCommentOrString(code.left(hit)))
@@ -776,6 +810,21 @@ bool ModelCompletionProvider::callsMethod(const QString& code,
         {
             maps = buildTypeMaps(_pMethod);
             mapsBuilt = true;
+        }
+
+        if (declForm)
+        {
+            // Only a class name heads a declaration; the call is to one of
+            // its constructors (they carry the class's name).
+            QList<Method*> ctors;
+            if (BaseClass* pClass = maps.classes.value(name))
+                findMethodsInClass(pClass, name, ctors);
+            if (!ctors.contains(pTarget))
+                continue;
+            if (Method* pMatch = matchOverload(ctors, code, after))
+                if (pMatch != pTarget)
+                    continue;
+            return true;
         }
 
         // The receiver of THIS call, resolved exactly like hover / F12 --
@@ -929,6 +978,21 @@ QString ModelCompletionProvider::hoverText(const QString& text, int pos)
             return hoverHtml("class " + toQ(pClass->GetName()),
                              pClass->GetNote());
         }
+
+        // `Matrix matrix(3, 4)` -- hovering the VARIABLE of a declaration:
+        // show the constructor call it makes.
+        if (BaseClass* pClass = declarationClassBefore(text, start, maps))
+        {
+            QList<Method*> constructors;
+            findMethodsInClass(pClass, toQ(pClass->GetName()), constructors);
+            if (!constructors.isEmpty())
+            {
+                if (Method* pMatch = matchOverload(constructors, text, end))
+                    return hoverHtml(methodSignature(pMatch),
+                                     pMatch->GetNote());
+                return hoverHtml(joinedSignatures(constructors), CbString());
+            }
+        }
     }
     return QString();
 }
@@ -974,6 +1038,15 @@ Gti* ModelCompletionProvider::definitionAtCursor(const QString& text, int pos)
     if (BaseClass* pClass = maps.classes.value(name))
     {
         if (Method* pCtor = findMethodInClass(pClass, name))
+            return pCtor;
+        return pClass;
+    }
+
+    // `Matrix matrix(` -- the VARIABLE of a declaration: its constructor
+    // (or the class when it has none).
+    if (BaseClass* pClass = declarationClassBefore(text, start, maps))
+    {
+        if (Method* pCtor = findMethodInClass(pClass, toQ(pClass->GetName())))
             return pCtor;
         return pClass;
     }
