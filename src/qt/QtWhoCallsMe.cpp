@@ -49,6 +49,18 @@ protected:
         QListWidget::focusOutEvent(event);
         close();
     }
+
+    // The popup grabs the mouse, so an outside click lands HERE instead of
+    // dismissing anything -- route it to close (the QMenu approach).
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (!rect().contains(event->pos()))
+        {
+            close();
+            return;
+        }
+        QListWidget::mousePressEvent(event);
+    }
 };
 
 // Whole-identifier occurrence of `name` followed by '(' -- a CALL. A bare
@@ -126,7 +138,7 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
     // style pads list items touch-friendly tall (a stylesheet padding
     // override proved to change nothing there).
     const QFontMetrics metrics(list->font());
-    const int rowHeight = metrics.height() + 8;
+    const int rowHeight = metrics.height() + 2;   // as tight as it reads
 
     if (callers.isEmpty())
     {
