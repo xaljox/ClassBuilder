@@ -46,6 +46,14 @@ public:
     // when the caret is not inside a resolvable call.
     QString parameterHint(const QString& textToCursor) override;
 
+    // Who-calls-me support: does `code` -- a body of THIS provider's method
+    // -- contain a call of `pTarget`? A textual hit (whole identifier
+    // followed by '(') is verified by resolving the call's receiver in this
+    // method's context: a receiver whose class does not carry pTarget (nor
+    // a base declaration it overrides -- dynamic dispatch) is rejected; an
+    // unresolvable receiver keeps the hit.
+    bool callsMethod(const QString& code, Method* pTarget);
+
     // The model object named by the identifier at `pos` in `text` (the FULL
     // editor text) -- a Method, with the receiver resolved from what
     // precedes it (`var->Name` / `expr().Name` / `Class::Name`, else the

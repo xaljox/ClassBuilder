@@ -742,6 +742,105 @@ QString ModelCompletionProvider::parameterHint(const QString& textToCursor)
     return parameterHintHtml(pBest, activeArg);
 }
 
+bool ModelCompletionProvider::callsMethod(const QString& code,
+                                          Method* pTarget)
+{
+    const QString name = toQ(pTarget->GetName());
+    if (name.isEmpty())
+        return false;
+
+    TypeMaps maps;             // built lazily -- most bodies have no hit at all
+    bool mapsBuilt = false;
+
+    const int len = code.length();
+    int from = 0;
+    while (true)
+    {
+        const int hit = code.indexOf(name, from);
+        if (hit < 0)
+            return false;
+        from = hit + 1;
+        if (hit > 0 && isIdentChar(code[hit - 1]))
+            continue;
+        int after = hit + name.length();
+        if (after < len && isIdentChar(code[after]))
+            continue;
+        while (after < len && (code[after] == ' ' || code[after] == '\t'))
+            ++after;
+        if (after >= len || code[after] != '(')
+            continue;                     // a mention, not a call
+        if (inCommentOrString(code.left(hit)))
+            continue;
+
+        if (!mapsBuilt)
+        {
+            maps = buildTypeMaps(_pMethod);
+            mapsBuilt = true;
+        }
+
+        // The receiver of THIS call, resolved exactly like hover / F12 --
+        // in the caller's own context (this provider's method).
+        bool qualified = true;
+        BaseClass* pReceiver = nullptr;
+        if (hit >= 1 && code[hit - 1] == '.')
+            pReceiver = resolveExpressionType(_pMethod, code, hit - 1, maps);
+        else if (hit >= 2 && code[hit - 2] == '-' && code[hit - 1] == '>')
+            pReceiver = resolveExpressionType(_pMethod, code, hit - 2, maps);
+        else if (hit >= 2 && code[hit - 2] == ':' && code[hit - 1] == ':')
+        {
+            int s = hit - 2;
+            const int b = s;
+            while (s > 0 && isIdentChar(code[s - 1]))
+                --s;
+            pReceiver = maps.classes.value(code.mid(s, b - s));
+        }
+        else
+        {
+            qualified = false;
+            pReceiver = _pMethod->GetBaseClass();
+        }
+
+        QList<Method*> named;
+        findMethodsInClass(pReceiver, name, named);
+        if (named.isEmpty() && !qualified)
+        {
+            // `new Class(...)` / a declaration: the class's constructors
+            // carry the class's name.
+            if (BaseClass* pClass = maps.classes.value(name))
+                findMethodsInClass(pClass, name, named);
+        }
+
+        if (named.isEmpty())
+        {
+            if (!qualified || pReceiver)
+                continue;      // receiver known, method not on it: not ours
+            return true;       // receiver unresolvable -- keep the hit
+        }
+
+        if (named.contains(pTarget))
+        {
+            // Same object -- narrow overloads by the call's argument count
+            // when that is parseable.
+            if (Method* pMatch = matchOverload(named, code, after))
+                if (pMatch != pTarget)
+                    continue;
+            return true;
+        }
+
+        // A call through a BASE class pointer dispatches dynamically: when
+        // the target's class derives from the receiver-side method's class,
+        // this call can land on the target's override -- keep it. (The
+        // reverse -- Inherit::OnDelete resolved while Method::OnDelete is
+        // edited -- stays rejected: Method does not derive from Inherit.)
+        ExternClass* pTargetClass =
+            dynamic_cast<ExternClass*>(pTarget->GetBaseClass());
+        for (Method* pNamed : named)
+            if (pTargetClass &&
+                pTargetClass->IsBaseClass(pNamed->GetBaseClass()))
+                return true;
+    }
+}
+
 QString ModelCompletionProvider::hoverText(const QString& text, int pos)
 {
     const int len = text.length();

@@ -2,6 +2,7 @@
 
 #include "QtWhoCallsMe.h"
 #include "CodeEditor.h"
+#include "ModelCompletionProvider.h"  // callsMethod (receiver-verified hits)
 #include "QtApp.h"           // Qt_SelectInModelTree
 #include "QtModelText.h"     // toQ
 #include "QtModelIcons.h"    // Qt_ModelIcon
@@ -24,8 +25,6 @@ struct Caller
     QString display;
     Method* pMethod = nullptr;
 };
-
-bool isIdentChar(QChar c) { return c.isLetterOrNumber() || c == '_'; }
 
 // The popup list itself: QAbstractItemView ignores Esc instead of closing
 // the popup window (there is no parent to bubble to), and an outside click
@@ -71,39 +70,16 @@ protected:
     }
 };
 
-// Whole-identifier occurrence of `name` followed by '(' -- a CALL. A bare
-// mention (a relation macro's class-name argument, a declaration, a
-// comment) has no '(' behind it and is not a caller (JV).
-bool callsName(const QString& code, const QString& name)
-{
-    const int len = code.length();
-    int from = 0;
-    while (true)
-    {
-        const int hit = code.indexOf(name, from);
-        if (hit < 0)
-            return false;
-        from = hit + 1;
-        if (hit > 0 && isIdentChar(code[hit - 1]))
-            continue;
-        int after = hit + name.length();
-        if (after < len && isIdentChar(code[after]))
-            continue;
-        while (after < len && (code[after] == ' ' || code[after] == '\t'))
-            ++after;
-        if (after < len && code[after] == '(')
-            return true;
-    }
-}
-
 // Every method whose stored body (constructors: init list included) CALLS
-// `name`, in model (tree) order. A method that calls itself lists itself --
-// that is a true caller.
+// pEdited, in model (tree) order. A textual hit is only the shortlist:
+// ModelCompletionProvider::callsMethod then resolves each call's receiver
+// in the candidate's own context and keeps the hit only when it really is
+// (or can dynamically dispatch to) the edited method. A method that calls
+// itself lists itself -- that is a true caller.
 QList<Caller> findCallers(Method* pEdited)
 {
     QList<Caller> out;
-    const QString name = toQ(pEdited->GetName());
-    if (name.isEmpty())
+    if (toQ(pEdited->GetName()).isEmpty())
         return out;
 
     DataModelDoc::GtiIterator iGti(pEdited->GetDataModelDoc());
@@ -115,7 +91,8 @@ QList<Caller> findCallers(Method* pEdited)
         QString code = toQ(pMethod->GetCode());
         if (Constructor* pConstructor = dynamic_cast<Constructor*>(pMethod))
             code += '\n' + toQ(pConstructor->GetInit());
-        if (!callsName(code, name))
+        ModelCompletionProvider context(pMethod);  // the CALLER's context
+        if (!context.callsMethod(code, pEdited))
             continue;
 
         Caller caller;
