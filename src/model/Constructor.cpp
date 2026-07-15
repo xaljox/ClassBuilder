@@ -479,29 +479,22 @@ void Constructor::NotifyRemoveMember(Member* pMember)
 
 int Constructor::OnDelete(bool checkOnly)
 {//@CODE_969
-    if (GetOpenDialog())
-    {
-        if (!checkOnly)
-        {
-            CbString str;
-            str.Format("Can not delete, an editor is open on constructor '%s::%s'", 
-                GetBaseClass()->GetName().c_str(), GetItemText().c_str());
-            CbMessageBox(str, CBMB_ICONEXCLAMATION);
-        }
-        
-        return 0;
-    }
-    else if (!checkOnly)
+    if (!checkOnly)
     {
         CbString str;
-        str.Format("Are you sure you want to delete constructor '%s::%s'", 
+        str.Format("Are you sure you want to delete constructor '%s::%s'",
             GetBaseClass()->GetName().c_str(), GetItemText().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
+            // Close an open code editor first (no save prompt -- the body
+            // dies with the constructor; undo restores the saved state).
+            // See Method::OnDelete for the full rationale.
+            if (GetOpenDialog())
+                Qt_CloseCodeEditor(GetOpenDialog());
             Delete();
         }
     }
-    
+
     return 1;
 }//@CODE_969
 

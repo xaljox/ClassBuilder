@@ -1322,29 +1322,26 @@ int Method::OnCopy(bool checkOnly)
 
 int Method::OnDelete(bool checkOnly)
 {//@CODE_823
-    if (GetOpenDialog())
-    {
-        if (!checkOnly)
-        {
-            CbString str;
-            str.Format("Can not delete, an editor is open on method '%s::%s'", 
-				GetBaseClass()->GetName().c_str(), GetItemText().c_str());
-            CbMessageBox(str, CBMB_ICONEXCLAMATION);
-        }
-        
-        return 0;
-    }
-    else if (!checkOnly)
+    if (!checkOnly)
     {
         CbString str;
-        str.Format("Are you sure you want to delete method '%s::%s'", 
+        str.Format("Are you sure you want to delete method '%s::%s'",
             GetBaseClass()->GetName().c_str(), GetItemText().c_str());
         if (CbMessageBox(str, CBMB_ICONQUESTION|CBMB_YESNO) == CBMB_IDYES)
         {
+            // Close an open code editor first (no save prompt -- the body
+            // dies with the method; undo restores the saved state). The
+            // deleted method is PARKED on the undo stack until its final
+            // destruction, so the editor must not stay open on it. The old
+            // behaviour -- refusing the delete while an editor was open --
+            // also disabled the Delete action via the checkOnly path, which
+            // read as "nothing happens" (JV 2026-07-15).
+            if (GetOpenDialog())
+                Qt_CloseCodeEditor(GetOpenDialog());
             Delete();
         }
     }
-    
+
     return 1;
 }//@CODE_823
 
@@ -1509,15 +1506,14 @@ void Method::OnUndoRedoRemoved()
     {
         GetMemberAndMethodGroup()->Update();
     }
-            
-	/* Also possible if a direct remove is desired, now it is postphoned 
-	   until the actual destruction, which occurs if it is removed from the
-	   undo/redo stack.
+
+    // The method just left the data structure (undo of its add, or redo of
+    // its delete) and is parked on the undo stack until final destruction --
+    // close an open code editor NOW, not then (it would edit a parked
+    // object). This is the "direct remove" the old commented-out
+    // DestroyWindow block always intended.
     if (GetOpenDialog())
-    {
-        GetOpenDialog()->DestroyWindow();
-    }
-	*/
+        Qt_CloseCodeEditor(GetOpenDialog());
 }//@CODE_22937
 
 
