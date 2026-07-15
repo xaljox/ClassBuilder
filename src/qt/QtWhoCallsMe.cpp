@@ -60,6 +60,15 @@ protected:
             close();
             return;
         }
+        // macOS: QAbstractItemView only emits itemActivated on double-click
+        // (on Windows Return activates too) -- route Return/Enter (keypad
+        // sends Key_Enter) to the same path by hand.
+        if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+        {
+            if (QListWidgetItem* item = currentItem())
+                emit itemActivated(item);
+            return;
+        }
         QListWidget::keyPressEvent(event);
     }
 
