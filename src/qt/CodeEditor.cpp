@@ -1286,11 +1286,39 @@ void CodeEditor::renderHeader()
 void CodeEditor::setHeaderText(const QString& text)
 {
     if (!_header)
+    {
         _header = makeBand(this);
+        // Ctrl+Click on the signature strip = "who calls me": the strip IS
+        // the definition, and go-to-definition ON the definition means
+        // show-the-references (the identifier Ctrl+Click's mirror image).
+        _header->installEventFilter(this);
+    }
     _headerPlain = text;
     renderHeader();
     _header->setVisible(!text.isEmpty());
     updateBandMargins();
+}
+
+bool CodeEditor::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == _header && event->type() == QEvent::MouseButtonPress)
+    {
+        auto* mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton &&
+            (mouseEvent->modifiers() & Qt::ControlModifier))
+        {
+            emit whoCallsMeRequested();
+            return true;
+        }
+    }
+    return QPlainTextEdit::eventFilter(obj, event);
+}
+
+QRect CodeEditor::headerGlobalRect() const
+{
+    if (!_header || !_header->isVisible())
+        return QRect();
+    return QRect(_header->mapToGlobal(QPoint(0, 0)), _header->size());
 }
 
 void CodeEditor::setHeaderHighlightWord(const QString& word)

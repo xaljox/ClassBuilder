@@ -17,6 +17,7 @@
 #include "ModelCompletionProvider.h"
 #include "QtIteratorWizardDialog.h"
 #include "QtTypeVariableDialog.h"
+#include "QtWhoCallsMe.h"
 #include "QtVariableMethodDialog.h"
 #include "QtSimilarLinesDialog.h"
 
@@ -201,6 +202,10 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
         // Cmd+Click (mac) / Ctrl+Click on an identifier: go to definition.
         connect(ed, &CodeEditor::definitionRequested,
                 this, [this] { goToDefinition(); });
+
+        // Cmd+Click (mac) / Ctrl+Click on a marker strip: who calls me.
+        connect(ed, &CodeEditor::whoCallsMeRequested,
+                this, [this, ed] { Qt_ShowWhoCallsMe(ed, _pConstructor); });
     }
 
     // Model-aware completion -- one provider serves both editors (the
@@ -476,6 +481,8 @@ void ConstructorCodeDialog::buildMenu()
     // as a silent alias (set below), Cmd+Click is the mouse path.
     QAction* aGotoDef = edit->addAction("&Go to definition",
         QKeySequence(Qt::Key_F12), this, [this] { goToDefinition(); });
+    edit->addAction("Who calls &me", QKeySequence("Shift+F12"),
+        this, [this] { Qt_ShowWhoCallsMe(_ui->editInit, _pConstructor); });
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs

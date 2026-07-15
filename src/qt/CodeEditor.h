@@ -142,6 +142,10 @@ public:
     // the dialog count occurrences across editors + signature.
     QString headerPlainText() const { return _headerPlain; }
 
+    // Global rect of the header band (signature strip); null when there is
+    // no visible header. Anchors the who-calls-me popup right under it.
+    QRect headerGlobalRect() const;
+
     // Whole-identifier occurrence count of `word` in `text` (same boundary
     // rule as the editor's own occurrence highlight).
     static int identifierCount(const QString& text, const QString& word);
@@ -169,6 +173,11 @@ signals:
     // The caret has already been moved to the clicked spot.
     void definitionRequested();
 
+    // Cmd+Click (macOS) / Ctrl+Click on the header band (signature strip):
+    // "who calls me" -- the strip is the definition, so the definition
+    // gesture on it means show-the-references.
+    void whoCallsMeRequested();
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -177,6 +186,7 @@ protected:
     void focusInEvent(QFocusEvent* event) override;
     void focusOutEvent(QFocusEvent* event) override;
     bool viewportEvent(QEvent* event) override;   // hover tooltips
+    bool eventFilter(QObject* obj, QEvent* event) override;  // header band
 
 private:
     // Predicted indent (in spaces) for a fresh line at the cursor -- the MFC

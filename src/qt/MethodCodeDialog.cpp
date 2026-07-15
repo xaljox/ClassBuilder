@@ -15,6 +15,7 @@
 #include "CodeEditor.h"
 #include "ModelCompletionProvider.h"
 #include "QtIteratorWizardDialog.h"
+#include "QtWhoCallsMe.h"
 #include "QtTypeVariableDialog.h"
 #include "QtVariableMethodDialog.h"
 #include "QtSimilarLinesDialog.h"
@@ -182,6 +183,10 @@ MethodCodeDialog::MethodCodeDialog(Method* pMethod, QWidget* parent)
     // Cmd+Click (mac) / Ctrl+Click on an identifier: go to definition.
     connect(_ui->editCode, &CodeEditor::definitionRequested,
             this, [this] { goToDefinition(); });
+
+    // Cmd+Click (mac) / Ctrl+Click on the signature strip: who calls me.
+    connect(_ui->editCode, &CodeEditor::whoCallsMeRequested,
+            this, [this] { Qt_ShowWhoCallsMe(_ui->editCode, _pMethod); });
 
     // Spread the caret identifier's occurrence highlight to the signature
     // strip too -- it previews what an F2 rename would touch.
@@ -450,6 +455,8 @@ void MethodCodeDialog::buildMenu()
     // as a silent alias (set below), Cmd+Click is the mouse path.
     QAction* aGotoDef = edit->addAction("&Go to definition",
         QKeySequence(Qt::Key_F12), this, [this] { goToDefinition(); });
+    edit->addAction("Who calls &me", QKeySequence("Shift+F12"),
+        this, [this] { Qt_ShowWhoCallsMe(_ui->editCode, _pMethod); });
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs

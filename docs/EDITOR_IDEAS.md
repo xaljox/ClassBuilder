@@ -1,24 +1,31 @@
 # Code-editor ideas — possible additions
 
-Status 2026-07-15. The model-aware editor now has: C++ syntax colours with
-model types + relation iterator types, italic arguments (also in the
-signature strip), current-line / brace-match / occurrence highlighting (the
-yellow F2-preview across body, init pane and signature), F2 rename
-(arguments and members through the model with fan-out, anything else as a
-scoped text replace), model-aware completion (member access with chain
-resolution, iterator deref, `Class::`, iterator **loop** skeletons, argument
-types shown / names inserted, overloads distinct), reformat, move-lines,
-model↔editor sync (renames + undo/redo), go-to-definition (⌘-click / F12,
-tree-select always), and editors as dockable/tabbed shell windows.
+Status 2026-07-15 (evening). The model-aware editor now has: C++ syntax
+colours with model types + relation iterator types, italic arguments (also
+in the signature strip), current-line / brace-match / occurrence
+highlighting (the yellow F2-preview across body, init pane and signature),
+F2 rename (arguments and members through the model with fan-out, anything
+else as a scoped text replace), model-aware completion (member access with
+chain resolution, iterator deref -- scope-qualified outside the owning
+class, `Class::`, iterator **loop** skeletons, `new` completes
+constructors, argument types shown / names inserted, overloads distinct,
+ctors/dtors/deleted filtered), hover documentation (signature + @NOTE,
+overload picked by call arity), parameter hints (active argument bold,
+defaults shown), who-calls-me (Ctrl/⌘-click the signature strip /
+Shift+F12 / Edit menu), reformat, move-lines, model↔editor sync (renames +
+undo/redo), go-to-definition (⌘-click / F12, tree-select always), editors
+as dockable/tabbed **plain-QWidget** shell windows (`_pOpenWidget` seam),
+and a remembered editor dock spot (the next editor re-opens docked where
+the last group lived).
 
 Remaining ideas, roughly by value-per-effort:
 
 ## Model-powered (the unfair advantage — nothing generic can do these)
 
-1. **Hover documentation from model notes.** Hover over a method/member →
-   tooltip with its signature and its `@NOTE` text. The model's
-   documentation becomes live API docs. *Small effort, big payoff.*
-2. **Who calls me.** For the method *being edited*, search every method
+1. ✅ DONE 2026-07-15. **Hover documentation from model notes.** Hover over
+   a method/member → tooltip with its signature and its `@NOTE` text. The
+   model's documentation becomes live API docs. *Small effort, big payoff.*
+2. ✅ DONE 2026-07-15. **Who calls me.** For the method *being edited*, search every method
    body in the model (`_code`, whole-identifier) and list the
    `Class::method` callers. The model IS the index — no parsing. Trigger:
    **Ctrl/⌘-click on the signature strip** — the strip is the definition,
@@ -31,9 +38,9 @@ Remaining ideas, roughly by value-per-effort:
    closes. No caret-identifier variant: callers of a method you *call*
    are rarely the question, and when they are, F12 onto it makes it the
    edited method — then ask there.
-3. **Parameter hints.** While typing inside `Name(...)`, show the full
-   signature (`GetInterfaceCpp`) as a tooltip — argument names, types,
-   defaults.
+3. ✅ DONE 2026-07-15. **Parameter hints.** While typing inside `Name(...)`,
+   show the full signature as a tooltip — argument names, types, defaults;
+   active argument bold, overload picked by the argument index.
 4. **Completion popup enrichment.** Model icons per kind
    (method/member/argument/type/iterator — `Qt_ModelIcon` exists) and a
    return-type column.
@@ -54,12 +61,14 @@ Remaining ideas, roughly by value-per-effort:
 
 ## Architecture / shell
 
-11. **QDialog → QWidget conversion** for the editor windows (they are dock
-    content now, not dialogs). Needs a model click: `Method::_pOpenDialog`
-    type `QDialog*` → `QWidget*` (+ accessor types). Removes the residual
-    dialog semantics (result codes, Esc/default-button behaviour).
-12. **Remember the editor dock area.** When the last editor tab closes, the
-    split disappears; remember its place/size so the next editor opens
+11. ✅ DONE 2026-07-15. **QDialog → QWidget conversion** for the editor
+    windows (they are dock content now, not dialogs). Model click done:
+    `Method::_pOpenWidget` is `QWidget*` (JV, with rename fan-out + version
+    compact); dialogs are plain QWidgets, Esc via keyPressEvent, the
+    Replace-dialog peek runs one modally via a local event loop.
+12. ✅ DONE 2026-07-15. **Remember the editor dock area.** When the last
+    editor tab closes, the split disappears; the place/size is remembered
+    (refreshed on layout changes + at dock close) and the next editor opens
     docked there instead of floating.
 
 ## Parked / far-fetched
@@ -68,6 +77,6 @@ Remaining ideas, roughly by value-per-effort:
     button shelling out to cmake with output in a dock is a real (if
     scope-creepy) possibility.
 
-Recommended next pick: **1 + 3** (hover docs + parameter hints) — both are
-small, reuse the existing resolver, and make the model's knowledge visible
-exactly where you type. Then **2** (who calls me) as the next big one.
+Recommended next pick: **5** (init-list completion — the init pane is the
+one spot completion still ignores) or the quality-of-life trio **8–10**;
+**4** (popup icons + return types) is pure polish on what's there.
