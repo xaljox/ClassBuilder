@@ -645,6 +645,16 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
         return;
     }
 
+    // Ctrl+Shift+Space summons the parameter hint on demand -- clicking
+    // into an existing call deliberately shows nothing by itself.
+    if (event->key() == Qt::Key_Space &&
+        event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier))
+    {
+        updateParameterHint(true);
+        event->accept();
+        return;
+    }
+
     switch (event->key())
     {
     case Qt::Key_Return:
@@ -1006,6 +1016,10 @@ void CodeEditor::insertCompletion(const QModelIndex& index)
                          caretBack);
     }
     setTextCursor(cur);
+
+    // A completed method arrives with its "(args)" already inserted -- no
+    // '(' is ever TYPED on this path, so pop the parameter hint here.
+    updateParameterHint(true);
 }
 
 // The identifier the caret is in or touching. An explicit selection is used

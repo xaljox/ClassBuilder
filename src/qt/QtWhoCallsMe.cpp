@@ -21,9 +21,36 @@ struct Caller
     Method* pMethod = nullptr;
 };
 
-// Every method whose stored body (constructors: init list included) contains
-// a whole-identifier occurrence of `name`, in model (tree) order. A method
-// that calls itself lists itself -- that is a true caller.
+bool isIdentChar(QChar c) { return c.isLetterOrNumber() || c == '_'; }
+
+// Whole-identifier occurrence of `name` followed by '(' -- a CALL. A bare
+// mention (a relation macro's class-name argument, a declaration, a
+// comment) has no '(' behind it and is not a caller (JV).
+bool callsName(const QString& code, const QString& name)
+{
+    const int len = code.length();
+    int from = 0;
+    while (true)
+    {
+        const int hit = code.indexOf(name, from);
+        if (hit < 0)
+            return false;
+        from = hit + 1;
+        if (hit > 0 && isIdentChar(code[hit - 1]))
+            continue;
+        int after = hit + name.length();
+        if (after < len && isIdentChar(code[after]))
+            continue;
+        while (after < len && (code[after] == ' ' || code[after] == '\t'))
+            ++after;
+        if (after < len && code[after] == '(')
+            return true;
+    }
+}
+
+// Every method whose stored body (constructors: init list included) CALLS
+// `name`, in model (tree) order. A method that calls itself lists itself --
+// that is a true caller.
 QList<Caller> findCallers(Method* pEdited)
 {
     QList<Caller> out;
@@ -40,7 +67,7 @@ QList<Caller> findCallers(Method* pEdited)
         QString code = toQ(pMethod->GetCode());
         if (Constructor* pConstructor = dynamic_cast<Constructor*>(pMethod))
             code += '\n' + toQ(pConstructor->GetInit());
-        if (CodeEditor::identifierCount(code, name) == 0)
+        if (!callsName(code, name))
             continue;
 
         Caller caller;
@@ -65,6 +92,10 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
     list->setWindowFlags(Qt::Popup);
     list->setAttribute(Qt::WA_DeleteOnClose, true);
     list->setFont(CodeEditor::codeFont());
+    // Compact rows -- the windows11 style pads list items touch-friendly
+    // tall, which reads as empty space here.
+    list->setStyleSheet(
+        "QListWidget::item { padding: 2px 4px; min-height: 0px; }");
 
     if (callers.isEmpty())
     {

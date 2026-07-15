@@ -1381,19 +1381,13 @@ void QtShellWindow::hostEditorDock(QWidget* dlg, const QString& tabTitle)
     else if (_editorPlaceKnown)
     {
         // No editor open, but one WAS docked before: re-open at that spot
-        // with its size. Deferred -- resizeDocks skips docks that are not
-        // visible yet, and the dock only shows below.
+        // with its size. A single resizeDocks gets redistributed away by
+        // the settle relayouts (the split came back 50/50, not the
+        // remembered 40/60 -- JV 2026-07-15); DockSizeKeeper pins the size
+        // through them, same as the tab-close path.
         dock->setFloating(false);
-        const int gw = _editorPlaceSize.width();
-        const int gh = _editorPlaceSize.height();
-        QPointer<QDockWidget> dp(dock);
-        QMetaObject::invokeMethod(this, [this, dp, gw, gh] {
-            if (dp)
-            {
-                resizeDocks({dp}, {gw}, Qt::Horizontal);
-                resizeDocks({dp}, {gh}, Qt::Vertical);
-            }
-        }, Qt::QueuedConnection);
+        new DockSizeKeeper(this, dock, _editorPlaceSize.width(),
+                           _editorPlaceSize.height());
     }
     else
     {
