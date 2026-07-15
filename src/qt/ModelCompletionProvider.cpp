@@ -827,17 +827,16 @@ bool ModelCompletionProvider::callsMethod(const QString& code,
             return true;
         }
 
-        // A call through a BASE class pointer dispatches dynamically: when
-        // the target's class derives from the receiver-side method's class,
-        // this call can land on the target's override -- keep it. (The
-        // reverse -- Inherit::OnDelete resolved while Method::OnDelete is
-        // edited -- stays rejected: Method does not derive from Inherit.)
+        // Dynamic dispatch: a call through a base-class pointer can land on
+        // the target's override -- but only when the target's class derives
+        // from the STATIC receiver class itself. A sibling that merely
+        // shares an ancestor declaring the name does not qualify: the call
+        // `GetInherit()->OnDelete()` is Inherit's, and an Inherit can never
+        // BE a Method, however many bases they have in common.
         ExternClass* pTargetClass =
             dynamic_cast<ExternClass*>(pTarget->GetBaseClass());
-        for (Method* pNamed : named)
-            if (pTargetClass &&
-                pTargetClass->IsBaseClass(pNamed->GetBaseClass()))
-                return true;
+        if (pReceiver && pTargetClass && pTargetClass->IsBaseClass(pReceiver))
+            return true;
     }
 }
 
