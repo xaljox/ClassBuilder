@@ -364,6 +364,10 @@ void ConstructorCodeDialog::buildMenu()
     edit->addAction("Select &All", QKeySequence::SelectAll,
                     this, [this] { _focusEdit->selectAll(); });
     edit->addSeparator();
+    edit->addAction("Move lines &up", QKeySequence("Alt+Up"),
+                    this, [this] { _focusEdit->moveSelectedLines(true); });
+    edit->addAction("Move lines dow&n", QKeySequence("Alt+Down"),
+                    this, [this] { _focusEdit->moveSelectedLines(false); });
     edit->addAction("Re&format code", QKeySequence("Ctrl+Shift+R"),
                     this, [this] { _focusEdit->reformatCode(); });
     _renameAction = edit->addAction("Re&name identifier...",

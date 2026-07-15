@@ -487,6 +487,73 @@ void CodeEditor::reformatCode()
     cur.endEditBlock();
 }
 
+// Move the selected lines (or the current line) as a block: the adjacent
+// line on the other side is swapped over the block, and the selection is
+// restored onto the moved lines.
+void CodeEditor::moveSelectedLines(bool up)
+{
+    if (isReadOnly())
+        return;
+
+    QTextCursor cur = textCursor();
+    const int selStart = cur.selectionStart();
+    const int selEnd   = cur.selectionEnd();
+
+    QTextBlock first = document()->findBlock(selStart);
+    QTextBlock last  = document()->findBlock(selEnd);
+    // A selection ending at column 0 doesn't include that line.
+    if (selEnd > selStart && selEnd == last.position())
+        last = last.previous();
+
+    const QTextBlock swap = up ? first.previous() : last.next();
+    if (!swap.isValid())
+        return;
+
+    // Selection offsets inside the moved block, to restore afterwards.
+    const int startOfs = selStart - first.position();
+    const int endOfs   = selEnd   - first.position();
+
+    QString movedText;
+    for (QTextBlock b = first; ; b = b.next())
+    {
+        if (b != first)
+            movedText += '\n';
+        movedText += b.text();
+        if (b == last)
+            break;
+    }
+    const QString swapText = swap.text();
+
+    // Capture all positions BEFORE editing -- the blocks invalidate.
+    const int swapPos    = swap.position();
+    const int firstPos   = first.position();
+    const int lastEnd    = last.position() + last.text().length();
+    const int swapEnd    = swapPos + swapText.length();
+    const int newBase    = up ? swapPos
+                              : firstPos + swapText.length() + 1;
+
+    QTextCursor region(document());
+    region.beginEditBlock();
+    if (up)
+    {
+        region.setPosition(swapPos);
+        region.setPosition(lastEnd, QTextCursor::KeepAnchor);
+        region.insertText(movedText + '\n' + swapText);
+    }
+    else
+    {
+        region.setPosition(firstPos);
+        region.setPosition(swapEnd, QTextCursor::KeepAnchor);
+        region.insertText(swapText + '\n' + movedText);
+    }
+    region.endEditBlock();
+
+    QTextCursor sel(document());
+    sel.setPosition(newBase + startOfs);
+    sel.setPosition(newBase + endOfs, QTextCursor::KeepAnchor);
+    setTextCursor(sel);
+}
+
 // The editor text with comments and braced blocks stripped -- the MFC
 // CCodeEdit::GetStrippedCode.
 QString CodeEditor::strippedCode() const
@@ -738,6 +805,8 @@ void CodeEditor::triggerCompletion()
         QStandardItem* row = new QStandardItem(item.display);
         row->setData(item.insert, Qt::UserRole);
         row->setData(item.caretBack, Qt::UserRole + 1);
+        row->setData(item.selectBack, Qt::UserRole + 2);
+        row->setData(item.selectLen, Qt::UserRole + 3);
         _completionModel->appendRow(row);
     }
 
@@ -766,6 +835,8 @@ void CodeEditor::insertCompletion(const QModelIndex& index)
 {
     const QString insert  = index.data(Qt::UserRole).toString();
     const int caretBack   = index.data(Qt::UserRole + 1).toInt();
+    const int selectBack  = index.data(Qt::UserRole + 2).toInt();
+    const int selectLen   = index.data(Qt::UserRole + 3).toInt();
     const int prefixLen   = typedPrefixLength();
 
     QTextCursor cur = textCursor();
@@ -780,7 +851,18 @@ void CodeEditor::insertCompletion(const QModelIndex& index)
     }
 
     cur.insertText(insert);
-    cur.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, caretBack);
+    if (selectLen > 0)
+    {
+        // Select the first inserted argument name, ready to be overtyped.
+        const int end = cur.position();
+        cur.setPosition(end - selectBack - selectLen);
+        cur.setPosition(end - selectBack, QTextCursor::KeepAnchor);
+    }
+    else
+    {
+        cur.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor,
+                         caretBack);
+    }
     setTextCursor(cur);
 }
 

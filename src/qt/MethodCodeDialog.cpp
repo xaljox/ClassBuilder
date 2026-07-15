@@ -327,6 +327,12 @@ void MethodCodeDialog::buildMenu()
     edit->addAction("Select &All", QKeySequence::SelectAll,
                     ed, &QPlainTextEdit::selectAll);
     edit->addSeparator();
+    QAction* aMoveUp = edit->addAction("Move lines &up",
+        QKeySequence("Alt+Up"), ed, [ed] { ed->moveSelectedLines(true); });
+    aMoveUp->setEnabled(!fixed);
+    QAction* aMoveDown = edit->addAction("Move lines dow&n",
+        QKeySequence("Alt+Down"), ed, [ed] { ed->moveSelectedLines(false); });
+    aMoveDown->setEnabled(!fixed);
     QAction* aReformat = edit->addAction("Re&format code",
         QKeySequence("Ctrl+Shift+R"), ed, &CodeEditor::reformatCode);
     aReformat->setEnabled(!fixed);

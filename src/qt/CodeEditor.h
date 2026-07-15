@@ -30,14 +30,19 @@ class QLabel;
 class QStandardItemModel;
 class CppHighlighter;
 
-// One completion candidate. `display` is shown in the popup, `insert`
-// replaces the typed prefix, and `caretBack` steps the caret back after
-// insertion (1 = between the parens of "Name()").
+// One completion candidate. `display` is shown in the popup (a method shows
+// its argument TYPES), `insert` replaces the typed prefix (a method inserts
+// its argument NAMES), and `caretBack` steps the caret back after insertion.
+// When selectLen > 0, the range ending `selectBack` chars before the end of
+// the insert is selected instead -- the first argument name, ready to be
+// overtyped.
 struct CodeCompletionItem
 {
     QString display;
     QString insert;
-    int     caretBack = 0;
+    int     caretBack  = 0;
+    int     selectBack = 0;
+    int     selectLen  = 0;
 };
 
 // Supplies completion candidates for the caret context; the model-aware
@@ -131,6 +136,10 @@ public:
     // with the same predictor that drives typing, as one undo step. Lines
     // inside block comments are left untouched.
     void reformatCode();
+
+    // Move the selected lines (or the current line) one line up / down as a
+    // block, keeping the selection on them. One undo step.
+    void moveSelectedLines(bool up);
 
 signals:
     // The identifier at the caret changed (focused editor only; empty when

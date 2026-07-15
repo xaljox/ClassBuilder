@@ -157,12 +157,41 @@ QHash<QString, QString> declaredVariables(const QString& text,
     return vars;
 }
 
+// A method candidate: the popup shows the argument TYPES (what goes in),
+// the insertion carries the argument NAMES (placeholders to overtype); the
+// first name comes pre-selected via selectBack/selectLen.
 CodeCompletionItem methodItem(Method* pMethod)
 {
+    const QString name = toQ(pMethod->GetName());
+    QString displayArgs, insertArgs, firstName;
+
+    Method::ArgumentIterator iArgument(pMethod);
+    while (++iArgument)
+    {
+        if (!displayArgs.isEmpty())
+        {
+            displayArgs += ", ";
+            insertArgs  += ", ";
+        }
+        const QString typeName = toQ(iArgument->GetTypeName()).trimmed();
+        QString argName = toQ(iArgument->GetName());
+        if (argName.isEmpty())
+            argName = typeName;        // unnamed argument: type as placeholder
+        displayArgs += typeName;
+        insertArgs  += argName;
+        if (firstName.isEmpty())
+            firstName = argName;
+    }
+
     CodeCompletionItem item;
-    item.display   = toQ(pMethod->GetName()) + "()";
-    item.insert    = item.display;
-    item.caretBack = pMethod->GetArgumentCount() > 0 ? 1 : 0;
+    item.display = name + "(" + displayArgs + ")";
+    item.insert  = name + "(" + insertArgs + ")";
+    if (!firstName.isEmpty())
+    {
+        item.selectLen  = firstName.length();
+        item.selectBack = item.insert.length()
+                          - (name.length() + 1) - firstName.length();
+    }
     return item;
 }
 
@@ -187,11 +216,14 @@ void collectMethods(BaseClass* pClass, bool publicOnly, QSet<QString>& seen,
         pClass, publicOnly ? &Method::IsPublicMethod : 0);
     while (++iMethod)
     {
-        const QString name = toQ(iMethod->GetName());
-        if (name.isEmpty() || seen.contains(name))
-            continue;                  // overloads collapse to one entry
-        seen.insert(name);
-        out.append(methodItem(iMethod.Get()));
+        if (iMethod->GetName().IsEmpty())
+            continue;
+        const CodeCompletionItem item = methodItem(iMethod.Get());
+        if (seen.contains(item.display))
+            continue;   // keyed by full signature: overloads stay distinct,
+                        // overrides of the same signature collapse
+        seen.insert(item.display);
+        out.append(item);
     }
 
     if (Class* pAsClass = dynamic_cast<Class*>(pClass))
@@ -404,11 +436,13 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
             BaseClass::MethodIterator iMethod(pClass);
             while (++iMethod)
             {
-                const QString name = toQ(iMethod->GetName());
-                if (iMethod->GetStatic() && !seen.contains(name))
+                if (!iMethod->GetStatic())
+                    continue;
+                const CodeCompletionItem item = methodItem(iMethod.Get());
+                if (!seen.contains(item.display))
                 {
-                    seen.insert(name);
-                    items.append(methodItem(iMethod.Get()));
+                    seen.insert(item.display);
+                    items.append(item);
                 }
             }
             if (Class* pAsClass = dynamic_cast<Class*>(pClass))
