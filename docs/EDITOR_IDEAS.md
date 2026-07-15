@@ -20,11 +20,17 @@ Remaining ideas, roughly by value-per-effort:
    documentation becomes live API docs. *Small effort, big payoff.*
 2. **Who calls me.** For the method *being edited*, search every method
    body in the model (`_code`, whole-identifier) and list the
-   `Class::method` callers; double-click opens that editor. The model IS
-   the index — no parsing. Fits a dockable results pane. No
-   caret-identifier variant: callers of a method you *call* are rarely the
-   question, and when they are, F12 onto it makes it the edited method —
-   then ask there.
+   `Class::method` callers. The model IS the index — no parsing. Trigger:
+   **Ctrl/⌘-click on the signature strip** — the strip is the definition,
+   and "go-to-definition while on the definition = show references" is the
+   established IDE meaning of that gesture; it mirrors the identifier
+   Ctrl-click, and the mouse sits high so the list drops open below.
+   Keyboard: **Shift+F12** (F12 = definition, Shift+F12 = references, VS
+   convention), plus a context-menu entry. The list: a popup anchored
+   under the strip, Enter/double-click opens that caller's editor, Esc
+   closes. No caret-identifier variant: callers of a method you *call*
+   are rarely the question, and when they are, F12 onto it makes it the
+   edited method — then ask there.
 3. **Parameter hints.** While typing inside `Name(...)`, show the full
    signature (`GetInterfaceCpp`) as a tooltip — argument names, types,
    defaults.
