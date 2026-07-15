@@ -742,6 +742,7 @@ void CodeEditor::updateParameterHint(bool allowShow)
     if (!_paramHint)
     {
         _paramHint = new QLabel(this, Qt::ToolTip | Qt::FramelessWindowHint);
+        _paramHint->setAttribute(Qt::WA_ShowWithoutActivating, true);
         _paramHint->setTextFormat(Qt::RichText);
         // The classic info-yellow, like the app's tooltips (the QToolTip
         // stylesheet rule does not reach a plain QLabel).
@@ -857,8 +858,11 @@ bool CodeEditor::completionKeyPressEvent(QKeyEvent* event)
     // macOS (ControlModifier = the Cmd key there), so accept MetaModifier
     // too: that is the PHYSICAL Ctrl key on the Mac -- the same binding VS
     // Code and Xcode use, and Cmd+Space itself is taken by Spotlight.
+    // WITH Shift it is not ours: Ctrl+Shift+Space is the parameter hint
+    // (handled in keyPressEvent after this returns false).
     if (event->key() == Qt::Key_Space &&
-        (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier)))
+        (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier)) &&
+        !(event->modifiers() & Qt::ShiftModifier))
     {
         triggerCompletion();
         return true;

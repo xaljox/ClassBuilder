@@ -6,6 +6,8 @@
 #include "QtModelText.h"     // toQ
 #include "QtModelIcons.h"    // Qt_ModelIcon
 
+#include <QFocusEvent>
+#include <QKeyEvent>
 #include <QListWidget>
 #include <QVariant>
 
@@ -22,6 +24,32 @@ struct Caller
 };
 
 bool isIdentChar(QChar c) { return c.isLetterOrNumber() || c == '_'; }
+
+// The popup list itself: QAbstractItemView ignores Esc instead of closing
+// the popup window (there is no parent to bubble to), and clicking
+// elsewhere must dismiss it too -- Esc and focus loss both close.
+class CallerListPopup : public QListWidget
+{
+public:
+    explicit CallerListPopup(QWidget* parent) : QListWidget(parent) {}
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override
+    {
+        if (event->key() == Qt::Key_Escape)
+        {
+            close();
+            return;
+        }
+        QListWidget::keyPressEvent(event);
+    }
+
+    void focusOutEvent(QFocusEvent* event) override
+    {
+        QListWidget::focusOutEvent(event);
+        close();
+    }
+};
 
 // Whole-identifier occurrence of `name` followed by '(' -- a CALL. A bare
 // mention (a relation macro's class-name argument, a declaration, a
@@ -88,20 +116,25 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
 
     const QList<Caller> callers = findCallers(pMethod);
 
-    auto* list = new QListWidget(editor);
+    auto* list = new CallerListPopup(editor);
     list->setWindowFlags(Qt::Popup);
     list->setAttribute(Qt::WA_DeleteOnClose, true);
     list->setFont(CodeEditor::codeFont());
-    // Compact rows -- the windows11 style pads list items touch-friendly
-    // tall, which reads as empty space here.
-    list->setStyleSheet(
-        "QListWidget::item { padding: 2px 4px; min-height: 0px; }");
+    list->setIconSize(QSize(16, 16));
+
+    // Compact rows via an explicit per-item size hint -- the windows11
+    // style pads list items touch-friendly tall (a stylesheet padding
+    // override proved to change nothing there).
+    const QFontMetrics metrics(list->font());
+    const int rowHeight = metrics.height() + 8;
 
     if (callers.isEmpty())
     {
         // A silent no-op reads as "the command is broken" -- say it.
         auto* item = new QListWidgetItem("(no callers found)", list);
         item->setFlags(Qt::NoItemFlags);
+        item->setSizeHint(QSize(metrics.horizontalAdvance(item->text()) + 48,
+                                rowHeight));
     }
     for (const Caller& caller : callers)
     {
@@ -109,6 +142,8 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
         item->setIcon(Qt_ModelIcon(caller.pMethod->GetIcon()));
         item->setData(Qt::UserRole,
                       QVariant::fromValue<void*>(caller.pMethod));
+        item->setSizeHint(QSize(metrics.horizontalAdvance(caller.display) + 48,
+                                rowHeight));
     }
     if (!callers.isEmpty())
         list->setCurrentRow(0);
@@ -131,13 +166,10 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
     // Size to content (capped), anchored under the signature strip -- the
     // mouse is already up there on the Ctrl+Click path, and the list drops
     // open over the code without covering the strip itself.
-    const QFontMetrics metrics(list->font());
     int width = 0;
     for (int i = 0; i < list->count(); ++i)
-        width = qMax(width,
-                     metrics.horizontalAdvance(list->item(i)->text()));
-    width += 56;                       // icon + frame + breathing room
-    const int rowHeight = qMax(list->sizeHintForRow(0), 1);
+        width = qMax(width, list->item(i)->sizeHint().width());
+    width += 8;                        // frame
     const int rows = qMin(list->count(), 14);
     list->resize(qMax(width, 240), rows * rowHeight + 8);
 
