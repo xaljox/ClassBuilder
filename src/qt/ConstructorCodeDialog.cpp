@@ -157,6 +157,12 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
         connect(ed, &QWidget::customContextMenuRequested,
                 this, [this, ed](const QPoint& p)
                 { showEditorContextMenu(ed, p); });
+
+        // Spread the caret identifier's occurrence highlight across BOTH
+        // editors and the signature strip -- together the set of places an
+        // F2 rename would touch.
+        connect(ed, &CodeEditor::identifierUnderCursorChanged,
+                this, [this](const QString& w) { updateHighlightWord(w); });
     }
 
     _ui->editCode->setFocus();
@@ -191,6 +197,25 @@ void ConstructorCodeDialog::modelReplacedInCode(const CbString& oldStr,
     // whole model change has settled.
     QTimer::singleShot(0, this, [this]
         { if (_pConstructor) refreshSignature(); });
+}
+
+// The identifier at the caret (in whichever editor is focused) changed:
+// highlight its occurrences in the init editor, the body editor AND the
+// signature strip -- together the set of places an F2 rename would touch.
+// A single hit total is noise, not information -- highlight nothing then.
+void ConstructorCodeDialog::updateHighlightWord(const QString& word)
+{
+    QString w = word;
+    if (!w.isEmpty() &&
+        CodeEditor::identifierCount(
+            _ui->editInit->headerPlainText() + '\n' +
+            _ui->editInit->toPlainText() + '\n' +
+            _ui->editCode->toPlainText(), w) < 2)
+        w.clear();
+
+    _ui->editInit->setHighlightWord(w);
+    _ui->editCode->setHighlightWord(w);
+    _ui->editInit->setHeaderHighlightWord(w);
 }
 
 // Rename the identifier at the caret everywhere. An argument goes through

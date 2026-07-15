@@ -56,6 +56,7 @@ private:
     void refreshSignature();       // re-read the marker strip from the model
     void showEditorContextMenu(CodeEditor* ed, const QPoint& pos);
     void renameIdentifierAtCursor();
+    void updateHighlightWord(const QString& word);
     void save();
     void regenerateCode();
     void regenerateInit();

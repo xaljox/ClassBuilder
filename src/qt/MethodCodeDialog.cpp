@@ -141,6 +141,11 @@ MethodCodeDialog::MethodCodeDialog(Method* pMethod, QWidget* parent)
     connect(_ui->editCode, &QWidget::customContextMenuRequested,
             this, [this](const QPoint& p) { showEditorContextMenu(p); });
 
+    // Spread the caret identifier's occurrence highlight to the signature
+    // strip too -- it previews what an F2 rename would touch.
+    connect(_ui->editCode, &CodeEditor::identifierUnderCursorChanged,
+            this, [this](const QString& w) { updateHighlightWord(w); });
+
     _ui->editCode->setFocus();
 
     // Register as this method's open editor (modeless: one per method; reopen
@@ -171,6 +176,23 @@ void MethodCodeDialog::modelReplacedInCode(const CbString& oldStr,
     // renaming the argument itself) -- re-read the signature strip once the
     // whole model change has settled.
     QTimer::singleShot(0, this, [this] { if (_pMethod) refreshSignature(); });
+}
+
+// The identifier at the caret changed: highlight its occurrences in the
+// editor AND the signature strip -- together the set of places an F2 rename
+// would touch. A single hit total (just the word under the caret itself) is
+// noise, not information -- highlight nothing then.
+void MethodCodeDialog::updateHighlightWord(const QString& word)
+{
+    QString w = word;
+    if (!w.isEmpty() &&
+        CodeEditor::identifierCount(
+            _ui->editCode->headerPlainText() + '\n' +
+            _ui->editCode->toPlainText(), w) < 2)
+        w.clear();
+
+    _ui->editCode->setHighlightWord(w);
+    _ui->editCode->setHeaderHighlightWord(w);
 }
 
 // Rename the identifier at the caret everywhere. An argument goes through

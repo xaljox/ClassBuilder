@@ -202,6 +202,24 @@ void CodeEditor::setModelTypes(const QSet<QString>& names)
 void CodeEditor::setArgumentNames(const QSet<QString>& names)
 {
     _highlighter->setArgumentNames(names);
+    if (names != _argumentNames)
+    {
+        _argumentNames = names;
+        renderHeader();          // arguments are italic in the band too
+    }
+}
+
+void CodeEditor::setHighlightWord(const QString& word)
+{
+    if (word == _highlightWord)
+        return;
+    _highlightWord = word;
+    updateExtraSelections();
+}
+
+int CodeEditor::identifierCount(const QString& text, const QString& word)
+{
+    return word.isEmpty() ? 0 : identifierOccurrences(text, word).size();
 }
 
 void CodeEditor::setIndentSize(int spaces)
@@ -541,18 +559,14 @@ int CodeEditor::matchingBrace(int pos, bool forward) const
 void CodeEditor::updateExtraSelections()
 {
     QList<QTextEdit::ExtraSelection> selections;
-
-    // Only the focused editor shows caret decorations -- dialogs with two
-    // editors (ConstructorCodeDialog: init list + body) would otherwise tint
-    // a "current" line in both at once.
-    if (!hasFocus())
-    {
-        setExtraSelections(selections);
-        return;
-    }
+    const QString text = toPlainText();
+    const bool focused = hasFocus();
 
     // Current-line tint -- a faint blue-grey band the full editor width.
-    if (!isReadOnly())
+    // Caret decorations only in the focused editor: dialogs with two editors
+    // (ConstructorCodeDialog: init list + body) would otherwise tint a
+    // "current" line in both at once.
+    if (focused && !isReadOnly())
     {
         QTextEdit::ExtraSelection line;
         line.format.setBackground(QColor(232, 242, 254));
@@ -562,30 +576,29 @@ void CodeEditor::updateExtraSelections()
         selections.append(line);
     }
 
-    const QString text = toPlainText();
-
-    // All occurrences of the identifier at the caret (or the double-clicked
-    // selection) -- soft yellow. Only when there is more than one: a lone
-    // hit under the caret is noise.
-    const QString word = identifierUnderCursor();
-    if (!word.isEmpty())
+    // All occurrences of the dialog-coordinated highlight word -- soft
+    // yellow, shown regardless of focus: it previews the set of places an
+    // F2 rename would touch, across both constructor editors.
+    if (!_highlightWord.isEmpty())
     {
-        const QList<int> hits = identifierOccurrences(text, word);
-        if (hits.size() >= 2)
+        QTextCharFormat fmt;
+        fmt.setBackground(QColor(255, 237, 153));
+        for (int p : identifierOccurrences(text, _highlightWord))
         {
-            QTextCharFormat fmt;
-            fmt.setBackground(QColor(255, 237, 153));
-            for (int p : hits)
-            {
-                QTextEdit::ExtraSelection sel;
-                sel.format = fmt;
-                sel.cursor = textCursor();
-                sel.cursor.setPosition(p);
-                sel.cursor.setPosition(p + word.length(),
-                                       QTextCursor::KeepAnchor);
-                selections.append(sel);
-            }
+            QTextEdit::ExtraSelection sel;
+            sel.format = fmt;
+            sel.cursor = textCursor();
+            sel.cursor.setPosition(p);
+            sel.cursor.setPosition(p + _highlightWord.length(),
+                                   QTextCursor::KeepAnchor);
+            selections.append(sel);
         }
+    }
+
+    if (!focused)
+    {
+        setExtraSelections(selections);
+        return;
     }
 
     // Brace match -- look for an opening/closing brace touching the caret,
@@ -627,6 +640,17 @@ void CodeEditor::updateExtraSelections()
     }
 
     setExtraSelections(selections);
+
+    // Report the identifier at the caret so the owning dialog can spread the
+    // occurrence highlight across its editors and the signature strip. Only
+    // the focused editor reports (we return early above when unfocused), so
+    // clicking between editors hands the highlight over cleanly.
+    const QString word = identifierUnderCursor();
+    if (word != _lastEmittedWord)
+    {
+        _lastEmittedWord = word;
+        emit identifierUnderCursorChanged(word);
+    }
 }
 
 // --- Marker bands ----------------------------------------------------------
@@ -644,7 +668,53 @@ QLabel* makeBand(QWidget* parent)
     l->setStyleSheet("background:#e8e8e8; padding:1px 3px;");
     l->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     l->setTextInteractionFlags(Qt::NoTextInteraction);
+    // Bands render through bandHtml (escaped + optional highlight spans) --
+    // never let auto-detection treat template args like CbArray<int> as tags.
+    l->setTextFormat(Qt::RichText);
     return l;
+}
+
+// The band text as HTML: escaped, newlines as <br/>. Identifier tokens equal
+// to `word` get the same soft yellow as the editors' occurrence highlight;
+// tokens in `italics` (the argument names) render italic like they do in the
+// code. Both can combine on the same token.
+QString bandHtml(const QString& plain, const QString& word,
+                 const QSet<QString>& italics)
+{
+    QString html;
+    const int len = plain.length();
+    int from = 0;
+    int i = 0;
+    while (i < len)
+    {
+        if (!isIdentChar(plain[i]))
+        {
+            ++i;
+            continue;
+        }
+        int j = i;
+        while (j < len && isIdentChar(plain[j]))
+            ++j;
+        const QString token = plain.mid(i, j - i);
+        const bool highlight = (token == word);
+        const bool italic    = italics.contains(token);
+        if (highlight || italic)
+        {
+            html += plain.mid(from, i - from).toHtmlEscaped();
+            QString style;
+            if (highlight)
+                style += "background-color:#ffed99;";
+            if (italic)
+                style += "font-style:italic;";
+            html += "<span style=\"" + style + "\">" +
+                    token.toHtmlEscaped() + "</span>";
+            from = j;
+        }
+        i = j;
+    }
+    html += plain.mid(from).toHtmlEscaped();
+    html.replace("\n", "<br/>");
+    return html;
 }
 
 // A band counts as active (reserves space, gets laid out) when it exists and
@@ -654,20 +724,35 @@ QLabel* makeBand(QWidget* parent)
 bool bandActive(QLabel* b) { return b && !b->text().isEmpty(); }
 }
 
+void CodeEditor::renderHeader()
+{
+    if (_header)
+        _header->setText(bandHtml(_headerPlain, _headerWord, _argumentNames));
+}
+
 void CodeEditor::setHeaderText(const QString& text)
 {
     if (!_header)
         _header = makeBand(this);
-    _header->setText(text);
+    _headerPlain = text;
+    renderHeader();
     _header->setVisible(!text.isEmpty());
     updateBandMargins();
+}
+
+void CodeEditor::setHeaderHighlightWord(const QString& word)
+{
+    if (word == _headerWord)
+        return;
+    _headerWord = word;
+    renderHeader();
 }
 
 void CodeEditor::setFooterText(const QString& text)
 {
     if (!_footer)
         _footer = makeBand(this);
-    _footer->setText(text);
+    _footer->setText(bandHtml(text, QString(), QSet<QString>()));
     _footer->setVisible(!text.isEmpty());
     updateBandMargins();
 }

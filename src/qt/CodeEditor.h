@@ -77,6 +77,29 @@ public:
     void setModelTypes(const QSet<QString>& names);
     void setArgumentNames(const QSet<QString>& names);
 
+    // The occurrence-highlight word, set by the owning dialog -- shown in
+    // this editor regardless of focus, so the highlight can span both
+    // constructor editors and preview what an F2 rename would touch.
+    void setHighlightWord(const QString& word);
+
+    // Highlight the word's occurrences inside the header band too (the
+    // signature strip -- an argument renamed via F2 changes there as well).
+    void setHeaderHighlightWord(const QString& word);
+
+    // The header band's text as plain text (setHeaderText's input) -- lets
+    // the dialog count occurrences across editors + signature.
+    QString headerPlainText() const { return _headerPlain; }
+
+    // Whole-identifier occurrence count of `word` in `text` (same boundary
+    // rule as the editor's own occurrence highlight).
+    static int identifierCount(const QString& text, const QString& word);
+
+signals:
+    // The identifier at the caret changed (focused editor only; empty when
+    // the caret leaves identifiers). The owning dialog spreads the highlight
+    // across its editors and signature strip from this.
+    void identifierUnderCursorChanged(const QString& word);
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
@@ -107,8 +130,16 @@ private:
 
     int _indentSize = 4;
 
+    void renderHeader();             // re-render the header band's HTML
+
     QLabel* _header = nullptr;       // top marker band, null until first set
     QLabel* _footer = nullptr;       // bottom marker band
+    QString _headerPlain;            // header band text before HTML rendering
+    QString _headerWord;             // highlight word inside the header band
+    QSet<QString> _argumentNames;    // italic in the header band, like the code
+
+    QString _highlightWord;          // dialog-set occurrence-highlight word
+    QString _lastEmittedWord;        // identifierUnderCursorChanged de-dup
 
     CppHighlighter* _highlighter = nullptr;
 };
