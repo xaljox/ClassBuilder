@@ -1213,6 +1213,26 @@ The constructor body opens in a two-pane variant of the editor: a small **initia
 
 ![](images/Constructor_Code_Editor.png)
 
+## Go to definition
+
+**Cmd+Click** (macOS; `Ctrl+Click` on Windows/Linux) on an identifier — or `F12` / `Edit ▸ Go to definition` with the caret on one — jumps to its definition:
+
+- The resolved target is **always selected in the model tree** (ancestors expand, the tree's tab raises).
+- A **method** also opens its code editor (an already-open editor is re-activated). The receiver is resolved like completion: `var->Name`, a call chain `GetRow(i)->Name`, `Class::Name`, or the own class.
+- A **relation macro method** has no body — the tree selection *is* its definition.
+- A **class name** (`new Row(this, r)`, a declaration) goes to the class's constructor, or the class itself when it has none.
+- Nothing resolvable at the caret → a small tooltip says so.
+
+A right-click moves the caret to the click point first (unless clicking inside a selection), so *Go to definition* and *Rename* from the context menu act on what was clicked.
+
+## Editors as dock windows
+
+The code editors open as **dockable windows** on the application shell: floating at first, and dockable/tabbable by dragging — exactly like the model trees and diagram views. The tab caption is the short `Class::method` form. Typical layout: the tree docked left, all editors as one tab group beside it — once one editor is docked, **every further editor tabs onto that group automatically**. Tear a tab off to float it.
+
+- Closing a dock (its ✕) runs the editor's normal save prompt; *Cancel* keeps it open. Closing the editor from its own `File ▸ Close` takes the dock with it. `Esc` closes a *floating* editor but never a docked tab.
+- Each editor carries its own menu strip inside the dock; keyboard shortcuts act on the editor that has focus — which always follows the active tab.
+- Deleting a method/constructor in the tree closes its open editor (the body dies with the method; the confirm prompt guards the delete itself).
+
 ## The open editor and the model
 
 The code editors are modeless — the model can change while they are open. They stay in sync:
