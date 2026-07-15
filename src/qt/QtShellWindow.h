@@ -53,11 +53,19 @@ public:
     // (Qt_HostEditorDock entry point). Closing the dock routes through the
     // dialog's own closeEvent, so the save prompt runs and Cancel vetoes.
     // A new editor tabs onto an existing docked editor group (the "all
-    // editors tabbed next to the tree" workflow); with none, it opens
-    // floating like a diagram window. `tabTitle` is the SHORT caption for
-    // the tab / dock title bar ("Matrix::GetRow" -- the dialog keeps its
-    // long descriptive windowTitle for the no-shell fallback).
+    // editors tabbed next to the tree" workflow); with none, it re-opens
+    // docked at the REMEMBERED editor spot (see below), floating only when
+    // no editor has been docked yet this session. `tabTitle` is the SHORT
+    // caption for the tab / dock title bar ("Matrix::GetRow" -- the dialog
+    // keeps its long descriptive windowTitle for the no-shell fallback).
     void hostEditorDock(QWidget* dlg, const QString& tabTitle);
+
+    // Record the current placement (area + size) of the docked editor group.
+    // Called on editor-dock layout changes and just before an editor dock
+    // closes: when the LAST editor tab closes and its split disappears, the
+    // memory survives, so the next editor opens docked there again instead
+    // of floating (public: EditorDockWidget::closeEvent calls it).
+    void rememberEditorDockPlacement();
 
     // Select + reveal a model object in the tree of the document that owns
     // it, raising that tree's dock/tab (Qt_SelectInModelTree entry point --
@@ -152,6 +160,11 @@ private:
     DocEntry*        _active = nullptr;          // menus/toolbar/pipe target
     QList<QPointer<QDockWidget>> _diagramDocks;  // open CD/SD diagram docks
     QList<QPointer<QDockWidget>> _editorDocks;   // open method/ctor code editors
+
+    // Last known docked-editor placement (rememberEditorDockPlacement).
+    bool               _editorPlaceKnown = false;
+    Qt::DockWidgetArea _editorPlaceArea  = Qt::RightDockWidgetArea;
+    QSize              _editorPlaceSize;
     QLabel*          _statusPane[4] = {};        // width / height / X / Y
 
     QAction* _actSave         = nullptr;

@@ -180,6 +180,12 @@ protected:
             return;
         }
 
+        // Definitely closing: record the editor-group placement while the
+        // geometry is still live -- if this is the LAST editor, the memory
+        // is what lets the next one re-open docked at this spot.
+        if (auto* shell = qobject_cast<QtShellWindow*>(window()))
+            shell->rememberEditorDockPlacement();
+
         // Closing one member of a docked tab group makes QMainWindow
         // redistribute the area -- the split bar jumps. Re-apply this
         // dock's size to a surviving group member AFTER the dock is
@@ -1243,9 +1249,41 @@ bool QtShellWindow::selectGtiInTree(DataModelDoc* pDoc, Gti* pGti)
     return false;
 }
 
+// Record where the docked editor group currently lives. Only overwrites the
+// memory when a docked, in-shell editor dock exists -- so when the last one
+// closes, the previous placement survives for the next editor to reuse. The
+// on-screen size lives on the VISIBLE group member; background tabs report
+// stale geometry, so a visible dock wins over the first docked one found.
+void QtShellWindow::rememberEditorDockPlacement()
+{
+    _editorDocks.removeAll(QPointer<QDockWidget>(nullptr));
+    QDockWidget* best = nullptr;
+    for (const QPointer<QDockWidget>& p : _editorDocks)
+    {
+        if (!p || p->isFloating() || p->window() != this)
+            continue;
+        if (dockWidgetArea(p.data()) == Qt::NoDockWidgetArea)
+            continue;
+        if (!best)
+            best = p.data();
+        if (p->isVisible())
+        {
+            best = p.data();
+            break;
+        }
+    }
+    if (!best)
+        return;
+    _editorPlaceKnown = true;
+    _editorPlaceArea  = dockWidgetArea(best);
+    _editorPlaceSize  = best->size();
+}
+
 // Host a code-editor widget in an EditorDockWidget. New editors tab onto an
-// existing docked editor group; the first one opens floating (drag it next
-// to the tree once, and every next editor tabs there).
+// existing docked editor group; with none, the editor re-opens docked at the
+// remembered editor spot (rememberEditorDockPlacement), floating only when
+// nothing was ever docked -- drag it next to the tree once, and every editor
+// after that lands there.
 void QtShellWindow::hostEditorDock(QWidget* dlg, const QString& tabTitle)
 {
     const QSize wantSize = dlg->sizeHint().expandedTo(QSize(720, 540));
@@ -1257,11 +1295,13 @@ void QtShellWindow::hostEditorDock(QWidget* dlg, const QString& tabTitle)
     _editorDocks.removeAll(QPointer<QDockWidget>(nullptr));
     _editorDocks.append(dock);
 
-    // Same chrome pipeline as the diagram docks (see hostDiagramDock).
+    // Same chrome pipeline as the diagram docks (see hostDiagramDock) -- plus
+    // the editor-placement memory, refreshed on every editor layout change.
     auto onLayout = [this] {
         QMetaObject::invokeMethod(this, [this] {
             refreshDockChrome();
             wireDockTabBars();
+            rememberEditorDockPlacement();
             QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         }, Qt::QueuedConnection);
     };
@@ -1301,7 +1341,8 @@ void QtShellWindow::hostEditorDock(QWidget* dlg, const QString& tabTitle)
             p->window() == this && !p->isHidden())
             anchor = p.data();
 
-    addDockWidget(Qt::RightDockWidgetArea, dock);
+    addDockWidget(_editorPlaceKnown ? _editorPlaceArea
+                                    : Qt::RightDockWidgetArea, dock);
     if (anchor)
     {
         tabifyDockWidget(anchor, dock);
@@ -1328,6 +1369,23 @@ void QtShellWindow::hostEditorDock(QWidget* dlg, const QString& tabTitle)
         // the new dock only shows/raises below.
         const int gw = sizeSource->width();
         const int gh = sizeSource->height();
+        QPointer<QDockWidget> dp(dock);
+        QMetaObject::invokeMethod(this, [this, dp, gw, gh] {
+            if (dp)
+            {
+                resizeDocks({dp}, {gw}, Qt::Horizontal);
+                resizeDocks({dp}, {gh}, Qt::Vertical);
+            }
+        }, Qt::QueuedConnection);
+    }
+    else if (_editorPlaceKnown)
+    {
+        // No editor open, but one WAS docked before: re-open at that spot
+        // with its size. Deferred -- resizeDocks skips docks that are not
+        // visible yet, and the dock only shows below.
+        dock->setFloating(false);
+        const int gw = _editorPlaceSize.width();
+        const int gh = _editorPlaceSize.height();
         QPointer<QDockWidget> dp(dock);
         QMetaObject::invokeMethod(this, [this, dp, gw, gh] {
             if (dp)
