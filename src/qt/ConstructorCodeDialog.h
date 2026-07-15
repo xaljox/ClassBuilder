@@ -67,8 +67,14 @@ private:
     CodeEditor*  _focusEdit = nullptr;   // last code editor that held focus
     bool         _splitterSized = false; // size the split only on the first show
 
+    class ModelCompletionProvider* _completion = nullptr;  // owned, serves both editors
+
     // Menus reused to build the editors' right-click context menu.
     QMenu* _editMenu   = nullptr;
     QMenu* _addMenu    = nullptr;
     QMenu* _insertMenu = nullptr;
+
+    // Enabled only while an identifier is highlight-active (the yellow
+    // occurrences ARE what F2 renames); the label names it.
+    class QAction* _renameAction = nullptr;
 };

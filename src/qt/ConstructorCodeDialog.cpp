@@ -14,6 +14,7 @@
 #include "QtMenuStyle.h"              // Qt_CompactMenuStyleSheet
 #include "QtModelText.h"              // toQ / toCb
 #include "CodeEditor.h"
+#include "ModelCompletionProvider.h"
 #include "QtIteratorWizardDialog.h"
 #include "QtTypeVariableDialog.h"
 #include "QtVariableMethodDialog.h"
@@ -165,6 +166,12 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
                 this, [this](const QString& w) { updateHighlightWord(w); });
     }
 
+    // Model-aware completion -- one provider serves both editors (the
+    // context comes from the text each editor hands in per request).
+    _completion = new ModelCompletionProvider(_pConstructor);
+    _ui->editInit->setCompletionProvider(_completion);
+    _ui->editCode->setCompletionProvider(_completion);
+
     _ui->editCode->setFocus();
 
     // Register as this constructor's open editor (modeless: one per ctor; reopen
@@ -177,12 +184,15 @@ ConstructorCodeDialog::~ConstructorCodeDialog()
 {
     if (_pConstructor)
         _pConstructor->SetOpenDialog(nullptr);
+    delete _completion;
     delete _ui;
 }
 
 void ConstructorCodeDialog::detachForDelete()
 {
     _pConstructor = nullptr;   // the ctor is being freed -- never touch it again
+    _ui->editInit->setCompletionProvider(nullptr);  // provider held the ctor
+    _ui->editCode->setCompletionProvider(nullptr);
     close();                   // WA_DeleteOnClose deletes us; closeEvent sees null
 }
 
@@ -216,6 +226,15 @@ void ConstructorCodeDialog::updateHighlightWord(const QString& word)
     _ui->editInit->setHighlightWord(w);
     _ui->editCode->setHighlightWord(w);
     _ui->editInit->setHeaderHighlightWord(w);
+
+    // F2 renames exactly the yellow set -- gate and label the action by it.
+    if (_renameAction)
+    {
+        _renameAction->setEnabled(!w.isEmpty());
+        _renameAction->setText(w.isEmpty()
+            ? QString("Re&name identifier...")
+            : QString("Re&name '%1'...").arg(w));
+    }
 }
 
 // Rename the identifier at the caret everywhere. An argument goes through
@@ -316,8 +335,12 @@ void ConstructorCodeDialog::buildMenu()
     edit->addAction("Select &All", QKeySequence::SelectAll,
                     this, [this] { _focusEdit->selectAll(); });
     edit->addSeparator();
-    edit->addAction("Re&name identifier...", QKeySequence(Qt::Key_F2),
-                    this, [this] { renameIdentifierAtCursor(); });
+    edit->addAction("Re&format code", QKeySequence("Ctrl+Shift+R"),
+                    this, [this] { _focusEdit->reformatCode(); });
+    _renameAction = edit->addAction("Re&name identifier...",
+        QKeySequence(Qt::Key_F2),
+        this, [this] { renameIdentifierAtCursor(); });
+    _renameAction->setEnabled(false);   // enabled with the yellow highlight
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs
@@ -417,7 +440,7 @@ void ConstructorCodeDialog::showEditorContextMenu(CodeEditor* ed,
     _focusEdit = ed;          // route the Edit/Insert commands to this editor
     QMenu menu;
     // Compact rows; colours derived from the live theme palette.
-    menu.setStyleSheet(Qt_CompactMenuStyleSheet());
+    Qt_ApplyCompactMenuStyle(&menu);
     menu.addActions(_editMenu->actions());
     menu.addSeparator();
     menu.addActions(_addMenu->actions());

@@ -57,8 +57,14 @@ private:
     Method* _pMethod;
     bool    _closing = false;
 
+    class ModelCompletionProvider* _completion = nullptr;  // owned
+
     // Menus reused to build the editor's right-click context menu.
     QMenu* _editMenu   = nullptr;
     QMenu* _addMenu    = nullptr;
     QMenu* _insertMenu = nullptr;
+
+    // Enabled only while an identifier is highlight-active (the yellow
+    // occurrences ARE what F2 renames); the label names it.
+    class QAction* _renameAction = nullptr;
 };

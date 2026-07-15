@@ -7,13 +7,17 @@
 #include "CodeEditor.h"
 #include "CppHighlighter.h"
 
+#include <QAbstractItemView>
 #include <QColor>
+#include <QCompleter>
 #include <QFont>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QList>
 #include <QPalette>
 #include <QResizeEvent>
+#include <QScrollBar>
+#include <QStandardItemModel>
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QTextEdit>
@@ -236,7 +240,14 @@ void CodeEditor::setIndentSize(int spaces)
 // line inserted at the cursor.
 int CodeEditor::computeIndent() const
 {
-    QString code = toPlainText().left(textCursor().position());
+    return computeIndentAt(textCursor().position());
+}
+
+// The predictor for a line starting at `pos`: walk the text before it line
+// by line, tracking the reference indent (the MFC GetNextLineIndent walk).
+int CodeEditor::computeIndentAt(int pos) const
+{
+    QString code = toPlainText().left(pos);
 
     // Inside an unterminated block comment -- just keep the current line's
     // own indent (the MFC GetLineIndent fallback).
@@ -293,29 +304,75 @@ void CodeEditor::insertNewlineWithIndent()
     setTextCursor(cur);
 }
 
-// Typing '}' on an otherwise-blank line: re-indent that line so the brace
-// lines up one step out from the block body.
-void CodeEditor::reindentClosingBrace()
+namespace {
+// The line's leading whitespace (chars before `col`, which is the position
+// of a just-typed brace) -- true when the brace is the line's first content.
+bool onlyWhitespaceBefore(const QString& block, int col)
 {
-    QTextCursor cur = textCursor();
-    const QString block = cur.block().text();
-    const int col = cur.positionInBlock();
-
-    // Only when everything before the cursor on this line is whitespace.
     for (int i = 0; i < col; ++i)
         if (!block[i].isSpace())
-            return;
+            return false;
+    return true;
+}
+}
 
-    int target = computeIndent() - _indentSize;
-    if (target < 0)
-        target = 0;
-
+// Replace the leading whitespace (the `count` chars at the line start) with
+// `target` spaces.
+static void reindentLineTo(QTextCursor cur, int count, int target)
+{
     cur.beginEditBlock();
     QTextCursor line = cur;
     line.movePosition(QTextCursor::StartOfBlock);
-    line.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, col);
+    line.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, count);
     line.insertText(QString(target, ' '));
     cur.endEditBlock();
+}
+
+// Typing '}' on an otherwise-blank line: re-indent that line so the brace
+// lines up one step out from the block body (the caret sits just AFTER the
+// typed brace -- inspect the chars before it, not before the caret).
+void CodeEditor::reindentClosingBrace()
+{
+    const QTextCursor cur = textCursor();
+    const QString block = cur.block().text();
+    const int col = cur.positionInBlock();
+    if (col < 1 || block[col - 1] != '}' ||
+        !onlyWhitespaceBefore(block, col - 1))
+        return;
+
+    int target = computeIndentAt(cur.block().position()) - _indentSize;
+    if (target < 0)
+        target = 0;
+    reindentLineTo(cur, col - 1, target);
+}
+
+// Typing '{' on an otherwise-blank line: Allman style puts the brace at the
+// indent of the construct it belongs to -- the previous non-blank line
+// (if/for/function header, or the statement before a free block). Only a
+// nested block directly under another '{' keeps the predicted (+step) indent.
+void CodeEditor::reindentOpenBrace()
+{
+    const QTextCursor cur = textCursor();
+    const QString block = cur.block().text();
+    const int col = cur.positionInBlock();
+    if (col < 1 || block[col - 1] != '{' ||
+        !onlyWhitespaceBefore(block, col - 1))
+        return;
+
+    QTextBlock prev = cur.block().previous();
+    while (prev.isValid() && prev.text().trimmed().isEmpty())
+        prev = prev.previous();
+
+    int target;
+    QString prevText = prev.isValid() ? prev.text() : QString();
+    while (!prevText.isEmpty() && prevText.back().isSpace())
+        prevText.chop(1);
+    if (!prev.isValid() || prevText.endsWith('{'))
+        target = computeIndentAt(cur.block().position());
+    else
+        target = leadingIndent(prevText);
+
+    reindentLineTo(cur, col - 1, target);
 }
 
 // Tab / Shift+Tab over a multi-line selection: indent or unindent each line.
@@ -349,6 +406,82 @@ void CodeEditor::indentSelection(bool unindent)
         else
         {
             line.insertText(QString(_indentSize, ' '));
+        }
+    }
+    cur.endEditBlock();
+}
+
+// Re-indent the selected lines (or all lines) with the same rules that
+// drive typing: the predictor for ordinary lines, one step out for a line
+// starting with '}', the previous non-blank line's indent for one starting
+// with '{' (unless nested directly under another '{'), column 0 for
+// preprocessor lines. Lines inside block comments are left untouched.
+// Top-down, one line at a time, so each line's correction feeds the
+// prediction of the next. One undo step.
+void CodeEditor::reformatCode()
+{
+    QTextCursor cur = textCursor();
+    int firstBlock = 0;
+    int lastBlock  = document()->blockCount() - 1;
+    if (cur.hasSelection())
+    {
+        QTextCursor it(document());
+        it.setPosition(cur.selectionStart());
+        firstBlock = it.blockNumber();
+        it.setPosition(cur.selectionEnd());
+        lastBlock = it.blockNumber();
+    }
+
+    cur.beginEditBlock();
+    for (int b = firstBlock; b <= lastBlock; ++b)
+    {
+        const QTextBlock block = document()->findBlockByNumber(b);
+        const QString text = block.text();
+
+        int lead = 0;
+        while (lead < text.length() && text[lead].isSpace())
+            ++lead;
+        const QString content = text.mid(lead);
+
+        // Inside an unterminated block comment: leave the line alone.
+        QString head = toPlainText().left(block.position());
+        if (stripComment(head))
+            continue;
+
+        int target;
+        if (content.isEmpty())
+            target = 0;                          // blank line: no trailing indent
+        else if (content[0] == '#')
+            target = 0;                          // preprocessor at column 0
+        else if (content[0] == '}')
+        {
+            target = computeIndentAt(block.position()) - _indentSize;
+            if (target < 0)
+                target = 0;
+        }
+        else if (content[0] == '{')
+        {
+            QTextBlock prev = block.previous();
+            while (prev.isValid() && prev.text().trimmed().isEmpty())
+                prev = prev.previous();
+            QString prevText = prev.isValid() ? prev.text() : QString();
+            while (!prevText.isEmpty() && prevText.back().isSpace())
+                prevText.chop(1);
+            target = (!prev.isValid() || prevText.endsWith('{'))
+                ? computeIndentAt(block.position())
+                : leadingIndent(prevText);
+        }
+        else
+        {
+            target = computeIndentAt(block.position());
+        }
+
+        if (leadingIndent(text) != target || text.left(lead).contains('\t'))
+        {
+            QTextCursor line(block);
+            line.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor,
+                              lead);
+            line.insertText(QString(target, ' '));
         }
     }
     cur.endEditBlock();
@@ -415,6 +548,9 @@ void CodeEditor::insertWizardSnippet(const QString& text)
 
 void CodeEditor::keyPressEvent(QKeyEvent* event)
 {
+    if (completionKeyPressEvent(event))
+        return;
+
     switch (event->key())
     {
     case Qt::Key_Return:
@@ -443,16 +579,195 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
         indentSelection(true);
         return;
 
-    case Qt::Key_BraceRight:                 // '}'
-        QPlainTextEdit::keyPressEvent(event);
-        reindentClosingBrace();
-        return;
-
     default:
         break;
     }
 
     QPlainTextEdit::keyPressEvent(event);
+
+    // Brace re-indent by the typed CHARACTER, not the key code -- '{'/'}'
+    // arrive via different keys per layout (Shift+], AltGr, ...).
+    if (event->text() == "{")
+        reindentOpenBrace();
+    else if (event->text() == "}")
+        reindentClosingBrace();
+
+    maybeTriggerCompletion(event);
+}
+
+// --- Completion --------------------------------------------------------------
+//
+// The canonical QCompleter-on-a-text-edit pattern: the completer's popup owns
+// the navigation keys while visible; the editor decides after each ordinary
+// keystroke whether to (re)query the provider and show, refilter or hide the
+// popup. All knowledge of WHAT to offer lives in the provider.
+
+void CodeEditor::setCompletionProvider(CodeCompletionProvider* provider)
+{
+    _provider = provider;
+    if (!_completer && provider)
+    {
+        _completionModel = new QStandardItemModel(this);
+        _completer = new QCompleter(_completionModel, this);
+        _completer->setWidget(this);
+        _completer->setCompletionMode(QCompleter::PopupCompletion);
+        _completer->setCaseSensitivity(Qt::CaseInsensitive);
+        _completer->popup()->setFont(codeFont());
+        connect(_completer,
+                QOverload<const QModelIndex&>::of(&QCompleter::activated),
+                this, &CodeEditor::insertCompletion);
+    }
+}
+
+int CodeEditor::typedPrefixLength() const
+{
+    const QString text = toPlainText();
+    const int pos = textCursor().position();
+    int p = pos;
+    while (p > 0 && isIdentChar(text[p - 1]))
+        --p;
+    return pos - p;
+}
+
+bool CodeEditor::completionKeyPressEvent(QKeyEvent* event)
+{
+    if (!_provider)
+        return false;
+
+    // While the popup is visible those keys belong to it (the completer's
+    // own event filter drives the popup; we just must not act on them).
+    if (_completer->popup()->isVisible())
+    {
+        switch (event->key())
+        {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+        case Qt::Key_Tab:
+        case Qt::Key_Escape:
+        case Qt::Key_Up:
+        case Qt::Key_Down:
+        case Qt::Key_PageUp:
+        case Qt::Key_PageDown:
+            event->ignore();
+            return true;
+        default:
+            break;
+        }
+    }
+
+    // Ctrl+Space forces the popup in any context. Qt swaps Ctrl and Cmd on
+    // macOS (ControlModifier = the Cmd key there), so accept MetaModifier
+    // too: that is the PHYSICAL Ctrl key on the Mac -- the same binding VS
+    // Code and Xcode use, and Cmd+Space itself is taken by Spotlight.
+    if (event->key() == Qt::Key_Space &&
+        (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier)))
+    {
+        triggerCompletion();
+        return true;
+    }
+    return false;
+}
+
+// After an ordinary keystroke: identifier chars keep the popup filtering (or
+// open it once 2+ chars are typed); '.', '->' and '::' open it for member /
+// scope access; anything else closes it.
+void CodeEditor::maybeTriggerCompletion(QKeyEvent* event)
+{
+    if (!_provider)
+        return;
+
+    const bool visible = _completer->popup()->isVisible();
+
+    if (event->key() == Qt::Key_Backspace)
+    {
+        if (visible)
+        {
+            if (typedPrefixLength() > 0)
+                triggerCompletion();
+            else
+                _completer->popup()->hide();
+        }
+        return;
+    }
+
+    const QString typed = event->text();
+    if (typed.isEmpty())              // cursor movement etc.
+    {
+        if (visible)
+            _completer->popup()->hide();
+        return;
+    }
+
+    const QChar c = typed[0];
+    const QString text = toPlainText();
+    const int pos = textCursor().position();
+
+    bool trigger = false;
+    if (isIdentChar(c))
+        trigger = visible || typedPrefixLength() >= 2;
+    else if (c == '.')
+        trigger = true;
+    else if (c == '>')
+        trigger = (pos >= 2 && text[pos - 2] == '-');
+    else if (c == ':')
+        trigger = (pos >= 2 && text[pos - 2] == ':');
+
+    if (trigger)
+        triggerCompletion();
+    else if (visible)
+        _completer->popup()->hide();
+}
+
+void CodeEditor::triggerCompletion()
+{
+    int prefixLen = 0;
+    const QList<CodeCompletionItem> items = _provider->completions(
+        toPlainText().left(textCursor().position()), prefixLen);
+    if (items.isEmpty())
+    {
+        _completer->popup()->hide();
+        return;
+    }
+
+    _completionModel->clear();
+    for (const CodeCompletionItem& item : items)
+    {
+        QStandardItem* row = new QStandardItem(item.display);
+        row->setData(item.insert, Qt::UserRole);
+        row->setData(item.caretBack, Qt::UserRole + 1);
+        _completionModel->appendRow(row);
+    }
+
+    const QString text = toPlainText();
+    const int pos = textCursor().position();
+    _completer->setCompletionPrefix(text.mid(pos - prefixLen, prefixLen));
+    if (_completer->completionCount() == 0)
+    {
+        _completer->popup()->hide();
+        return;
+    }
+    _completer->popup()->setCurrentIndex(
+        _completer->completionModel()->index(0, 0));
+
+    QRect rect = cursorRect();
+    rect.setWidth(_completer->popup()->sizeHintForColumn(0) +
+                  _completer->popup()->verticalScrollBar()->sizeHint().width());
+    _completer->complete(rect);
+}
+
+// A popup row was accepted: replace the typed prefix with the item's insert
+// text and step the caret back into "()" when asked to.
+void CodeEditor::insertCompletion(const QModelIndex& index)
+{
+    const QString insert  = index.data(Qt::UserRole).toString();
+    const int caretBack   = index.data(Qt::UserRole + 1).toInt();
+    const int prefixLen   = typedPrefixLength();
+
+    QTextCursor cur = textCursor();
+    cur.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, prefixLen);
+    cur.insertText(insert);
+    cur.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, caretBack);
+    setTextCursor(cur);
 }
 
 // The identifier the caret is in or touching. An explicit selection is used

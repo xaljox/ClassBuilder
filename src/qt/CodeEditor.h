@@ -20,12 +20,41 @@
 #include <QFont>
 #include <QSet>
 
+class QCompleter;
 class QFocusEvent;
 class QKeyEvent;
+class QModelIndex;
 class QResizeEvent;
 class QShowEvent;
 class QLabel;
+class QStandardItemModel;
 class CppHighlighter;
+
+// One completion candidate. `display` is shown in the popup, `insert`
+// replaces the typed prefix, and `caretBack` steps the caret back after
+// insertion (1 = between the parens of "Name()").
+struct CodeCompletionItem
+{
+    QString display;
+    QString insert;
+    int     caretBack = 0;
+};
+
+// Supplies completion candidates for the caret context; the model-aware
+// implementation lives dialog-side (ModelCompletionProvider) so the editor
+// itself stays model-free.
+class CodeCompletionProvider
+{
+public:
+    virtual ~CodeCompletionProvider() {}
+
+    // Candidates for the caret context. `textToCursor` is the editor text up
+    // to the caret; `prefixLen` returns how many trailing characters are the
+    // already-typed part of the word being completed (the popup filters on
+    // them and the insertion replaces them). Empty list = no popup.
+    virtual QList<CodeCompletionItem> completions(const QString& textToCursor,
+                                                  int& prefixLen) = 0;
+};
 
 class CodeEditor : public QPlainTextEdit
 {
@@ -94,6 +123,15 @@ public:
     // rule as the editor's own occurrence highlight).
     static int identifierCount(const QString& text, const QString& word);
 
+    // Attach a completion provider (not owned). Enables the popup: auto on
+    // '.', '->', '::' and after 2 identifier chars; Ctrl+Space forces it.
+    void setCompletionProvider(CodeCompletionProvider* provider);
+
+    // Re-indent the selected lines (or the whole text without a selection)
+    // with the same predictor that drives typing, as one undo step. Lines
+    // inside block comments are left untouched.
+    void reformatCode();
+
 signals:
     // The identifier at the caret changed (focused editor only; empty when
     // the caret leaves identifiers). The owning dialog spreads the highlight
@@ -110,10 +148,13 @@ protected:
 private:
     // Predicted indent (in spaces) for a fresh line at the cursor -- the MFC
     // CCodeEdit::GetIndent / GetNextLineIndent line-by-line predictor.
+    // computeIndentAt predicts for a line starting at `pos`.
     int  computeIndent() const;
+    int  computeIndentAt(int pos) const;
 
     void insertNewlineWithIndent();
     void indentSelection(bool unindent);
+    void reindentOpenBrace();
     void reindentClosingBrace();
 
     // Reserve viewport margins for the marker bands + place them in the frame.
@@ -123,6 +164,15 @@ private:
     // Recompute the extra selections: the current-line tint plus, when the
     // caret abuts a brace, the highlight of it and its match.
     void updateExtraSelections();
+
+    // Completion plumbing. completionKeyPressEvent eats the keys the visible
+    // popup owns (Enter/Tab/arrows/Escape) and Ctrl+Space; maybeTrigger
+    // decides after a normal keystroke whether to (re)show or hide the popup.
+    bool completionKeyPressEvent(QKeyEvent* event);
+    void maybeTriggerCompletion(QKeyEvent* event);
+    void triggerCompletion();
+    void insertCompletion(const QModelIndex& index);
+    int  typedPrefixLength() const;   // identifier chars just before the caret
 
     // Index in the document of the brace matching the one at `pos` (the char
     // just after `pos` if `forward`, else just before), or -1 if none / unbalanced.
@@ -142,4 +192,8 @@ private:
     QString _lastEmittedWord;        // identifierUnderCursorChanged de-dup
 
     CppHighlighter* _highlighter = nullptr;
+
+    CodeCompletionProvider* _provider = nullptr;   // not owned
+    QCompleter*             _completer = nullptr;
+    QStandardItemModel*     _completionModel = nullptr;
 };

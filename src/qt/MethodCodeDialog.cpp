@@ -13,6 +13,7 @@
 #include "QtMenuStyle.h"             // Qt_CompactMenuStyleSheet
 #include "QtModelText.h"             // toQ / toCb
 #include "CodeEditor.h"
+#include "ModelCompletionProvider.h"
 #include "QtIteratorWizardDialog.h"
 #include "QtTypeVariableDialog.h"
 #include "QtVariableMethodDialog.h"
@@ -146,6 +147,13 @@ MethodCodeDialog::MethodCodeDialog(Method* pMethod, QWidget* parent)
     connect(_ui->editCode, &CodeEditor::identifierUnderCursorChanged,
             this, [this](const QString& w) { updateHighlightWord(w); });
 
+    // Model-aware completion (not for a fixed method -- read-only editor).
+    if (!_pMethod->IsFixed())
+    {
+        _completion = new ModelCompletionProvider(_pMethod);
+        _ui->editCode->setCompletionProvider(_completion);
+    }
+
     _ui->editCode->setFocus();
 
     // Register as this method's open editor (modeless: one per method; reopen
@@ -157,12 +165,14 @@ MethodCodeDialog::~MethodCodeDialog()
 {
     if (_pMethod)
         _pMethod->SetOpenDialog(nullptr);
+    delete _completion;
     delete _ui;
 }
 
 void MethodCodeDialog::detachForDelete()
 {
     _pMethod = nullptr;     // the method is being freed -- never touch it again
+    _ui->editCode->setCompletionProvider(nullptr);  // provider held the method
     _closing = true;
     close();                // WA_DeleteOnClose deletes us; closeEvent sees null
 }
@@ -193,6 +203,15 @@ void MethodCodeDialog::updateHighlightWord(const QString& word)
 
     _ui->editCode->setHighlightWord(w);
     _ui->editCode->setHeaderHighlightWord(w);
+
+    // F2 renames exactly the yellow set -- gate and label the action by it.
+    if (_renameAction)
+    {
+        _renameAction->setEnabled(!w.isEmpty() && !_pMethod->IsFixed());
+        _renameAction->setText(w.isEmpty()
+            ? QString("Re&name identifier...")
+            : QString("Re&name '%1'...").arg(w));
+    }
 }
 
 // Rename the identifier at the caret everywhere. An argument goes through
@@ -279,10 +298,13 @@ void MethodCodeDialog::buildMenu()
     edit->addAction("Select &All", QKeySequence::SelectAll,
                     ed, &QPlainTextEdit::selectAll);
     edit->addSeparator();
-    QAction* aRename = edit->addAction("Re&name identifier...",
+    QAction* aReformat = edit->addAction("Re&format code",
+        QKeySequence("Ctrl+Shift+R"), ed, &CodeEditor::reformatCode);
+    aReformat->setEnabled(!fixed);
+    _renameAction = edit->addAction("Re&name identifier...",
         QKeySequence(Qt::Key_F2), this,
         [this] { renameIdentifierAtCursor(); });
-    aRename->setEnabled(!fixed);
+    _renameAction->setEnabled(false);   // enabled with the yellow highlight
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs
@@ -373,7 +395,7 @@ void MethodCodeDialog::showEditorContextMenu(const QPoint& pos)
 {
     QMenu menu;
     // Compact rows; colours derived from the live theme palette.
-    menu.setStyleSheet(Qt_CompactMenuStyleSheet());
+    Qt_ApplyCompactMenuStyle(&menu);
     menu.addActions(_editMenu->actions());
     if (!_pMethod->IsFixed())
     {
