@@ -56,6 +56,7 @@ private:
     void refreshSignature();       // re-read the marker strip from the model
     void showEditorContextMenu(CodeEditor* ed, const QPoint& pos);
     void renameIdentifierAtCursor();
+    void goToDefinition();
     void updateHighlightWord(const QString& word);
     void save();
     void regenerateCode();
@@ -73,6 +74,7 @@ private:
     QMenu* _editMenu   = nullptr;
     QMenu* _addMenu    = nullptr;
     QMenu* _insertMenu = nullptr;
+    QList<QMenu*> _allMenus;       // for the key -> action event filter
 
     // Enabled only while an identifier is highlight-active (the yellow
     // occurrences ARE what F2 renames); the label names it.

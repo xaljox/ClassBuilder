@@ -12,6 +12,7 @@
 #include <QCompleter>
 #include <QFont>
 #include <QKeyEvent>
+#include <QMouseEvent>
 #include <QLabel>
 #include <QList>
 #include <QPalette>
@@ -163,10 +164,19 @@ int nextLineIndent(IndentState& s, const QString& line, int step)
 // the label matches the code exactly.
 QFont CodeEditor::codeFont()
 {
+    // macOS renders points smaller than Windows; bump like the UI font
+    // (CB_UI_FONT_PT 11 -> 15) so code doesn't read smaller than the menu
+    // strip above it. Menlo is the native mac monospace (Consolas is absent
+    // -- naming it directly also avoids the font-alias fallback cost).
+#ifdef __APPLE__
+    QFont f("Menlo");
+    f.setPointSize(14);
+#else
     QFont f("Consolas");
+    f.setPointSize(11);
+#endif
     f.setStyleHint(QFont::Monospace);
     f.setFixedPitch(true);
-    f.setPointSize(11);
     f.setWeight(QFont::Medium);
     return f;
 }
@@ -665,6 +675,22 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
     maybeTriggerCompletion(event);
 }
 
+// Cmd+Click (macOS) / Ctrl+Click: go to definition of the clicked
+// identifier -- the mouse path to the same command as F12 (function keys on
+// macOS are frequently swallowed by system shortcuts; this path is the
+// VS Code / Xcode convention and always reaches the editor).
+void CodeEditor::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton &&
+        (event->modifiers() & Qt::ControlModifier))
+    {
+        setTextCursor(cursorForPosition(event->pos()));
+        emit definitionRequested();
+        return;
+    }
+    QPlainTextEdit::mousePressEvent(event);
+}
+
 // --- Completion --------------------------------------------------------------
 //
 // The canonical QCompleter-on-a-text-edit pattern: the completer's popup owns
@@ -833,14 +859,38 @@ void CodeEditor::triggerCompletion()
 // indents continuation lines and leaves the caret inside a trailing {} block.
 void CodeEditor::insertCompletion(const QModelIndex& index)
 {
-    const QString insert  = index.data(Qt::UserRole).toString();
-    const int caretBack   = index.data(Qt::UserRole + 1).toInt();
+    QString insert        = index.data(Qt::UserRole).toString();
+    int caretBack         = index.data(Qt::UserRole + 1).toInt();
     const int selectBack  = index.data(Qt::UserRole + 2).toInt();
-    const int selectLen   = index.data(Qt::UserRole + 3).toInt();
+    int selectLen         = index.data(Qt::UserRole + 3).toInt();
     const int prefixLen   = typedPrefixLength();
 
+    const QString text = toPlainText();
+    const int pos = textCursor().position();
+
+    // Replace the WHOLE identifier under the caret, not just the typed
+    // prefix -- completing in the middle of an existing name must not leave
+    // its tail behind.
+    int suffixLen = 0;
+    while (pos + suffixLen < text.length() && isIdentChar(text[pos + suffixLen]))
+        ++suffixLen;
+
+    // Overwriting a name that is already a call: keep the existing argument
+    // list -- drop OUR whole "(...)" (with or without placeholder args, and
+    // the caret/selection tricks inside it), so picking GetCell(int, int)
+    // over DoIets4 in "DoIets4(a, b)" yields "GetCell(a, b)".
+    const int paren = insert.indexOf('(');
+    if (paren != -1 && pos + suffixLen < text.length() &&
+        text[pos + suffixLen] == '(')
+    {
+        insert.truncate(paren);
+        caretBack = 0;
+        selectLen = 0;
+    }
+
     QTextCursor cur = textCursor();
-    cur.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, prefixLen);
+    cur.setPosition(pos - prefixLen);
+    cur.setPosition(pos + suffixLen, QTextCursor::KeepAnchor);
 
     if (insert.contains('\n'))
     {

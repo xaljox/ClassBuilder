@@ -15,8 +15,10 @@
 #include <QApplication>
 #include <QChildEvent>
 #include <QCloseEvent>
+#include <QDialog>
 #include <QDockWidget>
 #include <QMetaObject>
+#include <QTimer>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QLabel>
@@ -95,6 +97,121 @@ protected:
     }
 };
 
+// Pins a dock's size for a short window after a tab-group member closes:
+// QMainWindow redistributes the area on each of the SEVERAL relayouts that
+// follow (dock removal, chrome pass, tab-bar hide on 2->1), so one-shot
+// corrections lose the race progressively. This watches the survivor's
+// Resize events and re-applies the pre-close size until it self-destructs.
+class DockSizeKeeper : public QObject
+{
+public:
+    DockSizeKeeper(QMainWindow* mw, QDockWidget* dock, int w, int h)
+        : QObject(mw), _mw(mw), _dock(dock), _w(w), _h(h)
+    {
+        dock->installEventFilter(this);
+        // Pin via a temporary MINIMUM size: resizeDocks corrections proved
+        // able to refuse shrinks but not to re-grow; a minimum makes the
+        // relayout cascade unable to shrink the dock in the first place.
+        _oldMin = dock->minimumSize();
+        dock->setMinimumSize(QSize(w, h).expandedTo(_oldMin));
+        apply();
+        QTimer::singleShot(700, this, [this] {
+            if (_dock)
+                _dock->setMinimumSize(_oldMin);
+            deleteLater();
+        });
+    }
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        if (obj == _dock && event->type() == QEvent::Resize)
+        if (obj == _dock && event->type() == QEvent::Resize && !_applying)
+            QMetaObject::invokeMethod(this, [this] { apply(); },
+                                      Qt::QueuedConnection);
+        return QObject::eventFilter(obj, event);
+    }
+
+private:
+    void apply()
+    {
+        if (!_dock || _dock->isFloating())
+            return;
+        // Never fight the user's own separator drag.
+        if (auto* shell = qobject_cast<QtShellWindow*>(_mw);
+            shell && shell->separatorDragging())
+            return;
+        if (_dock->width() == _w && _dock->height() == _h)
+            return;
+        _applying = true;
+        _mw->resizeDocks({_dock}, {_w}, Qt::Horizontal);
+        _mw->resizeDocks({_dock}, {_h}, Qt::Vertical);
+        _applying = false;
+    }
+
+    QMainWindow*           _mw;
+    QPointer<QDockWidget>  _dock;
+    const int              _w;
+    const int              _h;
+    QSize                  _oldMin;
+    bool                   _applying = false;
+};
+
+// Hosts a modeless code-editor dialog (method/constructor). Closing the DOCK
+// routes through the dialog's own closeEvent, so the save prompt runs and
+// Cancel vetoes the close. The reverse direction -- a dialog that closes
+// ITSELF (Esc, File > Close, the model deleting its method) taking the dock
+// with it -- is driven by the DIALOG (it queues a close on its host dock
+// when its closeEvent accepts; see MethodCodeDialog::closeEvent). NOT by
+// watching Hide events here: dock/tab drag transitions hide and re-show the
+// content while reparenting, which is indistinguishable from a close.
+class EditorDockWidget : public QDockWidget
+{
+public:
+    EditorDockWidget(const QString& title, QWidget* parent)
+        : QDockWidget(title, parent) {}
+
+protected:
+    void closeEvent(QCloseEvent* e) override
+    {
+        QWidget* w = widget();
+        if (w && w->isVisible() && !w->close())   // dialog prompt may veto
+        {
+            e->ignore();
+            return;
+        }
+
+        // Closing one member of a docked tab group makes QMainWindow
+        // redistribute the area -- the split bar jumps. Re-apply this
+        // dock's size to a surviving group member AFTER the dock is
+        // actually destroyed (deleteLater): a correction queued from here
+        // lands BEFORE the final removal relayout and gets redistributed
+        // away again.
+        if (auto* mw = qobject_cast<QMainWindow*>(window()); mw && !isFloating())
+        {
+            const QList<QDockWidget*> tabbed = mw->tabifiedDockWidgets(this);
+            if (!tabbed.isEmpty())
+            {
+                QPointer<QDockWidget> survivor = tabbed.first();
+                // The on-screen size lives on the VISIBLE group member --
+                // background tabs (including a background CLOSING dock)
+                // report stale geometry.
+                QDockWidget* vis = isVisible() ? this : nullptr;
+                for (QDockWidget* g : tabbed)
+                    if (!vis && g->isVisible())
+                        vis = g;
+                const int w2 = vis ? vis->width()  : width();
+                const int h2 = vis ? vis->height() : height();
+                connect(this, &QObject::destroyed, mw, [mw, survivor, w2, h2] {
+                    if (survivor)
+                        new DockSizeKeeper(mw, survivor, w2, h2);
+                });
+            }
+        }
+
+        QDockWidget::closeEvent(e);  // WA_DeleteOnClose deletes dock + dialog
+    }
+};
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -137,6 +254,51 @@ bool Qt_HostDiagramDock(QWidget* view)
     if (!g_shell || !view)
         return false;
     g_shell->hostDiagramDock(view);
+    return true;
+}
+
+// Host a modeless code-editor dialog in a dockable/tabbable shell dock (see
+// QtShellWindow::hostEditorDock). False (caller falls back to a standalone
+// window) when there is no shell.
+bool Qt_HostEditorDock(QDialog* dlg, const char* tabTitle)
+{
+    if (!g_shell || !dlg)
+        return false;
+    g_shell->hostEditorDock(dlg, QString::fromLocal8Bit(tabTitle));
+    return true;
+}
+
+// Select + reveal a model object in the tree of the document that owns it
+// (F12 go-to-definition). Raises that tree's dock/tab first so the selection
+// is actually seen.
+bool Qt_SelectInModelTree(DataModelDoc* pDoc, Gti* pGti)
+{
+    return g_shell && g_shell->selectGtiInTree(pDoc, pGti);
+}
+
+// Raise + activate the dock hosting `dlg` (tab-activates a tabbed editor).
+// False when the dialog is not dock-hosted (standalone fallback window).
+bool Qt_RaiseEditorDock(QWidget* dlg)
+{
+    if (!dlg)
+        return false;
+    QDockWidget* dock = nullptr;
+    for (QWidget* p = dlg->parentWidget(); p && !dock; p = p->parentWidget())
+        dock = qobject_cast<QDockWidget*>(p);
+    if (!dock)
+        return false;
+
+    // Activate the top-level hosting the dock FIRST (the shell, or a
+    // floating dock-group window) -- raise() switches the tab within it,
+    // but does not bring a background window forward.
+    QWidget* top = dock->window();
+    top->show();
+    top->raise();
+    top->activateWindow();
+
+    dock->show();
+    dock->raise();
+    dlg->setFocus();
     return true;
 }
 
@@ -1029,13 +1191,25 @@ void QtShellWindow::hostDiagramDock(QWidget* view)
     // user docks/tabs it by dragging, exactly like a tree window.
     addDockWidget(Qt::RightDockWidgetArea, dock);
     dock->setFloating(true);
+    placeFloatingDock(dock, wantSize);
 
-    // Place it explicitly. Qt's default float position derives from the dock's
-    // in-shell spot; after a monitor change, or when the content-sized view is
-    // taller than the display, that can land the title bar above the screen
-    // edge -- an unmovable, unclosable window. Center over the shell, cap the
-    // size to the screen's available area (40px slack for the window frame),
-    // and clamp so the title bar always stays reachable.
+    dock->show();
+    dock->raise();
+    dock->activateWindow();
+
+    // Open floating with a normal draggable title bar; the user docks/tabs it by
+    // dragging. onLayout() runs refreshDockChrome for the tabbed/alone chrome.
+    onLayout();
+}
+
+// Place a floating dock explicitly. Qt's default float position derives from
+// the dock's in-shell spot; after a monitor change, or when the content-sized
+// view is taller than the display, that can land the title bar above the
+// screen edge -- an unmovable, unclosable window. Center over the shell, cap
+// the size to the screen's available area (40px slack for the window frame),
+// and clamp so the title bar always stays reachable.
+void QtShellWindow::placeFloatingDock(QDockWidget* dock, const QSize& wantSize)
+{
     const QRect avail = screen()->availableGeometry();
     const QSize sz = wantSize.boundedTo(
         QSize(avail.width() - 16, avail.height() - 40));
@@ -1047,13 +1221,131 @@ void QtShellWindow::hostDiagramDock(QWidget* view)
     place.moveTop (qBound(avail.top(),  place.top(),
                           avail.top() + avail.height() - sz.height()));
     dock->move(place.topLeft());
+}
+
+bool QtShellWindow::selectGtiInTree(DataModelDoc* pDoc, Gti* pGti)
+{
+    for (DocEntry* e : _entries)
+    {
+        if (e->tree && e->doc && &e->doc->GetDataModelDoc() == pDoc)
+        {
+            if (!e->tree->selectGti(pGti))
+                return false;
+            if (e->dock)
+            {
+                e->dock->window()->raise();   // floating group / background shell
+                e->dock->show();
+                e->dock->raise();             // tab-activate a tabbed tree
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+// Host a code-editor dialog in an EditorDockWidget. New editors tab onto an
+// existing docked editor group; the first one opens floating (drag it next
+// to the tree once, and every next editor tabs there).
+void QtShellWindow::hostEditorDock(QDialog* dlg, const QString& tabTitle)
+{
+    const QSize wantSize = dlg->sizeHint().expandedTo(QSize(720, 540));
+
+    auto* dock = new EditorDockWidget(tabTitle, this);
+    dock->setWidget(dlg);
+    dock->setAttribute(Qt::WA_DeleteOnClose, true);
+    dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    _editorDocks.removeAll(QPointer<QDockWidget>(nullptr));
+    _editorDocks.append(dock);
+
+    // Same chrome pipeline as the diagram docks (see hostDiagramDock).
+    auto onLayout = [this] {
+        QMetaObject::invokeMethod(this, [this] {
+            refreshDockChrome();
+            wireDockTabBars();
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        }, Qt::QueuedConnection);
+    };
+    connect(dock, &QDockWidget::topLevelChanged,     this, [onLayout](bool){ onLayout(); });
+    connect(dock, &QDockWidget::dockLocationChanged, this, [onLayout](Qt::DockWidgetArea){ onLayout(); });
+    connect(dock, &QObject::destroyed,               this, [onLayout](QObject*){ onLayout(); });
+
+    // Keyboard focus must FOLLOW tab activation: clicking an editor's tab
+    // shows it but leaves focus in the previously focused (now hidden)
+    // editor -- every editor-scoped key (F2/F12/Alt+arrows/typing!) would
+    // act on the INVISIBLE editor. Shown: focus the editor (via the
+    // dialog's focus proxy). Hidden: take focus AWAY if it still holds it,
+    // so a background tab can never be the keyboard target.
+    connect(dock, &QDockWidget::visibilityChanged, this, [dock](bool visible) {
+        QWidget* w = dock->widget();
+        if (!w)
+            return;
+        if (visible)
+        {
+            w->setFocus(Qt::OtherFocusReason);
+        }
+        else
+        {
+            QWidget* f = QApplication::focusWidget();
+            if (f && w->isAncestorOf(f))
+                f->clearFocus();
+        }
+    });
+
+    // Tab onto the newest editor docked IN THE SHELL; else float. NOT
+    // isVisible() -- a tabbed-away background dock reports invisible; and
+    // NOT a dock inside a floating group window (window() != this), which
+    // would silently grow that group instead of the shell.
+    QDockWidget* anchor = nullptr;
+    for (const QPointer<QDockWidget>& p : _editorDocks)
+        if (p && p.data() != dock && !p->isFloating() &&
+            p->window() == this && !p->isHidden())
+            anchor = p.data();
+
+    addDockWidget(Qt::RightDockWidgetArea, dock);
+    if (anchor)
+    {
+        tabifyDockWidget(anchor, dock);
+        dock->setFloating(false);
+
+        // Size the new tab to the group NOW. A tabbed dock that was never
+        // the current tab keeps its initial (minimum ~111px) geometry --
+        // and when the CURRENT tab closes, Qt resizes the whole area to the
+        // successor's stale size: the split collapsed exactly when "the
+        // last of the row" was closed (JV 2026-07-15). The visible group
+        // member carries the real size; fall back to the anchor.
+        QDockWidget* sizeSource = anchor;
+        if (!anchor->isVisible())
+        {
+            const QList<QDockWidget*> group = tabifiedDockWidgets(anchor);
+            for (QDockWidget* g : group)
+                if (g != dock && g->isVisible())
+                {
+                    sizeSource = g;
+                    break;
+                }
+        }
+        // Deferred: resizeDocks skips docks that are not visible yet, and
+        // the new dock only shows/raises below.
+        const int gw = sizeSource->width();
+        const int gh = sizeSource->height();
+        QPointer<QDockWidget> dp(dock);
+        QMetaObject::invokeMethod(this, [this, dp, gw, gh] {
+            if (dp)
+            {
+                resizeDocks({dp}, {gw}, Qt::Horizontal);
+                resizeDocks({dp}, {gh}, Qt::Vertical);
+            }
+        }, Qt::QueuedConnection);
+    }
+    else
+    {
+        dock->setFloating(true);
+        placeFloatingDock(dock, wantSize);
+    }
 
     dock->show();
     dock->raise();
     dock->activateWindow();
-
-    // Open floating with a normal draggable title bar; the user docks/tabs it by
-    // dragging. onLayout() runs refreshDockChrome for the tabbed/alone chrome.
     onLayout();
 }
 
@@ -1065,10 +1357,13 @@ void QtShellWindow::refreshDockChrome()
     // pane is still movable/closable). This is what lets trees and diagrams be
     // dropped left/right side-by-side: a split pane keeps a grab handle.
     _diagramDocks.removeAll(QPointer<QDockWidget>(nullptr));   // drop closed docks
+    _editorDocks.removeAll(QPointer<QDockWidget>(nullptr));
     QList<QDockWidget*> all;
     for (DocEntry* e : _entries)
         if (e->dock) all.append(e->dock);
     for (const QPointer<QDockWidget>& p : _diagramDocks)
+        if (p) all.append(p.data());
+    for (const QPointer<QDockWidget>& p : _editorDocks)
         if (p) all.append(p.data());
 
     for (QDockWidget* d : all)

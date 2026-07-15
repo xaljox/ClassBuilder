@@ -24,6 +24,7 @@
 #include "CodeEditor.h"
 
 class BaseClass;
+class Gti;
 class Method;
 
 class ModelCompletionProvider : public CodeCompletionProvider
@@ -33,6 +34,14 @@ public:
 
     QList<CodeCompletionItem> completions(const QString& textToCursor,
                                           int& prefixLen) override;
+
+    // The model object named by the identifier at `pos` in `text` (the FULL
+    // editor text) -- a Method, with the receiver resolved from what
+    // precedes it (`var->Name` / `expr().Name` / `Class::Name`, else the
+    // owning class); or, for a class name (`new Row(...)`, a declaration),
+    // that class's constructor when it has one, else the class itself.
+    // Null when nothing resolves. Drives F12 go-to-definition.
+    Gti* definitionAtCursor(const QString& text, int pos);
 
 private:
     Method* _pMethod;

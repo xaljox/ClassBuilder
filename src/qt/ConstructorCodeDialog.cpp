@@ -21,11 +21,14 @@
 #include "QtSimilarLinesDialog.h"
 
 #include <QCloseEvent>
+#include <QKeyEvent>
 #include <QShowEvent>
 #include <QFocusEvent>
 #include <QFontMetrics>
 #include <QInputDialog>
 #include <QTimer>
+#include <QToolTip>
+#include <QDockWidget>
 #include <QMenuBar>
 #include <QMenu>
 #include <QMessageBox>
@@ -83,6 +86,36 @@ void undoRedoEditor(CodeEditor* ed, const CbString& oldCode,
 {
     if (newCode != oldCode && toCb(ed->toPlainText()) == oldCode)
         setEditorText(ed, toQ(newCode));
+}
+
+// Trigger the menu action whose stored key sequence ("cbMenuKey" -- shortcuts
+// are NOT registered with Qt's shortcut map, see buildMenu) matches the key
+// event. Returns true when one fired.
+bool triggerMenuKey(const QList<QMenu*>& menus, QKeyEvent* ke)
+{
+    // Strip KeypadModifier: macOS sets it on ARROW keys, so Alt+Up would
+    // arrive as Alt+Keypad+Up and never match the stored "Alt+Up" (Qt's own
+    // shortcut map applies the same forgiveness).
+    const QKeySequence pressed(QKeyCombination(
+        ke->modifiers() & ~Qt::KeypadModifier, Qt::Key(ke->key())));
+    if (pressed.isEmpty())
+        return false;
+    for (QMenu* m : menus)
+        for (QAction* a : m->actions())
+        {
+            for (const char* prop : { "cbMenuKey", "cbMenuKey2" })
+            {
+                const QVariant v = a->property(prop);
+                if (v.isValid() &&
+                    v.value<QKeySequence>().matches(pressed) ==
+                        QKeySequence::ExactMatch)
+                {
+                    a->trigger();      // no-ops when the action is disabled
+                    return true;
+                }
+            }
+        }
+    return false;
 }
 
 // Prompt for a new name for `name`; empty result means cancelled or invalid.
@@ -164,6 +197,10 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
         // F2 rename would touch.
         connect(ed, &CodeEditor::identifierUnderCursorChanged,
                 this, [this](const QString& w) { updateHighlightWord(w); });
+
+        // Cmd+Click (mac) / Ctrl+Click on an identifier: go to definition.
+        connect(ed, &CodeEditor::definitionRequested,
+                this, [this] { goToDefinition(); });
     }
 
     // Model-aware completion -- one provider serves both editors (the
@@ -172,6 +209,9 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
     _ui->editInit->setCompletionProvider(_completion);
     _ui->editCode->setCompletionProvider(_completion);
 
+    // Focus the body editor now AND whenever the host dock focuses the
+    // dialog (tab activation routes focus through the dialog's focus proxy).
+    setFocusProxy(_ui->editCode);
     _ui->editCode->setFocus();
 
     // Register as this constructor's open editor (modeless: one per ctor; reopen
@@ -234,6 +274,36 @@ void ConstructorCodeDialog::updateHighlightWord(const QString& word)
         _renameAction->setText(w.isEmpty()
             ? QString("Re&name identifier...")
             : QString("Re&name '%1'...").arg(w));
+    }
+}
+
+// F12: resolve the method named at the caret in the focused editor and go to
+// its definition -- ALWAYS select it in the model tree; a relation MACRO
+// method has no body, so the tree IS its definition -- for a real method
+// also open its editor (OnOpen routes method vs constructor and refocuses).
+void ConstructorCodeDialog::goToDefinition()
+{
+    if (!_completion)
+        return;
+    Gti* pTarget = _completion->definitionAtCursor(
+        _focusEdit->toPlainText(),
+        _focusEdit->textCursor().position());
+    if (!pTarget)
+    {
+        // Silent no-ops read as "F12 is broken" -- say why nothing happened
+        // (typically: the caret is not on an identifier the model knows).
+        QToolTip::showText(
+            _focusEdit->mapToGlobal(_focusEdit->cursorRect().bottomRight()),
+            "No definition at the cursor", _focusEdit);
+        return;
+    }
+
+    Qt_SelectInModelTree(pTarget->GetDataModelDoc(), pTarget);
+    if (pTarget->IsMethod())
+    {
+        Method* pMethod = (Method*)pTarget;
+        if (pMethod->IsNonMacroMethod())
+            pMethod->OnOpen();
     }
 }
 
@@ -329,12 +399,38 @@ bool ConstructorCodeDialog::eventFilter(QObject* obj, QEvent* event)
         if (obj == _ui->editInit || obj == _ui->editCode)
             _focusEdit = static_cast<CodeEditor*>(obj);
     }
+
+    // Menu-key dispatch: a key press in either editor triggers the matching
+    // menu action directly (shortcuts are NOT registered with Qt's shortcut
+    // map -- see buildMenu).
+    // A HIDDEN editor (background tab that still held focus) must not act
+    // on keys at all -- swallow them, so nothing invisible ever mutates.
+    if (event->type() == QEvent::KeyPress &&
+        !static_cast<QWidget*>(obj)->isVisible())
+        return true;
+
+    if (event->type() == QEvent::KeyPress &&
+        (obj == _ui->editInit || obj == _ui->editCode))
+        if (triggerMenuKey(_allMenus, static_cast<QKeyEvent*>(event)))
+            return true;
+
     return QDialog::eventFilter(obj, event);
 }
 
 void ConstructorCodeDialog::buildMenu()
 {
     QMenuBar* bar = new QMenuBar(this);
+    // NEVER let this menu bar go native on macOS: Qt promotes dialog menu
+    // bars to the ONE system menu bar, where every open editor fights over
+    // it -- its items (and key equivalents) then belong to whichever
+    // (possibly hidden) editor grabbed it last. In-widget, each editor
+    // keeps its own visible menu strip, same as on Windows.
+    bar->setNativeMenuBar(false);
+    // Compact rows: the mac style gives a non-native QMenuBar tall padding
+    // (lots of empty space under the text) -- trim it to the text height.
+    bar->setStyleSheet(
+        "QMenuBar { padding: 0px; margin: 0px; }"
+        "QMenuBar::item { padding: 2px 10px; }");
 
     // --- File ----------------------------------------------------------
     QMenu* file = bar->addMenu("&File");
@@ -374,6 +470,12 @@ void ConstructorCodeDialog::buildMenu()
         QKeySequence(Qt::Key_F2),
         this, [this] { renameIdentifierAtCursor(); });
     _renameAction->setEnabled(false);   // enabled with the yellow highlight
+    // F12 again: its earlier flakiness was the native-menubar hijack (the
+    // system bar's key equivalents intercepted it for a hidden editor); with
+    // in-widget menu bars it arrives as a plain key press. Ctrl/Cmd+J stays
+    // as a silent alias (set below), Cmd+Click is the mouse path.
+    QAction* aGotoDef = edit->addAction("&Go to definition",
+        QKeySequence(Qt::Key_F12), this, [this] { goToDefinition(); });
 
     // --- Add -----------------------------------------------------------
     // OnAddArgument / OnEditExceptionSpecification open their own sub-dialogs
@@ -462,6 +564,25 @@ void ConstructorCodeDialog::buildMenu()
     _addMenu    = add;
     _insertMenu = ins;
 
+    // NO shortcut is registered with Qt's shortcut map (unreliable across
+    // docked editors sharing the shell window -- see MethodCodeDialog::
+    // buildMenu). The sequences move into a property + the visible "\t"
+    // hint; eventFilter() dispatches keys from either editor directly.
+    _allMenus = { file, edit, add, ins };
+    for (QMenu* m : _allMenus)
+        for (QAction* a : m->actions())
+        {
+            const QKeySequence ks = a->shortcut();
+            if (ks.isEmpty())
+                continue;
+            a->setProperty("cbMenuKey", ks);
+            a->setShortcut(QKeySequence());
+            a->setText(a->text() + "\t" +
+                       ks.toString(QKeySequence::NativeText));
+        }
+
+    aGotoDef->setProperty("cbMenuKey2", QKeySequence("Ctrl+J"));
+
     _ui->mainLayout->setMenuBar(bar);
 }
 
@@ -471,6 +592,18 @@ void ConstructorCodeDialog::showEditorContextMenu(CodeEditor* ed,
                                                   const QPoint& pos)
 {
     _focusEdit = ed;          // route the Edit/Insert commands to this editor
+
+    // IDE convention: right-click OUTSIDE the selection moves the caret to
+    // the click point (inside it, the selection is preserved) -- so Go to
+    // definition / Rename from this menu act on what was clicked, not on a
+    // stale caret (a fresh editor's caret sits at position 0).
+    QTextCursor clicked = ed->cursorForPosition(pos);
+    QTextCursor cur = ed->textCursor();
+    if (!cur.hasSelection() ||
+        clicked.position() < cur.selectionStart() ||
+        clicked.position() > cur.selectionEnd())
+        ed->setTextCursor(clicked);
+
     QMenu menu;
     // Compact rows; colours derived from the live theme palette.
     Qt_ApplyCompactMenuStyle(&menu);
@@ -606,11 +739,25 @@ void ConstructorCodeDialog::sizeSplitterToContent()
     _ui->editSplitter->setSizes({ initH, total - initH });
 }
 
+namespace {
+// Dock-hosted editor closed itself (Esc / File > Close / model delete): take
+// the host dock with it -- QUEUED, we are inside the dialog's own closeEvent
+// (the dock's re-run of close() finds the dialog hidden and just proceeds;
+// dropped automatically if the dock is already being destroyed).
+void closeHostDockDeferred(QWidget* dlg)
+{
+    if (auto* dock = qobject_cast<QDockWidget*>(dlg->parentWidget()))
+        QMetaObject::invokeMethod(dock, [dock] { dock->close(); },
+                                  Qt::QueuedConnection);
+}
+}
+
 void ConstructorCodeDialog::closeEvent(QCloseEvent* event)
 {
     if (!_pConstructor)     // detached (the ctor was deleted) -- just go
     {
         event->accept();
+        closeHostDockDeferred(this);
         return;
     }
     if (changed())
@@ -629,11 +776,16 @@ void ConstructorCodeDialog::closeEvent(QCloseEvent* event)
             save();
     }
     event->accept();
+    closeHostDockDeferred(this);
 }
 
-// Esc -- route through closeEvent so the save-prompt still runs.
+// Esc. As a standalone window: close (through closeEvent, so the save
+// prompt runs). DOCKED: do nothing -- a tab must not vanish on a stray Esc;
+// the dock's close button / File > Close are the deliberate ways out.
 void ConstructorCodeDialog::reject()
 {
+    if (qobject_cast<QDockWidget*>(parentWidget()))
+        return;
     close();
 }
 
@@ -648,13 +800,25 @@ void Qt_ShowConstructorCodeDialog(Constructor* pConstructor, void* ownerHwnd)
 
     if (QDialog* existing = pConstructor->GetOpenDialog())
     {
-        existing->showNormal();
-        existing->raise();
-        existing->activateWindow();
+        if (!Qt_RaiseEditorDock(existing))   // tab-activates a docked editor
+        {
+            existing->showNormal();
+            existing->raise();
+            existing->activateWindow();
+        }
         return;
     }
 
     auto* dlg = new ConstructorCodeDialog(pConstructor);
-    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
-    Qt_ShowModeless(*dlg, ownerHwnd);
+
+    // Prefer a dockable shell dock: floating at first, tab/dock like a tree;
+    // further editors tab onto a docked one. The dock owns the dialog. Fall
+    // back to a standalone window only if there's no shell.
+    const CbString tab = pConstructor->GetBaseClass()->GetName() + "::" +
+                         pConstructor->GetName();
+    if (!Qt_HostEditorDock(dlg, tab.c_str()))
+    {
+        dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+        Qt_ShowModeless(*dlg, ownerHwnd);
+    }
 }

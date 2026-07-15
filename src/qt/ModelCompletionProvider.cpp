@@ -364,6 +364,53 @@ ModelCompletionProvider::ModelCompletionProvider(Method* pMethod)
 {
 }
 
+Gti* ModelCompletionProvider::definitionAtCursor(const QString& text, int pos)
+{
+    const int len = text.length();
+    int start = pos, end = pos;
+    while (start > 0 && isIdentChar(text[start - 1]))
+        --start;
+    while (end < len && isIdentChar(text[end]))
+        ++end;
+    if (start == end || text[start].isDigit())
+        return nullptr;
+    const QString name = text.mid(start, end - start);
+
+    const TypeMaps maps = buildTypeMaps(_pMethod);
+
+    BaseClass* pReceiver = nullptr;
+    if (start >= 1 && text[start - 1] == '.')
+        pReceiver = resolveExpressionType(_pMethod, text, start - 1, maps);
+    else if (start >= 2 && text[start - 2] == '-' && text[start - 1] == '>')
+        pReceiver = resolveExpressionType(_pMethod, text, start - 2, maps);
+    else if (start >= 2 && text[start - 2] == ':' && text[start - 1] == ':')
+    {
+        int s = start - 2;
+        const int b = s;
+        while (s > 0 && isIdentChar(text[s - 1]))
+            --s;
+        pReceiver = maps.classes.value(text.mid(s, b - s));
+    }
+    else
+    {
+        pReceiver = _pMethod->GetBaseClass();
+    }
+
+    if (Method* pFound = findMethodInClass(pReceiver, name))
+        return pFound;
+
+    // Not a method of the receiver -- a CLASS name (`new Row(this, r)`, a
+    // declaration, a cast)? Its constructor when it has one (that is what
+    // `new` calls), else the class itself.
+    if (BaseClass* pClass = maps.classes.value(name))
+    {
+        if (Method* pCtor = findMethodInClass(pClass, name))
+            return pCtor;
+        return pClass;
+    }
+    return nullptr;
+}
+
 QList<CodeCompletionItem> ModelCompletionProvider::completions(
     const QString& textToCursor, int& prefixLen)
 {

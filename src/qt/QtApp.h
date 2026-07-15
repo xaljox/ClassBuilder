@@ -41,3 +41,23 @@ void Qt_ShowModeless(QWidget& w, void* ownerHwnd);
 // owns `view`; its title is view->windowTitle(). Returns false when there is no
 // shell (e.g. headless), so the caller can fall back to Qt_ShowModeless.
 bool Qt_HostDiagramDock(QWidget* view);
+
+// Hosts a modeless code-editor dialog in a dockable/tabbable shell dock.
+// Closing the dock routes through the dialog's closeEvent (save prompt,
+// Cancel vetoes); a dialog that closes itself takes the dock with it. New
+// editors tab onto an existing docked editor group; the first opens
+// floating. `tabTitle` is the short tab caption ("Matrix::GetRow"), local
+// 8-bit (this header stays Qt-free). Returns false when there is no shell --
+// fall back to Qt_ShowModeless.
+bool Qt_HostEditorDock(QDialog* dlg, const char* tabTitle);
+
+// Raise + activate the dock hosting `dlg` (tab-activates a tabbed editor).
+// Returns false when `dlg` is not dock-hosted.
+bool Qt_RaiseEditorDock(QWidget* dlg);
+
+// Select + reveal a model object in the tree of the document that owns it,
+// raising that tree's dock/tab (F12 go-to-definition). Returns false when
+// the document isn't open in the shell or the object has no tree row.
+class DataModelDoc;
+class Gti;
+bool Qt_SelectInModelTree(DataModelDoc* pDoc, Gti* pGti);

@@ -53,6 +53,10 @@ public:
     // a refresh doesn't collapse the mirror.
     void rebuild();
 
+    // Select + reveal the row of a model object (expands collapsed ancestors,
+    // scrolls to it). False when the object has no row in this mirror.
+    bool selectGti(Gti* pGti);
+
     DataModelDoc* dataModelDoc() const { return _pDoc; }
 
     // Re-evaluate the toolbar Add-buttons' enabled state against the current

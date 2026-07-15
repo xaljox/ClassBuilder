@@ -1277,6 +1277,22 @@ void MainTreeQtView::onPasteKey()
     }
 }
 
+// Select + reveal a model object's row (F12 go-to-definition and the like):
+// expand collapsed ancestors so the row is actually visible, then select and
+// scroll to it.
+bool MainTreeQtView::selectGti(Gti* pGti)
+{
+    QTreeWidgetItem* item =
+        _itemByGti.value(reinterpret_cast<quintptr>(pGti), nullptr);
+    if (!item)
+        return false;
+    for (QTreeWidgetItem* p = item->parent(); p; p = p->parent())
+        p->setExpanded(true);
+    _tree->setCurrentItem(item);   // selects + activates via onCurrentItemChanged
+    _tree->scrollToItem(item);
+    return true;
+}
+
 // FindStringFiltered from `pStart`, then select + scroll to the hit (if it's a
 // visible row). Mirrors CClassBuilderView's tree-select-on-find.
 void MainTreeQtView::findSelectFrom(Gti* pStart)

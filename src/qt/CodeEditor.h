@@ -147,8 +147,13 @@ signals:
     // across its editors and signature strip from this.
     void identifierUnderCursorChanged(const QString& word);
 
+    // Cmd+Click (macOS) / Ctrl+Click on an identifier: go to definition.
+    // The caret has already been moved to the clicked spot.
+    void definitionRequested();
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
     void focusInEvent(QFocusEvent* event) override;

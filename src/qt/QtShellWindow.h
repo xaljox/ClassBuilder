@@ -15,7 +15,10 @@
 #include <QPointer>
 
 class CClassBuilderDoc;
+class DataModelDoc;
+class Gti;
 class MainTreeQtView;
+class QDialog;
 class QDockWidget;
 class QLabel;
 
@@ -45,6 +48,22 @@ public:
     // Wrap a diagram window (CD/SD view) in a dock: floating by default, but
     // dockable/tabbable like the trees (Qt_HostDiagramDock entry point).
     void hostDiagramDock(QWidget* view);
+
+    // Wrap a modeless code-editor dialog (method/constructor) in a dock
+    // (Qt_HostEditorDock entry point). Closing the dock routes through the
+    // dialog's own closeEvent, so the save prompt runs and Cancel vetoes.
+    // A new editor tabs onto an existing docked editor group (the "all
+    // editors tabbed next to the tree" workflow); with none, it opens
+    // floating like a diagram window. `tabTitle` is the SHORT caption for
+    // the tab / dock title bar ("Matrix::GetRow" -- the dialog keeps its
+    // long descriptive windowTitle for the no-shell fallback).
+    void hostEditorDock(QDialog* dlg, const QString& tabTitle);
+
+    // Select + reveal a model object in the tree of the document that owns
+    // it, raising that tree's dock/tab (Qt_SelectInModelTree entry point --
+    // F12 go-to-definition). False when the doc isn't open here or the
+    // object has no row.
+    bool selectGtiInTree(DataModelDoc* pDoc, Gti* pGti);
 
     // Open-document enumeration + headless close, for the pipe's document-selection
     // commands (reached via the CbShellHooks Cb_Document* seam).
@@ -125,9 +144,14 @@ private:
     // closed with a flush still queued is silently dropped.
     static void docPostFlushThunk(void* ctx, CClassBuilderDoc* pDoc);
 
+    // Shared floating-dock placement: size (clamped to the screen), centred
+    // over the shell, title bar kept reachable. Used by diagram + editor docks.
+    void placeFloatingDock(QDockWidget* dock, const QSize& wantSize);
+
     QList<DocEntry*> _entries;                   // open models, oldest first
     DocEntry*        _active = nullptr;          // menus/toolbar/pipe target
     QList<QPointer<QDockWidget>> _diagramDocks;  // open CD/SD diagram docks
+    QList<QPointer<QDockWidget>> _editorDocks;   // open method/ctor code editors
     QLabel*          _statusPane[4] = {};        // width / height / X / Y
 
     QAction* _actSave         = nullptr;
