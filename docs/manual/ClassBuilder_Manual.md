@@ -1187,7 +1187,7 @@ while (++iRow)
 }
 ```
 
-The constructor argument is pre-filled with something of the relation's owning class found in scope — `this` when the edited class is (or derives from) it, else a suitable argument, local or member. This is the Iterator Wizard's knowledge (see *Code-editing helper wizards*, previous chapter), available inline as you type.
+The constructor argument is pre-filled with something of the relation's owning class found in scope — `this` when the edited class is (or derives from) it, else a suitable argument, local or member — and iterator types of *other* classes come scope-qualified: inside a `Matrix` method the Row→Cell iterator is offered as `Row::CellIterator`. This is the Iterator Wizard's knowledge (see *Code-editing helper wizards*, previous chapter), available inline as you type. The inline form takes a best guess — when no receiver is in scope the constructor argument is simply left empty; the Iterator Wizard offers more control over what is inserted, with the candidate receivers presented for you to choose from.
 
 ## Code insertion
 

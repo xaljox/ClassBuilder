@@ -29,7 +29,10 @@ struct IteratorInfo
 struct TypeMaps
 {
     QHash<QString, BaseClass*>   classes;    // class / extern-class name
-    QHash<QString, IteratorInfo> iterators;  // <ToName>Iterator
+    QHash<QString, IteratorInfo> iterators;  // <ToName>Iterator (same-named
+                                             // iterators of different classes
+                                             // collapse -- deref target only)
+    QList<IteratorInfo>          relationIterators;  // one per multi-relation
 };
 
 TypeMaps buildTypeMaps(Method* pMethod)
@@ -49,6 +52,7 @@ TypeMaps buildTypeMaps(Method* pMethod)
             info.from   = iClass.Get();
             info.toName = toQ(iRelation->GetToName());
             maps.iterators.insert(info.toName + "Iterator", info);
+            maps.relationIterators.append(info);
         }
     }
 
@@ -200,6 +204,51 @@ CodeCompletionItem wordItem(const QString& word)
     CodeCompletionItem item;
     item.display = word;
     item.insert  = word;
+    return item;
+}
+
+// Something of the relation's from-class that is in scope, for the loop
+// item's constructor argument: `this` when the edited class is (or derives
+// from) the from-class, else a suitable argument, declared variable, or
+// member -- the Iterator wizard's knowledge, inline. Empty when nothing
+// qualifies. (IsBaseClass(BaseClass*) -- the inheritance test -- lives on
+// ExternClass; BaseClass::IsBaseClass() is the Gti type predicate.)
+QString iteratorReceiver(Method* pMethod, const IteratorInfo& info,
+                         const QHash<QString, QString>& vars)
+{
+    BaseClass* pOwn = pMethod->GetBaseClass();
+    ExternClass* pOwnExt = dynamic_cast<ExternClass*>(pOwn);
+    if (pOwn == info.from ||
+        (pOwnExt && info.from && pOwnExt->IsBaseClass(info.from)))
+        return "this";
+
+    const QString fromName = info.from
+        ? toQ(info.from->GetName()) : QString();
+    Method::ArgumentIterator iArgument(pMethod);
+    while (++iArgument)
+        if (toQ(iArgument->GetType()->GetName()) == fromName)
+            return toQ(iArgument->GetName());
+    for (auto v = vars.constBegin(); v != vars.constEnd(); ++v)
+        if (v.value() == fromName)
+            return v.key();
+    BaseClass::MemberIterator iMember(pOwn);
+    while (++iMember)
+        if (toQ(iMember->GetType()->GetName()) == fromName)
+            return toQ(iMember->GetPrefixedName());
+    return QString();
+}
+
+// The "<Name>Iterator loop" item for `typeName` (scope-qualified where
+// needed): the full while-loop skeleton, the constructor argument
+// pre-filled with `receiver`.
+CodeCompletionItem loopItem(const QString& typeName, const QString& toName,
+                            const QString& receiver)
+{
+    const QString loopVar = "i" + toName;
+    CodeCompletionItem item;
+    item.display = typeName + " loop";
+    item.insert  = QString("%1 %2(%3);\nwhile (++%2)\n{\n}")
+                       .arg(typeName, loopVar, receiver);
     return item;
 }
 
@@ -499,11 +548,23 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
             }
             if (Class* pAsClass = dynamic_cast<Class*>(pClass))
             {
+                // The insertion lands behind the already-typed "Class::",
+                // so the snippet's type name stays unqualified.
+                const QHash<QString, QString> vars =
+                    declaredVariables(text, maps);
                 Class::FromRelationIterator iRelation(pAsClass,
                                                       &Relation::GetMulti);
                 while (++iRelation)
-                    items.append(wordItem(
-                        toQ(iRelation->GetToName()) + "Iterator"));
+                {
+                    IteratorInfo info;
+                    info.target = iRelation->GetToClass();
+                    info.from   = pAsClass;
+                    info.toName = toQ(iRelation->GetToName());
+                    const QString typeName = info.toName + "Iterator";
+                    items.append(wordItem(typeName));
+                    items.append(loopItem(typeName, info.toName,
+                        iteratorReceiver(_pMethod, info, vars)));
+                }
             }
         }
         sortItems(items);
@@ -589,52 +650,26 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
             items.append(wordItem(it.key()));
         }
 
-    // Iterator types, each with a second "loop" item: the full while-loop
-    // skeleton, its constructor argument pre-filled with something of the
-    // relation's from-class that is in scope (this, an argument, a declared
-    // variable, or a member) -- the Iterator wizard's knowledge, inline.
-    // (IsBaseClass(BaseClass*) -- the inheritance test -- lives on
-    // ExternClass; BaseClass::IsBaseClass() is the Gti type predicate.)
-    for (auto it = maps.iterators.constBegin();
-         it != maps.iterators.constEnd(); ++it)
+    // Iterator types, one per relation, each with a second "loop" item (the
+    // full while-loop skeleton, receiver pre-filled). A relation of another
+    // class is offered scope-qualified -- inside a Matrix method, Row->Cell
+    // is Row::CellIterator; only the own class's (and its bases') relations
+    // come unqualified.
+    for (const IteratorInfo& info : maps.relationIterators)
     {
-        if (!seen.contains(it.key()))
-        {
-            seen.insert(it.key());
-            items.append(wordItem(it.key()));
-        }
-
-        const IteratorInfo& info = it.value();
-        QString receiver;
         BaseClass* pOwn = _pMethod->GetBaseClass();
         ExternClass* pOwnExt = dynamic_cast<ExternClass*>(pOwn);
-        if (pOwn == info.from ||
-            (pOwnExt && info.from && pOwnExt->IsBaseClass(info.from)))
-            receiver = "this";
-        if (receiver.isEmpty())
+        const bool ownRelation = pOwn == info.from ||
+            (pOwnExt && info.from && pOwnExt->IsBaseClass(info.from));
+        const QString typeName = (ownRelation ? QString()
+            : toQ(info.from->GetName()) + "::") + info.toName + "Iterator";
+        if (!seen.contains(typeName))
         {
-            const QString fromName = info.from
-                ? toQ(info.from->GetName()) : QString();
-            Method::ArgumentIterator iArgument(_pMethod);
-            while (receiver.isEmpty() && ++iArgument)
-                if (toQ(iArgument->GetType()->GetName()) == fromName)
-                    receiver = toQ(iArgument->GetName());
-            for (auto v = vars.constBegin();
-                 receiver.isEmpty() && v != vars.constEnd(); ++v)
-                if (v.value() == fromName)
-                    receiver = v.key();
-            BaseClass::MemberIterator iFromMember(pOwn);
-            while (receiver.isEmpty() && ++iFromMember)
-                if (toQ(iFromMember->GetType()->GetName()) == fromName)
-                    receiver = toQ(iFromMember->GetPrefixedName());
+            seen.insert(typeName);
+            items.append(wordItem(typeName));
         }
-
-        const QString loopVar = "i" + info.toName;
-        CodeCompletionItem loop;
-        loop.display = it.key() + " loop";
-        loop.insert  = QString("%1 %2(%3);\nwhile (++%2)\n{\n}")
-                           .arg(it.key(), loopVar, receiver);
-        items.append(loop);
+        items.append(loopItem(typeName, info.toName,
+                              iteratorReceiver(_pMethod, info, vars)));
     }
 
     if (!seen.contains("this"))
