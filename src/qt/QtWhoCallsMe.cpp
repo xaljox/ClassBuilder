@@ -6,9 +6,11 @@
 #include "QtModelText.h"     // toQ
 #include "QtModelIcons.h"    // Qt_ModelIcon
 
+#include <QApplication>
 #include <QFocusEvent>
 #include <QKeyEvent>
 #include <QListWidget>
+#include <QMouseEvent>
 #include <QVariant>
 
 #define FORWARD_ONLY
@@ -26,14 +28,32 @@ struct Caller
 bool isIdentChar(QChar c) { return c.isLetterOrNumber() || c == '_'; }
 
 // The popup list itself: QAbstractItemView ignores Esc instead of closing
-// the popup window (there is no parent to bubble to), and clicking
-// elsewhere must dismiss it too -- Esc and focus loss both close.
+// the popup window (there is no parent to bubble to), and an outside click
+// never reached this widget's own mouse handler either -- so an
+// APPLICATION-level filter watches every press and closes the popup when
+// the click's global position falls outside it (the filter dies with the
+// popup; the click itself is not swallowed). Esc and focus loss also close.
 class CallerListPopup : public QListWidget
 {
 public:
-    explicit CallerListPopup(QWidget* parent) : QListWidget(parent) {}
+    explicit CallerListPopup(QWidget* parent) : QListWidget(parent)
+    {
+        qApp->installEventFilter(this);
+    }
 
 protected:
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (!frameGeometry().contains(
+                    mouseEvent->globalPosition().toPoint()))
+                close();
+        }
+        return QListWidget::eventFilter(obj, event);
+    }
+
     void keyPressEvent(QKeyEvent* event) override
     {
         if (event->key() == Qt::Key_Escape)
@@ -48,18 +68,6 @@ protected:
     {
         QListWidget::focusOutEvent(event);
         close();
-    }
-
-    // The popup grabs the mouse, so an outside click lands HERE instead of
-    // dismissing anything -- route it to close (the QMenu approach).
-    void mousePressEvent(QMouseEvent* event) override
-    {
-        if (!rect().contains(event->pos()))
-        {
-            close();
-            return;
-        }
-        QListWidget::mousePressEvent(event);
     }
 };
 
