@@ -1241,7 +1241,7 @@ The reverse of *Go to definition*: for the method **being edited**, list every m
 - **Shift+F12** (`F12` = definition, `Shift+F12` = references).
 - `Edit ▸ Who calls me`.
 
-Every method body in the model (constructor initializer lists included) is searched for a **call** of the method's name — the name followed by `(`; a bare mention, such as a relation macro's class-name argument, does not count. The callers are listed as `Class::method()` with their tree icons, in model order. `Enter` or a double-click selects that caller in the model tree and opens its editor; `Esc` or a click elsewhere dismisses the list. The match is by name, so a same-named method of another class is listed too — the model is the index, not a C++ parser.
+Every method body in the model (constructor initializer lists included) is searched for a **call** of the method's name — the name followed by `(`; a bare mention, such as a relation macro's class-name argument, does not count. Each hit is then verified by resolving the call's **receiver**, with the same resolution hover and F12 use, in the caller's own context: a same-named method of an unrelated class is rejected, while a call through a base-class pointer — which can dynamically dispatch to the edited override — stays listed, as does a call whose receiver cannot be typed. The list errs toward showing a possible caller rather than missing a real one. The callers are listed as `Class::method()` with their tree icons, in model order. `Enter` or a double-click selects that caller in the model tree and opens its editor; `Esc` or a click elsewhere dismisses the list.
 
 ## Editors as dock windows
 
