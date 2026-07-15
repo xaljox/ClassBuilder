@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          Method.h
-* Creation date: July 12, 2026 21:59
+* Creation date: July 15, 2026 21:08
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'Method'
 *
@@ -42,7 +42,7 @@ class Method
 // Members
 private:
     AccessType _access;
-    QDialog* _pOpenDialog;
+    QWidget* _pOpenWidget;
     bool _const;
     bool _inlineX;
     bool _pure;
@@ -163,8 +163,8 @@ public:
     void SetImplement(bool implement);
     bool GetInline();
     void SetInline(bool val);
-    QDialog* GetOpenDialog();
-    void SetOpenDialog(QDialog* pDialog);
+    QWidget* GetOpenWidget();
+    void SetOpenWidget(QWidget* pDialog);
     bool GetPure() const;
     void SetPure(bool pure);
     bool GetStatic() const;

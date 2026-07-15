@@ -2,12 +2,12 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          CbStringBuilder.h
-* Creation date: July 12, 2026 21:59
+* Creation date: July 15, 2026 21:08
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'CbStringBuilder'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
-* July 12, 2026 21:59 JV
+* July 15, 2026 21:08 JV QDialog -> QWidget
 *     Update comment header
 *     Update comment header
 *     Update comment header

@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          Constructor.cpp
-* Creation date: July 12, 2026 21:59
+* Creation date: July 15, 2026 21:08
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'Constructor'
 *
@@ -489,8 +489,8 @@ int Constructor::OnDelete(bool checkOnly)
             // Close an open code editor first (no save prompt -- the body
             // dies with the constructor; undo restores the saved state).
             // See Method::OnDelete for the full rationale.
-            if (GetOpenDialog())
-                Qt_CloseCodeEditor(GetOpenDialog());
+            if (GetOpenWidget())
+                Qt_CloseCodeEditor(GetOpenWidget());
             Delete();
         }
     }
@@ -571,8 +571,8 @@ void Constructor::OnUndoRedoChanged(DataModelDocObject* pOldState)
     // The restore may have swapped the stored code/init behind an open
     // modeless code editor -- let it reload (only editors with no unsaved
     // edits). The dialog casts the old state back to Constructor.
-    if (GetOpenDialog() && pConstructor)
-        Qt_UndoRedoOpenCodeEditor(GetOpenDialog(), pConstructor);
+    if (GetOpenWidget() && pConstructor)
+        Qt_UndoRedoOpenCodeEditor(GetOpenWidget(), pConstructor);
 
 }//@CODE_22961
 

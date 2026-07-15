@@ -7,51 +7,51 @@
 #include "MethodCodeDialog.h"
 #include "ConstructorCodeDialog.h"
 
-#include <QDialog>
+#include <QWidget>
 
-void Qt_CloseCodeEditor(QDialog* pDialog)
+void Qt_CloseCodeEditor(QWidget* pWidget)
 {
-    if (!pDialog)
+    if (!pWidget)
         return;
-    if (auto* m = qobject_cast<MethodCodeDialog*>(pDialog))
+    if (auto* m = qobject_cast<MethodCodeDialog*>(pWidget))
     {
         m->detachForDelete();
         return;
     }
-    if (auto* c = qobject_cast<ConstructorCodeDialog*>(pDialog))
+    if (auto* c = qobject_cast<ConstructorCodeDialog*>(pWidget))
     {
         c->detachForDelete();
         return;
     }
 }
 
-void Qt_ReplaceInOpenCodeEditor(QDialog* pDialog, const CbString& oldString,
+void Qt_ReplaceInOpenCodeEditor(QWidget* pWidget, const CbString& oldString,
                                 const CbString& newString)
 {
-    if (!pDialog)
+    if (!pWidget)
         return;
-    if (auto* m = qobject_cast<MethodCodeDialog*>(pDialog))
+    if (auto* m = qobject_cast<MethodCodeDialog*>(pWidget))
     {
         m->modelReplacedInCode(oldString, newString);
         return;
     }
-    if (auto* c = qobject_cast<ConstructorCodeDialog*>(pDialog))
+    if (auto* c = qobject_cast<ConstructorCodeDialog*>(pWidget))
     {
         c->modelReplacedInCode(oldString, newString);
         return;
     }
 }
 
-void Qt_UndoRedoOpenCodeEditor(QDialog* pDialog, Method* pOldState)
+void Qt_UndoRedoOpenCodeEditor(QWidget* pWidget, Method* pOldState)
 {
-    if (!pDialog || !pOldState)
+    if (!pWidget || !pOldState)
         return;
-    if (auto* m = qobject_cast<MethodCodeDialog*>(pDialog))
+    if (auto* m = qobject_cast<MethodCodeDialog*>(pWidget))
     {
         m->modelStateRestored(pOldState);
         return;
     }
-    if (auto* c = qobject_cast<ConstructorCodeDialog*>(pDialog))
+    if (auto* c = qobject_cast<ConstructorCodeDialog*>(pWidget))
     {
         c->modelStateRestored(pOldState);
         return;

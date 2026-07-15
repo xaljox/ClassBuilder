@@ -2,15 +2,15 @@
 #define _CLASSBUILDERINCLUDE_H
 
 // Date, Time & Version defines
-#define DATAMODEL_DATE    20260712
-#define DATAMODEL_TIME    215942
+#define DATAMODEL_DATE    20260715
+#define DATAMODEL_TIME    210806
 #define DATAMODEL_VERSION 3
 
 // Context define declarations
 
 // Forward extern class declarations
 class CClassBuilderDoc;
-class QDialog;
+class QWidget;
 class ParseLogInterface;
 class SourceLogInterface;
 class CbArchive;

@@ -202,13 +202,13 @@ MethodCodeDialog::MethodCodeDialog(Method* pMethod, QWidget* parent)
 
     // Register as this method's open editor (modeless: one per method; reopen
     // refocuses; the model closes us via Qt_CloseCodeEditor if the method dies).
-    _pMethod->SetOpenDialog(this);
+    _pMethod->SetOpenWidget(this);
 }
 
 MethodCodeDialog::~MethodCodeDialog()
 {
     if (_pMethod)
-        _pMethod->SetOpenDialog(nullptr);
+        _pMethod->SetOpenWidget(nullptr);
     delete _completion;
     delete _ui;
 }
@@ -723,7 +723,7 @@ void Qt_ShowMethodCodeDialog(Method* pMethod, void* ownerHwnd)
 {
     Qt_EnsureApplication();
 
-    if (QDialog* existing = pMethod->GetOpenDialog())
+    if (QWidget* existing = pMethod->GetOpenWidget())
     {
         if (!Qt_RaiseEditorDock(existing))   // tab-activates a docked editor
         {

@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          Method.cpp
-* Creation date: July 12, 2026 21:59
+* Creation date: July 15, 2026 21:08
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'Method'
 *
@@ -42,7 +42,7 @@
 Method::Method(BaseClass* pBaseClass, Type* pType) //@INIT_800
     : Variable(pType)
     , _access(PRIVATE)
-    , _pOpenDialog(NULL)
+    , _pOpenWidget(NULL)
     , _code("")
     , _const(0)
     , _inlineX(0)
@@ -73,7 +73,7 @@ Method::Method(BaseClass* pBaseClass, Type* pType) //@INIT_800
 Method::Method(BaseClass* pBaseClass, Method* pMethod) //@INIT_803
     : Variable(*pMethod)
     , _access(pMethod->_access)
-    , _pOpenDialog(NULL)
+    , _pOpenWidget(NULL)
     , _code(pMethod->_code)
     , _const(pMethod->_const)
     , _inlineX(pMethod->_inlineX)
@@ -129,7 +129,7 @@ Method::Method(Method* pOld) //@INIT_1572
     ReplaceConstructorInclude(pOld);
 
     _access = pOld->_access;
-    _pOpenDialog = pOld->_pOpenDialog;
+    _pOpenWidget = pOld->_pOpenWidget;
     _code = pOld->_code;
     _const = pOld->_const;
     _inlineX = pOld->_inlineX;
@@ -152,7 +152,7 @@ Constructor method needed to copy Method from one project to another.
 Method::Method(BaseClass* pBaseClass, Type* pType, Method* pMethod) //@INIT_7566
     : Variable(pType, pMethod)
     , _access(pMethod->_access)
-    , _pOpenDialog(NULL)
+    , _pOpenWidget(NULL)
     , _code(pMethod->_code)
     , _const(pMethod->_const)
     , _inlineX(pMethod->_inlineX)
@@ -206,7 +206,7 @@ Constructor needed for serialization, not meant to use for other purposes!
 */
 Method::Method() //@INIT_165
     : Variable()
-    , _pOpenDialog(NULL)
+    , _pOpenWidget(NULL)
     , _untouched(0)
     , _dllExport(false)
     , _callingConvention("")
@@ -230,8 +230,8 @@ Method::~Method()
     // Close any open modeless code editor before this method is freed, so it
     // can't dereference a dead method. Qt_CloseCodeEditor detaches it from the
     // model (no save prompt) and closes it.
-    if (GetOpenDialog())
-        Qt_CloseCodeEditor(GetOpenDialog());
+    if (GetOpenWidget())
+        Qt_CloseCodeEditor(GetOpenWidget());
 }//@CODE_163
 
 
@@ -1336,8 +1336,8 @@ int Method::OnDelete(bool checkOnly)
             // behaviour -- refusing the delete while an editor was open --
             // also disabled the Delete action via the checkOnly path, which
             // read as "nothing happens" (JV 2026-07-15).
-            if (GetOpenDialog())
-                Qt_CloseCodeEditor(GetOpenDialog());
+            if (GetOpenWidget())
+                Qt_CloseCodeEditor(GetOpenWidget());
             Delete();
         }
     }
@@ -1422,7 +1422,7 @@ int Method::OnEditExceptionSpecification(bool checkOnly)
 int Method::OnOpen(bool checkOnly)
 {//@CODE_822
     // The code editors are MODELESS: Qt_ShowMethodCodeDialog opens one or, if
-    // this method already has an editor open (GetOpenDialog() set), refocuses
+    // this method already has an editor open (GetOpenWidget() set), refocuses
     // it. So Open stays ENABLED while an editor is open -- reopening = refocus.
     // (The "can't delete while open" guard lives in OnDelete, not here.)
     if (!checkOnly)
@@ -1488,8 +1488,8 @@ void Method::OnUndoRedoChanged(DataModelDocObject* pOldState)
 
     // The restore may have swapped the stored code behind an open modeless
     // code editor -- let it reload (only if it holds no unsaved edits).
-    if (GetOpenDialog() && pMethod)
-        Qt_UndoRedoOpenCodeEditor(GetOpenDialog(), pMethod);
+    if (GetOpenWidget() && pMethod)
+        Qt_UndoRedoOpenCodeEditor(GetOpenWidget(), pMethod);
 
 }//@CODE_22959
 
@@ -1512,8 +1512,8 @@ void Method::OnUndoRedoRemoved()
     // close an open code editor NOW, not then (it would edit a parked
     // object). This is the "direct remove" the old commented-out
     // DestroyWindow block always intended.
-    if (GetOpenDialog())
-        Qt_CloseCodeEditor(GetOpenDialog());
+    if (GetOpenWidget())
+        Qt_CloseCodeEditor(GetOpenWidget());
 }//@CODE_22937
 
 
@@ -1538,8 +1538,8 @@ void Method::ReplaceInCode(const CbString& oldString, const CbString& newString)
     // stored code had no hit -- unsaved editor text may have one. For a
     // Constructor this also covers the init editor (the dialog applies the
     // replacement to both of its editors).
-    if (GetOpenDialog())
-        Qt_ReplaceInOpenCodeEditor(GetOpenDialog(), oldString, newString);
+    if (GetOpenWidget())
+        Qt_ReplaceInOpenCodeEditor(GetOpenWidget(), oldString, newString);
 }//@CODE_1400
 
 
@@ -1826,15 +1826,15 @@ void Method::SetInline(bool val)
 }//@CODE_1224
 
 
-QDialog* Method::GetOpenDialog()
+QWidget* Method::GetOpenWidget()
 {//@CODE_1211
-    return _pOpenDialog;
+    return _pOpenWidget;
 }//@CODE_1211
 
 
-void Method::SetOpenDialog(QDialog* pDialog)
+void Method::SetOpenWidget(QWidget* pDialog)
 {//@CODE_1212
-    _pOpenDialog = pDialog;
+    _pOpenWidget = pDialog;
 }//@CODE_1212
 
 

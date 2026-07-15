@@ -216,14 +216,14 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
 
     // Register as this constructor's open editor (modeless: one per ctor; reopen
     // refocuses; the model closes us via Qt_CloseCodeEditor if it's deleted).
-    // SetOpenDialog is Method's, inherited by Constructor.
-    _pConstructor->SetOpenDialog(this);
+    // SetOpenWidget is Method's, inherited by Constructor.
+    _pConstructor->SetOpenWidget(this);
 }
 
 ConstructorCodeDialog::~ConstructorCodeDialog()
 {
     if (_pConstructor)
-        _pConstructor->SetOpenDialog(nullptr);
+        _pConstructor->SetOpenWidget(nullptr);
     delete _completion;
     delete _ui;
 }
@@ -798,7 +798,7 @@ void Qt_ShowConstructorCodeDialog(Constructor* pConstructor, void* ownerHwnd)
 {
     Qt_EnsureApplication();
 
-    if (QDialog* existing = pConstructor->GetOpenDialog())
+    if (QWidget* existing = pConstructor->GetOpenWidget())
     {
         if (!Qt_RaiseEditorDock(existing))   // tab-activates a docked editor
         {
