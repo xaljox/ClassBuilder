@@ -1189,6 +1189,13 @@ while (++iRow)
 
 The constructor argument is pre-filled with something of the relation's owning class found in scope — `this` when the edited class is (or derives from) it, else a suitable argument, local or member — and iterator types of *other* classes come scope-qualified: inside a `Matrix` method the Row→Cell iterator is offered as `Row::CellIterator`. This is the Iterator Wizard's knowledge (see *Code-editing helper wizards*, previous chapter), available inline as you type. The inline form takes a best guess — when no receiver is in scope the constructor argument is simply left empty; the Iterator Wizard offers more control over what is inserted, with the candidate receivers presented for you to choose from.
 
+## Hover documentation and parameter hints
+
+Two lightweight companions to completion, both resolved live from the model:
+
+- **Hover.** Rest the mouse on a name and a tooltip shows what the model knows: for a method its full signature (`Row* Matrix::FindRow(int id)`) with the method's **note** text underneath (long notes are capped); for a member or argument its type and note; for a class name the class and its note — and directly after `new`, the constructor's signature instead of the class. With overloads, the one matching the call's argument count is picked; when that cannot be decided, all candidate signatures are shown.
+- **Parameter hints.** While typing inside a call, a hint above the line shows the signature of the method being called — the argument you are on in **bold**, default values included. It appears when you type `(` or `,`, when you accept a completion (the argument list arrives fully inserted then), and on demand with `Ctrl+Shift+Space` when the caret stands in an existing call. It follows the caret and disappears when the call closes with `)`, on `Esc`, or when focus leaves the editor. With overloads, the hint follows the argument count typed so far.
+
 ## Code insertion
 
 Generated helpers can insert code for you rather than making you type it:
@@ -1226,9 +1233,19 @@ The constructor body opens in a two-pane variant of the editor: a small **initia
 
 A right-click moves the caret to the click point first (unless clicking inside a selection), so *Go to definition* and *Rename* from the context menu act on what was clicked.
 
+## Who calls me
+
+The reverse of *Go to definition*: for the method **being edited**, list every method that calls it. Three ways to ask, from any code editor:
+
+- **Ctrl+Click on the signature strip** — the strip *is* the definition, and the go-to-definition gesture on the definition itself means *show me the references*. The mouse is already at the top, and the list drops open right under the strip.
+- **Shift+F12** (`F12` = definition, `Shift+F12` = references).
+- `Edit ▸ Who calls me`.
+
+Every method body in the model (constructor initializer lists included) is searched for a **call** of the method's name — the name followed by `(`; a bare mention, such as a relation macro's class-name argument, does not count. The callers are listed as `Class::method()` with their tree icons, in model order. `Enter` or a double-click selects that caller in the model tree and opens its editor; `Esc` or a click elsewhere dismisses the list. The match is by name, so a same-named method of another class is listed too — the model is the index, not a C++ parser.
+
 ## Editors as dock windows
 
-The code editors open as **dockable windows** on the application shell: floating at first, and dockable/tabbable by dragging — exactly like the model trees and diagram views. The tab caption is the short `Class::method` form. Typical layout: the tree docked left, all editors as one tab group beside it — once one editor is docked, **every further editor tabs onto that group automatically**. Tear a tab off to float it.
+The code editors open as **dockable windows** on the application shell: floating at first, and dockable/tabbable by dragging — exactly like the model trees and diagram views. The tab caption is the short `Class::method` form. Typical layout: the tree docked left, all editors as one tab group beside it — once one editor is docked, **every further editor tabs onto that group automatically**. Tear a tab off to float it. The docked spot is **remembered**: close the last editor tab and the next editor re-opens docked at the same place, with the same split — only the very first editor of a session floats.
 
 - Closing a dock (its ✕) runs the editor's normal save prompt; *Cancel* keeps it open. Closing the editor from its own `File ▸ Close` takes the dock with it. `Esc` closes a *floating* editor but never a docked tab.
 - Each editor carries its own menu strip inside the dock; keyboard shortcuts act on the editor that has focus — which always follows the active tab.
