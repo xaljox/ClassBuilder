@@ -483,6 +483,15 @@ void Qt_EnsureApplication()
         "  padding: 0 3px;"
         "}";
 #endif
+    // Tooltips in the classic soft info-yellow (the Win32 look) on every
+    // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
+    // so nothing else is touched.
+    sheet +=
+        "QToolTip {"
+        "  background-color: #FFFFE1;"
+        "  color: black;"
+        "  border: 1px solid #767676;"
+        "}";
     if (!sheet.isEmpty())
         qApp->setStyleSheet(sheet);
 

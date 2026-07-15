@@ -35,6 +35,11 @@ public:
     QList<CodeCompletionItem> completions(const QString& textToCursor,
                                           int& prefixLen) override;
 
+    // Hover documentation: signature line (monospace) plus the model's
+    // @NOTE text for the method / member / argument / class named at `pos`,
+    // resolved like definitionAtCursor. Empty when nothing resolves.
+    QString hoverText(const QString& text, int pos) override;
+
     // The model object named by the identifier at `pos` in `text` (the FULL
     // editor text) -- a Method, with the receiver resolved from what
     // precedes it (`var->Name` / `expr().Name` / `Class::Name`, else the

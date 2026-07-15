@@ -22,6 +22,7 @@
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QTextEdit>
+#include <QToolTip>
 
 namespace {
 
@@ -689,6 +690,35 @@ void CodeEditor::mousePressEvent(QMouseEvent* event)
         return;
     }
     QPlainTextEdit::mousePressEvent(event);
+}
+
+// Hover documentation: the provider supplies a rich-text tooltip for the
+// identifier under the mouse. cursorForPosition clamps to the nearest
+// character, so hovering the empty space right of a line would still hit its
+// last word -- the distance guard filters that out.
+bool CodeEditor::viewportEvent(QEvent* event)
+{
+    if (event->type() == QEvent::ToolTip && _provider)
+    {
+        QHelpEvent* helpEvent = static_cast<QHelpEvent*>(event);
+        const QTextCursor cursor = cursorForPosition(helpEvent->pos());
+        if (qAbs(helpEvent->pos().x() - cursorRect(cursor).center().x())
+                > fontMetrics().averageCharWidth() * 2)
+        {
+            QToolTip::hideText();
+        }
+        else
+        {
+            const QString tip = _provider->hoverText(toPlainText(),
+                                                     cursor.position());
+            if (tip.isEmpty())
+                QToolTip::hideText();
+            else
+                QToolTip::showText(helpEvent->globalPos(), tip, viewport());
+        }
+        return true;
+    }
+    return QPlainTextEdit::viewportEvent(event);
 }
 
 // --- Completion --------------------------------------------------------------

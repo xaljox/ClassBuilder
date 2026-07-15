@@ -5,6 +5,7 @@
 
 #include <QHash>
 #include <QSet>
+#include <QStringList>
 
 #include <algorithm>
 
@@ -411,11 +412,282 @@ BaseClass* resolveExpressionType(Method* pMethod, const QString& text,
     return nullptr;
 }
 
+// --- Hover documentation -----------------------------------------------------
+
+// Signature in the editor's own code font (the rich-text default fixed font
+// -- Courier New on Windows -- renders too thin); the model's @NOTE text
+// (when there is one) below a rule, line breaks preserved.
+QString hoverHtml(const QString& signature, const CbString& note)
+{
+    const QFont codeFont = CodeEditor::codeFont();
+    QString html = QString("<pre style='margin:0;"
+                           " font-family:\"%1\"; font-size:%2pt'>")
+                       .arg(codeFont.family())
+                       .arg(codeFont.pointSize())
+                   + signature.toHtmlEscaped() + "</pre>";
+    QString noteText = toQ(note).trimmed();
+    if (!noteText.isEmpty())
+    {
+        noteText.replace("\r\n", "\n");
+
+        // Long notes are capped -- the tooltip is a reminder, not the docs.
+        const int maxLines = 12;
+        const int maxChars = 700;
+        bool truncated = false;
+        QStringList lines = noteText.split('\n');
+        if (lines.size() > maxLines)
+        {
+            lines = lines.mid(0, maxLines);
+            truncated = true;
+        }
+        noteText = lines.join('\n');
+        if (noteText.length() > maxChars)
+        {
+            noteText.truncate(maxChars);
+            const int lastSpace = noteText.lastIndexOf(' ');
+            if (lastSpace > maxChars - 60)
+                noteText.truncate(lastSpace);
+            truncated = true;
+        }
+
+        noteText = noteText.toHtmlEscaped();
+        noteText.replace('\n', "<br/>");
+        if (truncated)
+            noteText += "&hellip;";
+
+        // A point below the signature: readable, but clearly secondary.
+        html += QString("<hr/><span style='font-size:%1pt'>")
+                    .arg(codeFont.pointSize() - 1)
+                + noteText + "</span>";
+    }
+    return html;
+}
+
+// GetInterfaceCpp gives `Type Class::Name(args) const`; a constructor
+// carries a trailing " //@INIT_n" marker that means nothing here.
+QString methodSignature(Method* pMethod)
+{
+    QString signature = toQ(pMethod->GetInterfaceCpp());
+    const int marker = signature.indexOf(" //@INIT_");
+    if (marker >= 0)
+        signature.truncate(marker);
+    return signature;
+}
+
+// Number of arguments in the call whose '(' sits at `parenPos`: top-level
+// commas counted, nested parens and string/char literals respected. -1 when
+// the list is not (yet) closed -- arity matching is skipped then.
+int callArgumentCount(const QString& text, int parenPos)
+{
+    const int len = text.length();
+    int depth = 0, count = 0;
+    bool any = false, inQuote = false;
+    QChar quote;
+    for (int i = parenPos; i < len; ++i)
+    {
+        const QChar c = text[i];
+        if (inQuote)
+        {
+            if (c == '\\')
+                ++i;
+            else if (c == quote)
+                inQuote = false;
+        }
+        else if (c == '"' || c == '\'')
+        {
+            inQuote = true;
+            quote = c;
+            any = true;
+        }
+        else if (c == '(')
+        {
+            ++depth;
+        }
+        else if (c == ')')
+        {
+            if (--depth == 0)
+                return any ? count + 1 : 0;
+        }
+        else if (c == ',' && depth == 1)
+        {
+            ++count;
+            any = true;
+        }
+        else if (!c.isSpace())
+        {
+            any = true;
+        }
+    }
+    return -1;
+}
+
+// Every method named `name` on `pClass` and its bases -- the overload set
+// (the derived-most class comes first).
+void findMethodsInClass(BaseClass* pClass, const QString& name,
+                        QList<Method*>& out, int depth = 0)
+{
+    if (!pClass || depth > 8)
+        return;
+    BaseClass::MethodIterator iMethod(pClass);
+    while (++iMethod)
+        if (toQ(iMethod->GetName()) == name)
+            out.append(iMethod.Get());
+    if (Class* pAsClass = dynamic_cast<Class*>(pClass))
+    {
+        Class::InheritIterator iInherit(pAsClass);
+        while (++iInherit)
+            findMethodsInClass(iInherit->GetBaseClass(), name, out,
+                               depth + 1);
+    }
+}
+
+// The overload matching the call behind the identifier ending at `end`:
+// the candidate whose arity spans the call's argument count (arguments
+// with a default value are optional). A single candidate always matches;
+// null when it cannot be decided (no closed argument list, no fit).
+Method* matchOverload(const QList<Method*>& candidates, const QString& text,
+                      int end)
+{
+    if (candidates.size() == 1)
+        return candidates.first();
+
+    const int len = text.length();
+    int k = end;
+    while (k < len && text[k].isSpace())
+        ++k;
+    if (k >= len || text[k] != '(')
+        return nullptr;
+    const int count = callArgumentCount(text, k);
+    if (count < 0)
+        return nullptr;
+
+    for (Method* pCandidate : candidates)
+    {
+        int required = 0, total = 0;
+        Method::ArgumentIterator iArgument(pCandidate);
+        while (++iArgument)
+        {
+            ++total;
+            if (iArgument->GetDefault().IsEmpty())
+                ++required;
+        }
+        if (count >= required && count <= total)
+            return pCandidate;
+    }
+    return nullptr;
+}
+
+// All candidates' signatures, one per line -- the undecided-overload hover.
+QString joinedSignatures(const QList<Method*>& candidates)
+{
+    QString signatures;
+    for (Method* pCandidate : candidates)
+    {
+        if (!signatures.isEmpty())
+            signatures += '\n';
+        signatures += methodSignature(pCandidate);
+    }
+    return signatures;
+}
+
 } // namespace
 
 ModelCompletionProvider::ModelCompletionProvider(Method* pMethod)
     : _pMethod(pMethod)
 {
+}
+
+QString ModelCompletionProvider::hoverText(const QString& text, int pos)
+{
+    const int len = text.length();
+    int start = pos, end = pos;
+    while (start > 0 && isIdentChar(text[start - 1]))
+        --start;
+    while (end < len && isIdentChar(text[end]))
+        ++end;
+    if (start == end || text[start].isDigit())
+        return QString();
+    const QString name = text.mid(start, end - start);
+
+    const TypeMaps maps = buildTypeMaps(_pMethod);
+
+    // The receiver, resolved exactly like definitionAtCursor.
+    bool qualified = true;
+    BaseClass* pReceiver = nullptr;
+    if (start >= 1 && text[start - 1] == '.')
+        pReceiver = resolveExpressionType(_pMethod, text, start - 1, maps);
+    else if (start >= 2 && text[start - 2] == '-' && text[start - 1] == '>')
+        pReceiver = resolveExpressionType(_pMethod, text, start - 2, maps);
+    else if (start >= 2 && text[start - 2] == ':' && text[start - 1] == ':')
+    {
+        int s = start - 2;
+        const int b = s;
+        while (s > 0 && isIdentChar(text[s - 1]))
+            --s;
+        pReceiver = maps.classes.value(text.mid(s, b - s));
+    }
+    else
+    {
+        qualified = false;
+        pReceiver = _pMethod->GetBaseClass();
+    }
+
+    QList<Method*> named;
+    findMethodsInClass(pReceiver, name, named);
+    if (!named.isEmpty())
+    {
+        if (Method* pMatch = matchOverload(named, text, end))
+            return hoverHtml(methodSignature(pMatch), pMatch->GetNote());
+        return hoverHtml(joinedSignatures(named), CbString());
+    }
+
+    if (!qualified)
+    {
+        Method::ArgumentIterator iArgument(_pMethod);
+        while (++iArgument)
+            if (toQ(iArgument->GetName()) == name)
+                return hoverHtml(
+                    toQ(iArgument->GetTypeName()
+                        + iArgument->GetVariableName()),
+                    iArgument->GetNote());
+
+        BaseClass::MemberIterator iMember(_pMethod->GetBaseClass());
+        while (++iMember)
+            if (toQ(iMember->GetPrefixedName()) == name)
+                return hoverHtml(
+                    toQ(iMember->GetTypeName() + iMember->GetPrefixedName()),
+                    iMember->GetNote());
+
+        if (BaseClass* pClass = maps.classes.value(name))
+        {
+            // After `new` the name means a constructor call -- show the
+            // constructor signature(s), not the class.
+            int q = start;
+            while (q > 0 && (text[q - 1] == ' ' || text[q - 1] == '\t'))
+                --q;
+            if (q >= 3 && text.mid(q - 3, 3) == "new" &&
+                (q == 3 || !isIdentChar(text[q - 4])))
+            {
+                QList<Method*> constructors;
+                BaseClass::MethodIterator iMethod(pClass);
+                while (++iMethod)
+                    if (iMethod->IsConstructor() && !iMethod->GetDelete())
+                        constructors.append(iMethod.Get());
+                if (!constructors.isEmpty())
+                {
+                    if (Method* pMatch = matchOverload(constructors, text,
+                                                       end))
+                        return hoverHtml(methodSignature(pMatch),
+                                         pMatch->GetNote());
+                    return hoverHtml(joinedSignatures(constructors),
+                                     CbString());
+                }
+            }
+            return hoverHtml("class " + toQ(pClass->GetName()),
+                             pClass->GetNote());
+        }
+    }
+    return QString();
 }
 
 Gti* ModelCompletionProvider::definitionAtCursor(const QString& text, int pos)

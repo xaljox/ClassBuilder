@@ -59,6 +59,15 @@ public:
     // them and the insertion replaces them). Empty list = no popup.
     virtual QList<CodeCompletionItem> completions(const QString& textToCursor,
                                                   int& prefixLen) = 0;
+
+    // Rich-text tooltip for the identifier at `pos` in `text` (the FULL
+    // editor text); empty = no tooltip. Drives hover documentation.
+    virtual QString hoverText(const QString& text, int pos)
+    {
+        Q_UNUSED(text)
+        Q_UNUSED(pos)
+        return QString();
+    }
 };
 
 class CodeEditor : public QPlainTextEdit
@@ -158,6 +167,7 @@ protected:
     void showEvent(QShowEvent* event) override;
     void focusInEvent(QFocusEvent* event) override;
     void focusOutEvent(QFocusEvent* event) override;
+    bool viewportEvent(QEvent* event) override;   // hover tooltips
 
 private:
     // Predicted indent (in spaces) for a fresh line at the cursor -- the MFC
