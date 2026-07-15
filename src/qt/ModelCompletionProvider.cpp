@@ -218,6 +218,11 @@ void collectMethods(BaseClass* pClass, bool publicOnly, QSet<QString>& seen,
     {
         if (iMethod->GetName().IsEmpty())
             continue;
+        // Not callable through an expression: constructors, destructors,
+        // and = delete'd methods.
+        if (iMethod->IsConstructor() || iMethod->IsDestructor() ||
+            iMethod->GetDelete())
+            continue;
         const CodeCompletionItem item = methodItem(iMethod.Get());
         if (seen.contains(item.display))
             continue;   // keyed by full signature: overloads stay distinct,
@@ -499,6 +504,42 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
                 while (++iRelation)
                     items.append(wordItem(
                         toQ(iRelation->GetToName()) + "Iterator"));
+            }
+        }
+        sortItems(items);
+        return items;
+    }
+
+    // --- new <Class> : constructors, argument placeholders included ------
+    // A bare class name would compile-complete too, but then the arguments
+    // are lost -- `new` calls a constructor, so offer those.
+    int q = p;
+    while (q > 0 && (text[q - 1] == ' ' || text[q - 1] == '\t'))
+        --q;
+    if (q >= 3 && text.mid(q - 3, 3) == "new" &&
+        (q == 3 || !isIdentChar(text[q - 4])))
+    {
+        for (auto it = maps.classes.constBegin();
+             it != maps.classes.constEnd(); ++it)
+        {
+            bool hasConstructor = false;
+            BaseClass::MethodIterator iMethod(it.value());
+            while (++iMethod)
+            {
+                if (!iMethod->IsConstructor() || iMethod->GetDelete())
+                    continue;
+                hasConstructor = true;
+                const CodeCompletionItem item = methodItem(iMethod.Get());
+                if (!seen.contains(item.display))
+                {
+                    seen.insert(item.display);
+                    items.append(item);
+                }
+            }
+            if (!hasConstructor && !seen.contains(it.key()))
+            {
+                seen.insert(it.key());     // no modeled constructor: the
+                items.append(wordItem(it.key()));  // bare class name then
             }
         }
         sortItems(items);
