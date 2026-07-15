@@ -537,12 +537,15 @@ void CodeEditor::insertWizardSnippet(const QString& text)
     if (openBlock)
     {
         // Caret now sits just after "{\n<indent>" -- reinsert "}" on the
-        // next line and drop the caret back onto the empty body line.
+        // next line, drop the caret back onto the empty body line, and give
+        // it one indent step so typing starts at body level, not at the
+        // brace's column.
         const int caret = textCursor().position();
         insertSnippet("\n}");
         QTextCursor cur = textCursor();
         cur.setPosition(caret);
         setTextCursor(cur);
+        insertPlainText(QString(_indentSize, ' '));
     }
 }
 
@@ -756,7 +759,9 @@ void CodeEditor::triggerCompletion()
 }
 
 // A popup row was accepted: replace the typed prefix with the item's insert
-// text and step the caret back into "()" when asked to.
+// text and step the caret back into "()" when asked to. A multi-line insert
+// (the iterator loop skeleton) goes through the wizard-snippet path, which
+// indents continuation lines and leaves the caret inside a trailing {} block.
 void CodeEditor::insertCompletion(const QModelIndex& index)
 {
     const QString insert  = index.data(Qt::UserRole).toString();
@@ -765,6 +770,15 @@ void CodeEditor::insertCompletion(const QModelIndex& index)
 
     QTextCursor cur = textCursor();
     cur.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, prefixLen);
+
+    if (insert.contains('\n'))
+    {
+        cur.removeSelectedText();
+        setTextCursor(cur);
+        insertWizardSnippet(insert);
+        return;
+    }
+
     cur.insertText(insert);
     cur.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, caretBack);
     setTextCursor(cur);

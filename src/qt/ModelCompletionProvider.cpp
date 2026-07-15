@@ -15,12 +15,21 @@ namespace {
 
 bool isIdentChar(QChar c) { return c.isLetterOrNumber() || c == '_'; }
 
+// A relation-generated iterator type: what it iterates (deref target) and
+// who owns the relation (the iterator's constructor argument).
+struct IteratorInfo
+{
+    BaseClass* target = nullptr;   // row-> offers THIS class's methods
+    Class*     from   = nullptr;   // RowIterator iRow(<a Matrix*>)
+    QString    toName;             // "Row" -- for the loop variable name
+};
+
 // The model's name-to-class lookups, rebuilt per completion request (the
 // model is small and may have changed since the last keystroke).
 struct TypeMaps
 {
-    QHash<QString, BaseClass*> classes;    // class / extern-class name
-    QHash<QString, BaseClass*> iterators;  // <ToName>Iterator -> TARGET class
+    QHash<QString, BaseClass*>   classes;    // class / extern-class name
+    QHash<QString, IteratorInfo> iterators;  // <ToName>Iterator
 };
 
 TypeMaps buildTypeMaps(Method* pMethod)
@@ -34,8 +43,13 @@ TypeMaps buildTypeMaps(Method* pMethod)
         maps.classes.insert(toQ(iClass->GetName()), iClass.Get());
         Class::FromRelationIterator iRelation(iClass, &Relation::GetMulti);
         while (++iRelation)
-            maps.iterators.insert(toQ(iRelation->GetToName()) + "Iterator",
-                                  iRelation->GetToClass());
+        {
+            IteratorInfo info;
+            info.target = iRelation->GetToClass();
+            info.from   = iClass.Get();
+            info.toName = toQ(iRelation->GetToName());
+            maps.iterators.insert(info.toName + "Iterator", info);
+        }
     }
 
     DataModelDoc::TypeIterator iType(pMethod->GetDataModelDoc(),
@@ -45,6 +59,55 @@ TypeMaps buildTypeMaps(Method* pMethod)
                             (ExternClass*)iType.Get());
 
     return maps;
+}
+
+// True when the end of `text` sits inside a comment or a string / char
+// literal -- no completion popup there.
+bool inCommentOrString(const QString& text)
+{
+    const int len = text.length();
+    bool lineComment = false, blockComment = false, inQuote = false;
+    QChar quote;
+    for (int i = 0; i < len; ++i)
+    {
+        const QChar c = text[i];
+        if (lineComment)
+        {
+            if (c == '\n')
+                lineComment = false;
+        }
+        else if (blockComment)
+        {
+            if (c == '*' && i + 1 < len && text[i + 1] == '/')
+            {
+                blockComment = false;
+                ++i;
+            }
+        }
+        else if (inQuote)
+        {
+            if (c == '\\')
+                ++i;
+            else if (c == quote)
+                inQuote = false;
+        }
+        else if (c == '/' && i + 1 < len && text[i + 1] == '/')
+        {
+            lineComment = true;
+            ++i;
+        }
+        else if (c == '/' && i + 1 < len && text[i + 1] == '*')
+        {
+            blockComment = true;
+            ++i;
+        }
+        else if (c == '"' || c == '\'')
+        {
+            inQuote = true;
+            quote = c;
+        }
+    }
+    return lineComment || blockComment || inQuote;
 }
 
 // `TypeName [*&] varName` declarations scanned out of the text: every
@@ -147,6 +210,121 @@ void sortItems(QList<CodeCompletionItem>& items)
         { return a.display.compare(b.display, Qt::CaseInsensitive) < 0; });
 }
 
+// Find `name` as a method of `pClass` or one of its bases.
+Method* findMethodInClass(BaseClass* pClass, const QString& name,
+                          int depth = 0)
+{
+    if (!pClass || depth > 8)
+        return nullptr;
+    if (Method* pMethod = pClass->FindMethodWithName(toCb(name)))
+        return pMethod;
+    if (Class* pAsClass = dynamic_cast<Class*>(pClass))
+    {
+        Class::InheritIterator iInherit(pAsClass);
+        while (++iInherit)
+            if (Method* pMethod = findMethodInClass(iInherit->GetBaseClass(),
+                                                    name, depth + 1))
+                return pMethod;
+    }
+    return nullptr;
+}
+
+// The model class of the expression ENDING at `endPos` (exclusive): a bare
+// identifier (this / argument / declared variable / member) or a call chain
+// ending in ')' -- then the called method's return type, with the receiver
+// resolved recursively, so `GetRow(i)->` and `_pDoc->GetModel()->` work.
+BaseClass* resolveExpressionType(Method* pMethod, const QString& text,
+                                 int endPos, const TypeMaps& maps,
+                                 int depth = 0)
+{
+    if (depth > 8 || endPos <= 0)
+        return nullptr;
+
+    if (text[endPos - 1] == ')')
+    {
+        int open = 0;
+        int i = endPos - 1;
+        for (; i >= 0; --i)
+        {
+            if (text[i] == ')')
+                ++open;
+            else if (text[i] == '(' && --open == 0)
+                break;
+        }
+        if (i < 0)
+            return nullptr;
+
+        int nameEnd = i;
+        while (nameEnd > 0 && text[nameEnd - 1].isSpace())
+            --nameEnd;
+        int nameStart = nameEnd;
+        while (nameStart > 0 && isIdentChar(text[nameStart - 1]))
+            --nameStart;
+        if (nameStart == nameEnd)
+            return nullptr;
+        const QString methodName = text.mid(nameStart, nameEnd - nameStart);
+
+        BaseClass* pReceiver = nullptr;
+        if (nameStart >= 1 && text[nameStart - 1] == '.')
+            pReceiver = resolveExpressionType(pMethod, text, nameStart - 1,
+                                              maps, depth + 1);
+        else if (nameStart >= 2 && text[nameStart - 2] == '-' &&
+                 text[nameStart - 1] == '>')
+            pReceiver = resolveExpressionType(pMethod, text, nameStart - 2,
+                                              maps, depth + 1);
+        else if (nameStart >= 2 && text[nameStart - 2] == ':' &&
+                 text[nameStart - 1] == ':')
+        {
+            int s = nameStart - 2;
+            const int b = s;
+            while (s > 0 && isIdentChar(text[s - 1]))
+                --s;
+            pReceiver = maps.classes.value(text.mid(s, b - s));
+        }
+        else
+        {
+            pReceiver = pMethod->GetBaseClass();   // own-class call
+        }
+
+        Method* pCalled = findMethodInClass(pReceiver, methodName);
+        return pCalled
+            ? maps.classes.value(toQ(pCalled->GetType()->GetName()))
+            : nullptr;
+    }
+
+    int start = endPos;
+    while (start > 0 && isIdentChar(text[start - 1]))
+        --start;
+    if (start == endPos)
+        return nullptr;
+    const QString name = text.mid(start, endPos - start);
+    if (name[0].isDigit())
+        return nullptr;
+
+    if (name == "this")
+        return pMethod->GetBaseClass();
+
+    Method::ArgumentIterator iArgument(pMethod);
+    while (++iArgument)
+        if (toQ(iArgument->GetName()) == name)
+            return maps.classes.value(toQ(iArgument->GetType()->GetName()));
+
+    const QString typeName = declaredVariables(text, maps).value(name);
+    if (!typeName.isEmpty())
+    {
+        if (BaseClass* pClass = maps.classes.value(typeName))
+            return pClass;
+        return maps.iterators.value(typeName).target;  // iterator deref
+    }
+
+    BaseClass::MemberIterator iMember(pMethod->GetBaseClass());
+    while (++iMember)
+        if (toQ(iMember->GetPrefixedName()) == name)
+            return maps.classes.value(toQ(iMember->GetType()->GetName()));
+
+    return nullptr;
+}
+
 } // namespace
 
 ModelCompletionProvider::ModelCompletionProvider(Method* pMethod)
@@ -186,66 +364,33 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
     }
 
     QString base;
-    if (!access.isEmpty())
+    if (access == "::")
     {
         int b = basePos;
         while (b > 0 && isIdentChar(text[b - 1]))
             --b;
         base = text.mid(b, basePos - b);
         if (base.isEmpty() || base[0].isDigit())
-            return items;              // "3." float, ")->" chain -- no idea
+            return items;
     }
+
+    // No popup inside comments and string / char literals.
+    if (inCommentOrString(text.left(basePos)))
+        return items;
 
     const TypeMaps maps = buildTypeMaps(_pMethod);
     QSet<QString> seen;
 
-    // --- var. / var-> : the resolved type's methods ----------------------
+    // --- expr. / expr-> : the resolved type's methods ---------------------
+    // The expression may be a variable OR a call chain (GetRow(i)->).
     if (access == "." || access == "->")
     {
-        BaseClass* pClass = nullptr;
-        bool publicOnly = true;
-
-        if (base == "this")
-        {
-            pClass = _pMethod->GetBaseClass();
-            publicOnly = false;
-        }
-
-        if (!pClass)                   // an argument of this method?
-        {
-            Method::ArgumentIterator iArgument(_pMethod);
-            while (!pClass && ++iArgument)
-            {
-                if (toQ(iArgument->GetName()) == base)
-                    pClass = maps.classes.value(
-                        toQ(iArgument->GetType()->GetName()));
-            }
-        }
-
-        if (!pClass)                   // a variable declared in the text?
-        {
-            const QString typeName =
-                declaredVariables(text, maps).value(base);
-            if (!typeName.isEmpty())
-            {
-                pClass = maps.classes.value(typeName);
-                if (!pClass)           // iterator: deref to the target class
-                    pClass = maps.iterators.value(typeName);
-            }
-        }
-
-        if (!pClass)                   // a member of the owning class?
-        {
-            BaseClass::MemberIterator iMember(_pMethod->GetBaseClass());
-            while (!pClass && ++iMember)
-            {
-                if (toQ(iMember->GetName()) == base)
-                    pClass = maps.classes.value(
-                        toQ(iMember->GetType()->GetName()));
-            }
-        }
-
-        collectMethods(pClass, publicOnly, seen, items);
+        const bool isThis = (basePos >= 4 &&
+                             text.mid(basePos - 4, 4) == "this" &&
+                             (basePos == 4 || !isIdentChar(text[basePos - 5])));
+        BaseClass* pClass =
+            resolveExpressionType(_pMethod, text, basePos, maps);
+        collectMethods(pClass, !isThis, seen, items);
         sortItems(items);
         return items;
     }
@@ -304,7 +449,7 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
     BaseClass::MemberIterator iMember(_pMethod->GetBaseClass());
     while (++iMember)
     {
-        const QString name = toQ(iMember->GetName());
+        const QString name = toQ(iMember->GetPrefixedName());
         if (!name.isEmpty() && !seen.contains(name))
         {
             seen.insert(name);
@@ -321,13 +466,54 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
             seen.insert(it.key());
             items.append(wordItem(it.key()));
         }
+
+    // Iterator types, each with a second "loop" item: the full while-loop
+    // skeleton, its constructor argument pre-filled with something of the
+    // relation's from-class that is in scope (this, an argument, a declared
+    // variable, or a member) -- the Iterator wizard's knowledge, inline.
+    // (IsBaseClass(BaseClass*) -- the inheritance test -- lives on
+    // ExternClass; BaseClass::IsBaseClass() is the Gti type predicate.)
     for (auto it = maps.iterators.constBegin();
          it != maps.iterators.constEnd(); ++it)
+    {
         if (!seen.contains(it.key()))
         {
             seen.insert(it.key());
             items.append(wordItem(it.key()));
         }
+
+        const IteratorInfo& info = it.value();
+        QString receiver;
+        BaseClass* pOwn = _pMethod->GetBaseClass();
+        ExternClass* pOwnExt = dynamic_cast<ExternClass*>(pOwn);
+        if (pOwn == info.from ||
+            (pOwnExt && info.from && pOwnExt->IsBaseClass(info.from)))
+            receiver = "this";
+        if (receiver.isEmpty())
+        {
+            const QString fromName = info.from
+                ? toQ(info.from->GetName()) : QString();
+            Method::ArgumentIterator iArgument(_pMethod);
+            while (receiver.isEmpty() && ++iArgument)
+                if (toQ(iArgument->GetType()->GetName()) == fromName)
+                    receiver = toQ(iArgument->GetName());
+            for (auto v = vars.constBegin();
+                 receiver.isEmpty() && v != vars.constEnd(); ++v)
+                if (v.value() == fromName)
+                    receiver = v.key();
+            BaseClass::MemberIterator iFromMember(pOwn);
+            while (receiver.isEmpty() && ++iFromMember)
+                if (toQ(iFromMember->GetType()->GetName()) == fromName)
+                    receiver = toQ(iFromMember->GetPrefixedName());
+        }
+
+        const QString loopVar = "i" + info.toName;
+        CodeCompletionItem loop;
+        loop.display = it.key() + " loop";
+        loop.insert  = QString("%1 %2(%3);\nwhile (++%2)\n{\n}")
+                           .arg(it.key(), loopVar, receiver);
+        items.append(loop);
+    }
 
     if (!seen.contains("this"))
         items.append(wordItem("this"));

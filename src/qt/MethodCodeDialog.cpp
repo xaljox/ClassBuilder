@@ -242,13 +242,42 @@ void MethodCodeDialog::renameIdentifierAtCursor()
         }
     }
 
+    // A model-involved rename saves the editor FIRST: with no unsaved edits
+    // in play, a later model undo can cleanly restore the editor too (the
+    // undo mirror never overwrites unsaved edits, so an unsaved editor
+    // would be left desynced on undo -- first undo reverts the rename,
+    // second one this save).
     Method::ArgumentIterator iArgument(_pMethod);
     while (++iArgument)
     {
         if (toQ(iArgument->GetName()) == name)
         {
+            save();
             iArgument->SetName(toCb(newName));
             iArgument->Update();
+            _pMethod->GetDataModelDoc()->MarkLastUndo();
+            return;
+        }
+    }
+
+    // A member of the owning class goes through the model too --
+    // Member::SetName fans the rename out through ALL methods of the class
+    // (and non-private members through derived classes), which mirrors into
+    // every open editor via Qt_ReplaceInOpenCodeEditor. SetName takes the
+    // UNPREFIXED name; strip the member prefix if the user typed it.
+    BaseClass::MemberIterator iMember(_pMethod->GetBaseClass());
+    while (++iMember)
+    {
+        if (toQ(iMember->GetPrefixedName()) == name)
+        {
+            save();                    // see the argument path above
+            CbString raw = toCb(newName);
+            const CbString prefix =
+                _pMethod->GetBaseClass()->GetMemberPrefix();
+            if (prefix.GetLength() > 0 && raw.Find(prefix) == 0)
+                raw = raw.Mid(prefix.GetLength());
+            iMember->SetName(raw);
+            iMember->Update();
             _pMethod->GetDataModelDoc()->MarkLastUndo();
             return;
         }
@@ -463,8 +492,9 @@ void MethodCodeDialog::save()
     _pMethod->SetCode(code);
     _pMethod->GetDataModelDoc()->MarkLastUndo();
 
-    // Reload so the editor matches the stored (normalised) text.
-    _ui->editCode->setPlainText(toQ(_pMethod->GetCode()));
+    // Reload so the editor matches the stored (normalised) text -- keeping
+    // the caret and the editor undo history (F2 saves mid-flow).
+    setEditorText(_ui->editCode, toQ(_pMethod->GetCode()));
 }
 
 // Show the freshly regenerated code without committing it (the MFC
