@@ -1178,6 +1178,10 @@ The completion popup opens automatically after `.`, `->` or `::`, after the seco
 
 A method is displayed with its argument **types** — `GetCell(int, int)` — so overloads appear as separate entries; accepting it inserts the argument **names** — `GetCell(row, col)` — with the first name pre-selected, ready to be overtyped. The names document the remaining slots.
 
+Each row carries its **model icon** — the same tree icon per kind (method, member, argument, class, iterator; an iterator shows its relation's icon) — and a muted, right-aligned **detail** column: a method's return type, a variable's type, `class`, or `iterator` / `loop`. So `FindRow(int)` reads `Row*` on the right, a member `_value` reads `CString`, a class reads `class`.
+
+In the constructor's **initializer-list pane** (chapter 10.3), completion works the other way round: at a naming position it offers exactly the members **not yet initialized**, inserting `_x()` with the caret between the parens. Typing `_` opens the popup at once (member names are all `_`-prefixed) — in the body pane too.
+
 Every iterator type also offers a **`… loop`** entry that inserts the complete pattern, correctly indented, caret inside the body:
 
 ```cpp
@@ -1194,6 +1198,7 @@ The constructor argument is pre-filled with something of the relation's owning c
 Two lightweight companions to completion, both resolved live from the model:
 
 - **Hover.** Rest the mouse on a name and a tooltip shows what the model knows: for a method its full signature (`Row* Matrix::FindRow(int id)`) with the method's **note** text underneath (long notes are capped); for a member or argument its type and note; for a class name the class and its note — and directly after `new`, the constructor's signature instead of the class. With overloads, the one matching the call's argument count is picked; when that cannot be decided, all candidate signatures are shown.
+- **Iterators** follow the same type-vs-variable split as classes. Hovering an iterator **type** (`ColumnIterator`) shows `class Matrix::ColumnIterator` — an iterator is always defined inside the owning class's scope. Hovering an iterator **variable** (`ColumnIterator iColumn`) shows the iterator's synthesized **constructor signature** — the owner pointer to iterate from, a reference element, and, *only when the relation's filter option is on*, a filter-method argument — so you can see exactly what to supply, just as hovering a `Column cc;` variable shows `Column`'s constructors.
 - **Parameter hints.** While typing inside a call, a hint above the line shows the signature of the method being called — the argument you are on in **bold**, default values included. It appears when you type `(` or `,`, when you accept a completion (the argument list arrives fully inserted then), and on demand with `Ctrl+Shift+Space` when the caret stands in an existing call. It follows the caret and disappears when the call closes with `)`, on `Esc`, or when focus leaves the editor. With overloads, the hint follows the argument count typed so far.
 
 ## Code insertion
@@ -1217,7 +1222,7 @@ The `Insert` menu (also on the editor's right-click menu) carries the control-fl
 
 ## The constructor editor
 
-The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space; the initial division is a best guess from how many lines each part has — the init pane fits its content (never below a few lines, never above 70% of the height) and the body takes the rest. Drag the splitter to change it. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker).
+The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space; the initial division is a best guess from how many lines each part has — the init pane fits its content (never below a few lines, never above 70% of the height) and the body takes the rest. Drag the splitter to change it. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker). Completion in the init pane offers the members **not yet initialized** (chapter 9's *Code completion*).
 
 ![](images/Constructor_Code_Editor.png)
 
