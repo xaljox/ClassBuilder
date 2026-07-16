@@ -29,6 +29,7 @@ class QKeyEvent;
 class QModelIndex;
 class QResizeEvent;
 class QShowEvent;
+class QWheelEvent;
 class QLabel;
 class QStandardItemModel;
 class QTimer;
@@ -181,6 +182,14 @@ public:
     // block, keeping the selection on them. One undo step.
     void moveSelectedLines(bool up);
 
+    // Toggle `//` line comments on the selected lines (or the current line):
+    // uncomment when every non-blank line is already commented, else comment.
+    void toggleLineComment();
+
+    // Wrap the selection (or the current line) in a `/* ... */` block
+    // comment; unwrap when it already is one. One undo step.
+    void toggleBlockComment();
+
 signals:
     // The identifier at the caret changed (focused editor only; empty when
     // the caret leaves identifiers). The owning dialog spreads the highlight
@@ -197,7 +206,9 @@ signals:
     void whoCallsMeRequested();
 
 protected:
+    bool event(QEvent* event) override;             // claim Ctrl+zoom keys
     void keyPressEvent(QKeyEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;   // Ctrl+wheel = font zoom
     void mousePressEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
@@ -217,6 +228,17 @@ private:
     void indentSelection(bool unindent);
     void reindentOpenBrace();
     void reindentClosingBrace();
+
+    // Set the editor's font point size, overriding the app-wide stylesheet
+    // (a bare `QWidget { font-size }` rule would otherwise pin it, defeating
+    // setFont/zoom); recomputes the tab stops. `pt` is clamped.
+    void applyEditorFont(int pt);
+
+    // Auto-close pairs: an opener inserts its closer (caret between); a closer
+    // typed where it already sits steps over it; Backspace on an empty pair
+    // deletes both. Returns true when the key was fully handled. Also expands
+    // `{|}` on Enter into an indented three-line block.
+    bool autoCloseKeyPressEvent(QKeyEvent* event);
 
     // Reserve viewport margins for the marker bands + place them in the frame.
     void updateBandMargins();
@@ -270,6 +292,9 @@ private:
     QStandardItemModel*     _completionModel = nullptr;
 
     QLabel* _paramHint = nullptr;    // parameter-hint label, created on demand
+
+    int _basePt = 11;                // codeFont() point size (zoom baseline)
+    int _zoomPt = 11;                // current editor point size
 
     // Method-not-found diagnostics: [start, length] call ranges to wave-
     // underline, refreshed (debounced) by _diagnosticTimer off textChanged.

@@ -65,9 +65,17 @@ Remaining ideas, roughly by value-per-effort:
 
 ## Editor quality-of-life (generic but real daily wins)
 
-8. **Comment toggle** — Ctrl+/ comments/uncomments the selection with `//`.
-9. **Auto-close pairs** — `(` inserts `()` with type-over; same for quotes.
-10. **Ctrl+wheel font zoom** in the editor.
+8. ✅ DONE 2026-07-16. **Comment toggle** — Ctrl+/ toggles `//` on the
+   selected lines; Ctrl+Shift+B wraps/unwraps a `/* ... */` block comment.
+9. ✅ DONE 2026-07-16. **Auto-close pairs** — `(` `[` `{` `"` `'` insert the
+   closer (caret between); type-over the closer; Backspace on an empty pair
+   deletes both; `{`+Enter expands to an indented three-line block; a
+   selection is surrounded.
+10. ✅ DONE 2026-07-16. **Font zoom** — Ctrl++ / Ctrl+- / Ctrl+0 and
+    Ctrl+wheel. (The editor claims the Ctrl+zoom keys via ShortcutOverride so
+    the main window's diagram-zoom Ctrl+- doesn't swallow them; the size is
+    set via a widget stylesheet, which the app-wide `font-size` QSS otherwise
+    pins.)
 
 ## Architecture / shell
 
@@ -87,6 +95,4 @@ Remaining ideas, roughly by value-per-effort:
     button shelling out to cmake with output in a dock is a real (if
     scope-creepy) possibility.
 
-All model-powered ideas (1–7) are done. Remaining: the quality-of-life trio
-**8–10** (comment toggle, auto-close pairs, Ctrl+wheel zoom — small, generic
-daily wins) and the parked **13** (build/run integration).
+Ideas 1–12 are done. Remaining: the parked **13** (build/run integration).

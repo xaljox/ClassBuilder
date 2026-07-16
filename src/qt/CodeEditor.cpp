@@ -28,6 +28,7 @@
 #include <QTextCursor>
 #include <QTextEdit>
 #include <QToolTip>
+#include <QWheelEvent>
 
 namespace {
 
@@ -190,7 +191,8 @@ QFont CodeEditor::codeFont()
 CodeEditor::CodeEditor(QWidget* parent)
     : QPlainTextEdit(parent)
 {
-    setFont(codeFont());
+    _basePt = _zoomPt = codeFont().pointSize();
+    applyEditorFont(_zoomPt);        // font + tab stops (overrides app QSS)
 
     // Force crisp black-on-white -- do not inherit a washed-out palette
     // from the app-wide style.
@@ -201,9 +203,6 @@ CodeEditor::CodeEditor(QWidget* parent)
 
     setLineWrapMode(QPlainTextEdit::NoWrap);
     setTabChangesFocus(false);
-
-    QFontMetricsF fm(font());
-    setTabStopDistance(fm.horizontalAdvance(' ') * _indentSize);
 
     _highlighter = new CppHighlighter(document());
 
@@ -586,6 +585,99 @@ void CodeEditor::moveSelectedLines(bool up)
     setTextCursor(sel);
 }
 
+// Toggle `//` on the selected lines (or the current line). Uncomments when
+// every non-blank line is already commented, else comments; blank lines are
+// left alone. One undo step, comment inserted at each line's indent.
+void CodeEditor::toggleLineComment()
+{
+    if (isReadOnly())
+        return;
+
+    QTextCursor cur = textCursor();
+    QTextBlock first = document()->findBlock(cur.selectionStart());
+    QTextBlock last  = document()->findBlock(cur.selectionEnd());
+    if (cur.selectionEnd() > cur.selectionStart() &&
+        cur.selectionEnd() == last.position())
+        last = last.previous();
+
+    bool allCommented = true;
+    for (QTextBlock b = first; b.isValid(); b = b.next())
+    {
+        const QString trimmed = b.text().trimmed();
+        if (!trimmed.isEmpty() && !trimmed.startsWith("//"))
+            allCommented = false;
+        if (b == last)
+            break;
+    }
+
+    cur.beginEditBlock();
+    for (QTextBlock b = first; b.isValid(); b = b.next())
+    {
+        const QString t = b.text();
+        int lead = 0;
+        while (lead < t.length() && (t[lead] == ' ' || t[lead] == '\t'))
+            ++lead;
+
+        if (allCommented)
+        {
+            if (t.mid(lead).startsWith("//"))
+            {
+                const int n = (lead + 2 < t.length() && t[lead + 2] == ' ')
+                    ? 3 : 2;
+                QTextCursor e(document());
+                e.setPosition(b.position() + lead);
+                e.setPosition(b.position() + lead + n,
+                              QTextCursor::KeepAnchor);
+                e.removeSelectedText();
+            }
+        }
+        else if (!t.trimmed().isEmpty())
+        {
+            QTextCursor e(document());
+            e.setPosition(b.position() + lead);
+            e.insertText("// ");
+        }
+        if (b == last)
+            break;
+    }
+    cur.endEditBlock();
+}
+
+// Wrap the selection (or the current line) in `/* ... */`; unwrap when it
+// already is one. One undo step.
+void CodeEditor::toggleBlockComment()
+{
+    if (isReadOnly())
+        return;
+
+    QTextCursor cur = textCursor();
+    if (!cur.hasSelection())
+    {
+        cur.movePosition(QTextCursor::StartOfBlock);
+        cur.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    }
+
+    QString sel = cur.selectedText();
+    const QString trimmed = sel.trimmed();
+    cur.beginEditBlock();
+    if (trimmed.startsWith("/*") && trimmed.endsWith("*/") &&
+        trimmed.length() >= 4)
+    {
+        // Unwrap: drop the /* */ and one padding space on each side.
+        int b = sel.indexOf("/*");
+        int e = sel.lastIndexOf("*/");
+        QString inner = sel.mid(b + 2, e - (b + 2));
+        if (inner.startsWith(' ')) inner.remove(0, 1);
+        if (inner.endsWith(' '))   inner.chop(1);
+        cur.insertText(sel.left(b) + inner + sel.mid(e + 2));
+    }
+    else
+    {
+        cur.insertText("/* " + sel + " */");
+    }
+    cur.endEditBlock();
+}
+
 // The editor text with comments and braced blocks stripped -- the MFC
 // CCodeEdit::GetStrippedCode.
 QString CodeEditor::strippedCode() const
@@ -648,6 +740,33 @@ void CodeEditor::insertWizardSnippet(const QString& text)
     }
 }
 
+// Claim the Ctrl+zoom keys at the ShortcutOverride stage so they reach our
+// keyPressEvent instead of firing a window-scoped shortcut. The main window
+// owns a "Zoom Out" action on Ctrl+- (for diagrams); without this it would
+// swallow Ctrl+- while the editor has focus, and the editor would never see
+// it (JV 2026-07-16 -- Ctrl+- did not even reach keyPressEvent).
+bool CodeEditor::event(QEvent* e)
+{
+    if (e->type() == QEvent::ShortcutOverride)
+    {
+        QKeyEvent* ke = static_cast<QKeyEvent*>(e);
+        if (ke->modifiers() & Qt::ControlModifier)
+        {
+            switch (ke->key())
+            {
+            case Qt::Key_Minus: case Qt::Key_Underscore:
+            case Qt::Key_Plus:  case Qt::Key_Equal:
+            case Qt::Key_0:
+                e->accept();      // deliver as a normal key press to us
+                return true;
+            default:
+                break;
+            }
+        }
+    }
+    return QPlainTextEdit::event(e);
+}
+
 void CodeEditor::keyPressEvent(QKeyEvent* event)
 {
     if (completionKeyPressEvent(event))
@@ -669,6 +788,44 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
     {
         updateParameterHint(true);
         event->accept();
+        return;
+    }
+
+    // Font zoom -- mirrors the diagram canvas (Ctrl + 0 / + / = / -). Both the
+    // key code AND the typed text are checked, so the +/- shift asymmetry
+    // across keyboard layouts cannot leave a gesture unmatched.
+    if (event->modifiers() & Qt::ControlModifier)
+    {
+        const int key = event->key();
+        const QString t = event->text();
+        if (key == Qt::Key_0 || t == "0")
+        {
+            applyEditorFont(_basePt);
+            event->accept();
+            return;
+        }
+        if (key == Qt::Key_Plus || key == Qt::Key_Equal ||
+            t == "+" || t == "=")
+        {
+            applyEditorFont(_zoomPt + 1);
+            event->accept();
+            return;
+        }
+        if (key == Qt::Key_Minus || key == Qt::Key_Underscore ||
+            t == "-" || t == "_")
+        {
+            applyEditorFont(_zoomPt - 1);
+            event->accept();
+            return;
+        }
+    }
+
+    // Auto-close pairs, type-over, empty-pair backspace, and `{|}` Enter
+    // expansion -- handled before the normal keys.
+    if (autoCloseKeyPressEvent(event))
+    {
+        if (event->text().contains('(') || event->text().contains(','))
+            updateParameterHint(true);
         return;
     }
 
@@ -719,6 +876,133 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
     // move only updates an already-visible one (the ctor's connection).
     if (event->text().contains('(') || event->text().contains(','))
         updateParameterHint(true);
+}
+
+// Auto-close pairs. Openers: `(` `[` `{` `"` `'`. See the header.
+bool CodeEditor::autoCloseKeyPressEvent(QKeyEvent* event)
+{
+    if (isReadOnly())
+        return false;
+
+    static const QString openers = "([{\"'";
+    static const QString closers = ")]}\"'";
+
+    const QString text = toPlainText();
+    QTextCursor cur = textCursor();
+    const int pos = cur.position();
+    const QChar next = pos < text.length() ? text[pos] : QChar();
+    const QChar prev = pos > 0 ? text[pos - 1] : QChar();
+
+    // `{|}` on Enter -> expand into an indented three-line block, caret on the
+    // middle line.
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) &&
+        event->modifiers() == Qt::NoModifier &&
+        prev == '{' && next == '}')
+    {
+        const int lineIndent = leadingIndent(cur.block().text());
+        const QString mid = "\n" + QString(lineIndent + _indentSize, ' ');
+        const QString end = "\n" + QString(lineIndent, ' ');
+        cur.beginEditBlock();
+        cur.insertText(mid + end);
+        cur.setPosition(pos + mid.length());     // end of the indented line
+        cur.endEditBlock();
+        setTextCursor(cur);
+        return true;
+    }
+
+    // Backspace on an empty pair (`(|)`, `"|"`, ...) deletes both halves.
+    if (event->key() == Qt::Key_Backspace &&
+        event->modifiers() == Qt::NoModifier && !cur.hasSelection())
+    {
+        const int oi = openers.indexOf(prev);
+        if (oi >= 0 && next == closers[oi])
+        {
+            cur.beginEditBlock();
+            cur.deleteChar();                    // the closer
+            cur.deletePreviousChar();            // the opener
+            cur.endEditBlock();
+            return true;
+        }
+        return false;
+    }
+
+    const QString typed = event->text();
+    if (typed.size() != 1)
+        return false;
+    const QChar c = typed[0];
+
+    // Type-over: a closer typed where it already sits just steps over it.
+    if (!cur.hasSelection() && next == c &&
+        (c == ')' || c == ']' || c == '}' || c == '"' || c == '\''))
+    {
+        cur.movePosition(QTextCursor::Right);
+        setTextCursor(cur);
+        return true;
+    }
+
+    const int oi = openers.indexOf(c);
+    if (oi < 0)
+        return false;
+    const QChar close = closers[oi];
+
+    // Surround a selection with the pair.
+    if (cur.hasSelection())
+    {
+        const int s = cur.selectionStart();
+        const QString sel = cur.selectedText();
+        cur.insertText(c + sel + close);
+        cur.setPosition(s + 1);
+        cur.setPosition(s + 1 + sel.length(), QTextCursor::KeepAnchor);
+        setTextCursor(cur);
+        return true;
+    }
+
+    // Insert the pair only when the caret is not glued to a word (so typing
+    // `(` before `foo` does not orphan a `)`); a quote also needs a
+    // non-word char before it (an apostrophe inside `don't` stays literal).
+    const bool nextOk = next.isNull() || next.isSpace() ||
+                        QString(")]},;").contains(next);
+    const bool quoteOk = !(c == '"' || c == '\'') ||
+                         !(isIdentChar(prev));
+    if (nextOk && quoteOk)
+    {
+        cur.insertText(QString(c) + close);
+        cur.movePosition(QTextCursor::Left);
+        setTextCursor(cur);
+        if (c == '{')
+            reindentOpenBrace();     // keep the Allman alignment of a lone {
+        return true;
+    }
+    return false;
+}
+
+// Set the editor's font size. The app-wide stylesheet carries a bare
+// `QWidget { font-size }` rule that OVERRIDES setFont() -- so plain setFont /
+// zoomIn does nothing. A widget-local stylesheet wins over the inherited one,
+// so the size is set that way (the family still comes from setFont).
+void CodeEditor::applyEditorFont(int pt)
+{
+    _zoomPt = qBound(6, pt, 32);
+    QFont f = codeFont();
+    f.setPointSize(_zoomPt);
+    setFont(f);
+    setStyleSheet(QString("font-size:%1pt;").arg(_zoomPt));
+    QFontMetricsF fm(f);
+    setTabStopDistance(fm.horizontalAdvance(' ') * _indentSize);
+}
+
+// Ctrl+wheel zooms the editor font in small steps.
+void CodeEditor::wheelEvent(QWheelEvent* event)
+{
+    if (event->modifiers() & Qt::ControlModifier)
+    {
+        const int delta = event->angleDelta().y();
+        if (delta != 0)
+            applyEditorFont(_zoomPt + (delta > 0 ? 1 : -1));
+        event->accept();
+        return;
+    }
+    QPlainTextEdit::wheelEvent(event);
 }
 
 // Cmd+Click (macOS) / Ctrl+Click: go to definition of the clicked

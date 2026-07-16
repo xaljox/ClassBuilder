@@ -445,6 +445,14 @@ void MethodCodeDialog::buildMenu()
     QAction* aReformat = edit->addAction("Re&format code",
         QKeySequence("Ctrl+Shift+R"), ed, &CodeEditor::reformatCode);
     aReformat->setEnabled(!fixed);
+    edit->addSeparator();
+    QAction* aLineComment = edit->addAction("Toggle &line comment",
+        QKeySequence("Ctrl+/"), ed, &CodeEditor::toggleLineComment);
+    aLineComment->setEnabled(!fixed);
+    QAction* aBlockComment = edit->addAction("&Block comment",
+        QKeySequence("Ctrl+Shift+B"), ed, &CodeEditor::toggleBlockComment);
+    aBlockComment->setEnabled(!fixed);
+    edit->addSeparator();
     _renameAction = edit->addAction("Re&name identifier...",
         QKeySequence(Qt::Key_F2), this,
         [this] { renameIdentifierAtCursor(); });
