@@ -436,6 +436,18 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     QSizePolicy tbPolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
     tbPolicy.setHeightForWidth(true);
     toolBar->setSizePolicy(tbPolicy);
+#ifdef __APPLE__
+    // The macOS style ignores autoRaise for a QToolButton OUTSIDE a real
+    // QToolBar and bezels every button (gray square border) -- force the
+    // flat look; hover/pressed feedback from the live palette, so it fits
+    // both themes. Windows' style already renders autoRaise flat.
+    toolBar->setStyleSheet(
+        "QToolButton { border: none; background: transparent;"
+        " border-radius: 3px; padding: 1px; }"
+        "QToolButton:hover { background: palette(midlight); }"
+        "QToolButton:pressed { background: palette(mid); }"
+        "QToolButton:disabled { background: transparent; }");
+#endif
 
     auto makeButton = [this, toolBar, flow](QAction* act)
     {

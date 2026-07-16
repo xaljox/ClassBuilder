@@ -10,6 +10,7 @@
 // Qt main class tree).
 #pragma once
 
+#include <QPersistentModelIndex>
 #include <QTreeWidget>
 
 class CbTreeWidget : public QTreeWidget
@@ -22,6 +23,12 @@ protected:
     void drawBranches(QPainter* painter, const QRect& rect,
                       const QModelIndex& index) const override;
     void changeEvent(QEvent* event) override;
+    // macOS: repaint the full viewport when the hovered row or the selection
+    // changes -- the transition otherwise leaves thin stale stripes (see .cpp).
+    // No-ops beyond the base behavior elsewhere.
+    bool viewportEvent(QEvent* event) override;
+    void selectionChanged(const QItemSelection& selected,
+                          const QItemSelection& deselected) override;
 
 private:
     // Whether a selected row's real, style-painted background collides with
@@ -34,4 +41,8 @@ private:
     bool selectionChromeShouldFlip() const;
     mutable bool _chromeFlipCached = false;
     mutable bool _chromeFlip = false;
+
+    // macOS: the row the cursor is on -- only a CHANGE of row triggers the
+    // full-viewport repaint in viewportEvent, not every mouse move.
+    QPersistentModelIndex _hoverRow;
 };

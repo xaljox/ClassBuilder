@@ -13,6 +13,8 @@
 #include <QStyle>
 #include <QStyleOptionViewItem>
 #include <QEvent>
+#include <QHoverEvent>
+#include <QItemSelection>
 #ifdef CB_HAVE_SVG
 #include <QSvgRenderer>
 #include <QHash>
@@ -97,6 +99,44 @@ void CbTreeWidget::changeEvent(QEvent* event)
     // light/dark toggle -- so drop the cache and re-probe on the next paint.
     if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange)
         _chromeFlipCached = false;
+}
+
+// macOS: when a row's hover/selection tint goes away, Qt invalidates only
+// that row's exact rect -- but the layered row paint (native full-row
+// selection under the QSS tint) can bleed a pixel outside it, so a thin
+// blue stripe is sometimes left behind on the transition. Repaint the whole
+// viewport on those transitions instead: they are discrete events (a row
+// crossed, a selection change), the trees are small, and a full repaint
+// kills every remnant whatever its exact origin. Elsewhere the base
+// behavior is enough.
+bool CbTreeWidget::viewportEvent(QEvent* event)
+{
+#ifdef __APPLE__
+    const QEvent::Type t = event->type();
+    if (t == QEvent::HoverMove || t == QEvent::HoverEnter ||
+        t == QEvent::HoverLeave)
+    {
+        QPersistentModelIndex row;
+        if (t != QEvent::HoverLeave)
+            row = indexAt(
+                static_cast<QHoverEvent*>(event)->position().toPoint());
+        if (row != _hoverRow)
+        {
+            _hoverRow = row;
+            viewport()->update();
+        }
+    }
+#endif
+    return QTreeWidget::viewportEvent(event);
+}
+
+void CbTreeWidget::selectionChanged(const QItemSelection& selected,
+                                    const QItemSelection& deselected)
+{
+    QTreeWidget::selectionChanged(selected, deselected);
+#ifdef __APPLE__
+    viewport()->update();
+#endif
 }
 
 // Whether the branch triangle/connector chrome (drawn in the theme accent)
