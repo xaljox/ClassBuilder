@@ -46,6 +46,11 @@ public:
     // when the caret is not inside a resolvable call.
     QString parameterHint(const QString& textToCursor) override;
 
+    // Method-not-found diagnostics: [start, length] of every qualified call
+    // whose receiver resolves to a real modeled class lacking that method.
+    // Drives the editor's red wave underline; the hover explains each one.
+    QVector<QPair<int, int>> unresolvedCalls(const QString& text) override;
+
     // Who-calls-me support: does `code` -- a body of THIS provider's method
     // -- contain a call of `pTarget`? A textual hit (whole identifier
     // followed by '(') is verified by resolving the call's receiver in this

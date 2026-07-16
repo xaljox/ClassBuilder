@@ -385,6 +385,27 @@ Method* findMethodInClass(BaseClass* pClass, const QString& name,
     return nullptr;
 }
 
+// Find `name` (a prefixed member name) as a member of `pClass` or a base.
+Member* findMemberInClass(BaseClass* pClass, const QString& name,
+                          int depth = 0)
+{
+    if (!pClass || depth > 8)
+        return nullptr;
+    BaseClass::MemberIterator iMember(pClass);
+    while (++iMember)
+        if (toQ(iMember->GetPrefixedName()) == name)
+            return iMember.Get();
+    if (Class* pAsClass = dynamic_cast<Class*>(pClass))
+    {
+        Class::InheritIterator iInherit(pAsClass);
+        while (++iInherit)
+            if (Member* pMember = findMemberInClass(iInherit->GetBaseClass(),
+                                                    name, depth + 1))
+                return pMember;
+    }
+    return nullptr;
+}
+
 // The model class of the expression ENDING at `endPos` (exclusive): a bare
 // identifier (this / argument / declared variable / member) or a call chain
 // ending in ')' -- then the called method's return type, with the receiver
@@ -530,6 +551,13 @@ QString hoverHtml(const QString& signature, const CbString& note)
                 + noteText + "</span>";
     }
     return html;
+}
+
+// The method-not-found warning tooltip: a red line, the receiver class named.
+QString warningHtml(const QString& message)
+{
+    return "<span style='color:#B00020'>⚠ "
+         + message.toHtmlEscaped() + "</span>";
 }
 
 // GetInterfaceCpp gives `Type Class::Name(args) const`; a constructor
@@ -958,6 +986,66 @@ bool ModelCompletionProvider::callsMethod(const QString& code,
     }
 }
 
+QVector<QPair<int, int>> ModelCompletionProvider::unresolvedCalls(
+    const QString& text)
+{
+    QVector<QPair<int, int>> out;
+    const int len = text.length();
+    const TypeMaps maps = buildTypeMaps(_pMethod);
+
+    for (int i = 0; i < len; ++i)
+    {
+        if (text[i] != '(')
+            continue;
+
+        // The called name immediately before this '(' (across whitespace).
+        int nameEnd = i;
+        while (nameEnd > 0 && text[nameEnd - 1].isSpace())
+            --nameEnd;
+        int nameStart = nameEnd;
+        while (nameStart > 0 && isIdentChar(text[nameStart - 1]))
+            --nameStart;
+        if (nameStart == nameEnd || text[nameStart].isDigit())
+            continue;
+
+        // Only QUALIFIED calls (a resolvable receiver); a bare name could be
+        // a free function or a macro, which the model does not know.
+        BaseClass* pReceiver = nullptr;
+        if (nameStart >= 1 && text[nameStart - 1] == '.')
+            pReceiver = resolveExpressionType(_pMethod, text, nameStart - 1,
+                                              maps);
+        else if (nameStart >= 2 && text[nameStart - 2] == '-' &&
+                 text[nameStart - 1] == '>')
+            pReceiver = resolveExpressionType(_pMethod, text, nameStart - 2,
+                                              maps);
+        else if (nameStart >= 2 && text[nameStart - 2] == ':' &&
+                 text[nameStart - 1] == ':')
+        {
+            int s = nameStart - 2;
+            const int b = s;
+            while (s > 0 && isIdentChar(text[s - 1]))
+                --s;
+            pReceiver = maps.classes.value(text.mid(s, b - s));
+        }
+        else
+            continue;                          // unqualified: leave alone
+
+        // Warn only for a real modeled class (an ExternClass models only some
+        // of a foreign class's methods -- calling an unmodeled one is fine).
+        if (!dynamic_cast<Class*>(pReceiver))
+            continue;
+        if (inCommentOrString(text.left(nameStart)))
+            continue;
+
+        const QString name = text.mid(nameStart, nameEnd - nameStart);
+        QList<Method*> named;
+        findMethodsInClass(pReceiver, name, named);
+        if (named.isEmpty())
+            out.append(qMakePair(nameStart, nameEnd - nameStart));
+    }
+    return out;
+}
+
 QString ModelCompletionProvider::hoverText(const QString& text, int pos)
 {
     const int len = text.length();
@@ -1023,6 +1111,21 @@ QString ModelCompletionProvider::hoverText(const QString& text, int pos)
         if (Method* pMatch = matchOverload(named, text, end))
             return hoverHtml(methodSignature(pMatch), pMatch->GetNote());
         return hoverHtml(joinedSignatures(named), CbString());
+    }
+
+    // Method-not-found warning: the receiver resolves to a real modeled class
+    // (a Class, not a partially-modeled ExternClass) and the name is a CALL,
+    // but no such method exists -- the free hover slot flags it. Only for a
+    // hard-resolved receiver: an unresolvable one stays silent (no false
+    // alarms), the same rule who-calls-me uses.
+    if (qualified && dynamic_cast<Class*>(pReceiver))
+    {
+        int k = end;
+        while (k < len && text[k].isSpace())
+            ++k;
+        if (k < len && text[k] == '(')
+            return warningHtml("No method '" + name + "' in class "
+                             + toQ(pReceiver->GetName()));
     }
 
     if (!qualified)
@@ -1103,6 +1206,7 @@ Gti* ModelCompletionProvider::definitionAtCursor(const QString& text, int pos)
 
     const TypeMaps maps = buildTypeMaps(_pMethod);
 
+    bool qualified = true;
     BaseClass* pReceiver = nullptr;
     if (start >= 1 && text[start - 1] == '.')
         pReceiver = resolveExpressionType(_pMethod, text, start - 1, maps);
@@ -1118,11 +1222,27 @@ Gti* ModelCompletionProvider::definitionAtCursor(const QString& text, int pos)
     }
     else
     {
+        qualified = false;
         pReceiver = _pMethod->GetBaseClass();
     }
 
     if (Method* pFound = findMethodInClass(pReceiver, name))
         return pFound;
+
+    // A member of the receiver class (own class for `_x`, else `pObj->_x`) --
+    // the tree row IS its definition, like a macro method.
+    if (Member* pMember = findMemberInClass(pReceiver, name))
+        return pMember;
+
+    // An argument of the edited method (unqualified only -- arguments are
+    // locals of this method).
+    if (!qualified)
+    {
+        Method::ArgumentIterator iArgument(_pMethod);
+        while (++iArgument)
+            if (toQ(iArgument->GetName()) == name)
+                return iArgument.Get();
+    }
 
     // Not a method of the receiver -- a CLASS name (`new Row(this, r)`, a
     // declaration, a cast)? Its constructor when it has one (that is what

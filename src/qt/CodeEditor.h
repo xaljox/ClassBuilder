@@ -19,7 +19,9 @@
 #include <QPlainTextEdit>
 #include <QFont>
 #include <QIcon>
+#include <QPair>
 #include <QSet>
+#include <QVector>
 
 class QCompleter;
 class QFocusEvent;
@@ -29,6 +31,7 @@ class QResizeEvent;
 class QShowEvent;
 class QLabel;
 class QStandardItemModel;
+class QTimer;
 class CppHighlighter;
 
 // One completion candidate. `display` is shown in the popup (a method shows
@@ -81,6 +84,16 @@ public:
     {
         Q_UNUSED(textToCursor)
         return QString();
+    }
+
+    // Ranges [start, length] of qualified calls in `text` whose receiver
+    // resolves to a real modeled class that has no such method -- the editor
+    // wave-underlines them (a visible cue inviting a hover, which then shows
+    // the method-not-found warning). Empty by default.
+    virtual QVector<QPair<int, int>> unresolvedCalls(const QString& text)
+    {
+        Q_UNUSED(text)
+        return {};
     }
 };
 
@@ -213,6 +226,10 @@ private:
     // caret abuts a brace, the highlight of it and its match.
     void updateExtraSelections();
 
+    // Re-query the provider for method-not-found call ranges (debounced off
+    // textChanged) and refresh the wave underlines.
+    void updateDiagnostics();
+
     // Completion plumbing. completionKeyPressEvent eats the keys the visible
     // popup owns (Enter/Tab/arrows/Escape) and Ctrl+Space; maybeTrigger
     // decides after a normal keystroke whether to (re)show or hide the popup.
@@ -253,4 +270,9 @@ private:
     QStandardItemModel*     _completionModel = nullptr;
 
     QLabel* _paramHint = nullptr;    // parameter-hint label, created on demand
+
+    // Method-not-found diagnostics: [start, length] call ranges to wave-
+    // underline, refreshed (debounced) by _diagnosticTimer off textChanged.
+    QVector<QPair<int, int>> _diagnosticRanges;
+    QTimer* _diagnosticTimer = nullptr;
 };

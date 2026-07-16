@@ -24,6 +24,7 @@
 #include <QStyle>
 #include <QStyledItemDelegate>
 #include <QTextBlock>
+#include <QTimer>
 #include <QTextCursor>
 #include <QTextEdit>
 #include <QToolTip>
@@ -214,6 +215,18 @@ CodeEditor::CodeEditor(QWidget* parent)
     // (typing, click, backspace out of the call), never shown by this path.
     connect(this, &QPlainTextEdit::cursorPositionChanged,
             this, [this] { updateParameterHint(false); });
+
+    // Method-not-found diagnostics: recompute the wave-underline ranges a
+    // short while after typing stops (resolving every call on each keystroke
+    // would be wasteful, and mid-word the text is transiently invalid).
+    _diagnosticTimer = new QTimer(this);
+    _diagnosticTimer->setSingleShot(true);
+    _diagnosticTimer->setInterval(400);
+    connect(_diagnosticTimer, &QTimer::timeout,
+            this, &CodeEditor::updateDiagnostics);
+    connect(this, &QPlainTextEdit::textChanged,
+            this, [this] { _diagnosticTimer->start(); });
+
     updateExtraSelections();
 }
 
@@ -885,6 +898,16 @@ void CodeEditor::setCompletionProvider(CodeCompletionProvider* provider)
                 QOverload<const QModelIndex&>::of(&QCompleter::activated),
                 this, &CodeEditor::insertCompletion);
     }
+    // The provider drives the diagnostics -- resolve the initial text now.
+    if (provider && _diagnosticTimer)
+        _diagnosticTimer->start();
+}
+
+void CodeEditor::updateDiagnostics()
+{
+    _diagnosticRanges = _provider ? _provider->unresolvedCalls(toPlainText())
+                                  : QVector<QPair<int, int>>();
+    updateExtraSelections();
 }
 
 int CodeEditor::typedPrefixLength() const
@@ -1240,6 +1263,29 @@ void CodeEditor::updateExtraSelections()
             sel.cursor = textCursor();
             sel.cursor.setPosition(p);
             sel.cursor.setPosition(p + _highlightWord.length(),
+                                   QTextCursor::KeepAnchor);
+            selections.append(sel);
+        }
+    }
+
+    // Method-not-found wave underlines (red), shown regardless of focus so
+    // the cue is always visible -- hovering one then explains it. The ranges
+    // are refreshed (debounced) by updateDiagnostics.
+    if (!_diagnosticRanges.isEmpty())
+    {
+        QTextCharFormat fmt;
+        fmt.setUnderlineStyle(QTextCharFormat::WaveUnderline);
+        fmt.setUnderlineColor(QColor(0xC0, 0x00, 0x00));
+        const int textLen = text.length();
+        for (const QPair<int, int>& range : _diagnosticRanges)
+        {
+            if (range.first < 0 || range.first + range.second > textLen)
+                continue;                       // stale after a fast edit
+            QTextEdit::ExtraSelection sel;
+            sel.format = fmt;
+            sel.cursor = textCursor();
+            sel.cursor.setPosition(range.first);
+            sel.cursor.setPosition(range.first + range.second,
                                    QTextCursor::KeepAnchor);
             selections.append(sel);
         }
