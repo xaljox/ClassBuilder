@@ -26,6 +26,9 @@
 #include <QApplication>
 #include <QMenu>
 #include <QToolBar>
+#include <QToolButton>
+#include <QFrame>
+#include "FlowLayout.h"
 #include <QAction>
 #include <QShortcut>
 #include <QKeySequence>
@@ -423,22 +426,39 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     // lands beside the legacy .ico). They act on the CURRENT selection with
     // the same gating as the context menu (checkOnly pass), re-evaluated on
     // every selection change.
-    QToolBar* toolBar = new QToolBar(this);
-    toolBar->setMovable(false);
-    // Icon-only and trimmed, identical to the diagram bars so the height
-    // matches (text labels made this bar taller and wider). Every action has
-    // an icon so nothing blanks; tooltips carry the names.
-    toolBar->setIconSize(QSize(CB_TOOLBAR_ICON_PX, CB_TOOLBAR_ICON_PX));
-    toolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    toolBar->setStyleSheet("QToolBar{border:0;spacing:1px;}"
-                           "QToolButton{padding:1px;}");
-    if (toolBar->layout())
-        toolBar->layout()->setContentsMargins(0, 0, 0, 0);
+    // A FLOW toolbar, not a QToolBar: when the tree pane is made narrow the
+    // buttons wrap onto a second (third, ...) row instead of clipping -- the
+    // tree needs little width, the button strip does, so it grows in height
+    // rather than demanding width (JV 2026-07-16). Each button is driven by a
+    // QAction, so shortcuts and the enable/disable gating are unchanged.
+    QWidget* toolBar = new QWidget(this);
+    FlowLayout* flow = new FlowLayout(toolBar, 0, 1, 1);
+    QSizePolicy tbPolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+    tbPolicy.setHeightForWidth(true);
+    toolBar->setSizePolicy(tbPolicy);
 
-    auto addTb = [this, toolBar](const QIcon& icon, const char* text,
-                                 const char* tip, TreeAction a)
+    auto makeButton = [this, toolBar, flow](QAction* act)
     {
-        QAction* act = toolBar->addAction(icon, text);
+        QToolButton* btn = new QToolButton(toolBar);
+        btn->setDefaultAction(act);
+        btn->setAutoRaise(true);
+        btn->setIconSize(QSize(CB_TOOLBAR_ICON_PX, CB_TOOLBAR_ICON_PX));
+        btn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        flow->addWidget(btn);
+    };
+    auto addSep = [toolBar, flow]
+    {
+        QFrame* sep = new QFrame(toolBar);
+        sep->setFrameShape(QFrame::VLine);
+        sep->setFrameShadow(QFrame::Sunken);
+        flow->addWidget(sep);
+    };
+
+    auto addTb = [this, toolBar, makeButton](const QIcon& icon,
+                                             const char* text,
+                                             const char* tip, TreeAction a)
+    {
+        QAction* act = new QAction(icon, QString::fromUtf8(text), this);
         const QKeySequence sc = treeAddShortcut(a);
         act->setToolTip(sc.isEmpty()
             ? QString::fromUtf8(tip)
@@ -464,6 +484,7 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
             }
         });
         _toolBarActions.append(qMakePair(int(a), act));
+        makeButton(act);
     };
 
     // Same MFC toolbar-strip glyphs the diagrams use (Qt_ToolBarIcon); Actor has
@@ -472,22 +493,22 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     addTb(Qt_ToolBarIcon(TG_ADD_CLASS),       "Class",       "Add a class",           TreeAction::AddClass);
     addTb(Qt_ToolBarIcon(TG_ADD_INHERIT),     "Inheritance", "Add an inheritance",    TreeAction::AddInherit);
     addTb(Qt_ToolBarIcon(TG_ADD_RELATION),    "Relation",    "Add a relation",        TreeAction::AddRelation);
-    toolBar->addSeparator();
+    addSep();
     addTb(Qt_ToolBarIcon(TG_ADD_MEMBER),      "Member",      "Add a member",          TreeAction::AddMember);
     addTb(Qt_ToolBarIcon(TG_ADD_FUNCTION),    "Method",      "Add a method",          TreeAction::AddMethod);
     addTb(Qt_ToolBarIcon(TG_ADD_CONSTRUCTOR), "Constructor", "Add a constructor",     TreeAction::AddConstructor);
     addTb(Qt_ToolBarIcon(TG_ADD_ARGUMENT),    "Argument",    "Add an argument",       TreeAction::AddArgument);
     addTb(Qt_ToolBarIcon(TG_ADD_VIRTUALS),    "Virtual Methods", "Add virtual methods", TreeAction::AddVirtuals);
     addTb(Qt_ToolBarIcon(TG_ADD_ISCLASS),     "IsClass Methods", "Add IsClass methods", TreeAction::AddIsClass);
-    toolBar->addSeparator();
+    addSep();
     addTb(Qt_ToolBarIcon(TG_ADD_TYPE),        "Type",        "Add a type",            TreeAction::AddType);
     addTb(Qt_AddStarBadge(Qt_ModelIcon(ICON_ACTOR)), "Actor", "Add an actor",        TreeAction::AddActor);
-    toolBar->addSeparator();
+    addSep();
     addTb(Qt_ToolBarIcon(TG_ADD_CLASSDIAGRAM),    "Class Diagram",    "Add a class diagram",    TreeAction::AddClassDiagram);
     addTb(Qt_ToolBarIcon(TG_ADD_SEQUENCEDIAGRAM), "Sequence Diagram", "Add a sequence diagram", TreeAction::AddSequenceDiagram);
-    toolBar->addSeparator();
+    addSep();
     addTb(Qt_ToolBarIcon(TG_EDIT_DELETE),     "Delete",      "Delete the selected node", TreeAction::Delete);
-    toolBar->addSeparator();
+    addSep();
 
     // Group / Meta Group / External Class have an accelerator but NO toolbar button --
     // bind a QShortcut so the key FIRES (the context menu otherwise only shows a key
@@ -515,20 +536,27 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     addKeyOnly(TreeAction::AddMetaGroup);
     addKeyOnly(TreeAction::AddExternClass);   // Ctrl+Shift+E -- X was grabbed by a global OS hotkey
 
-    QAction* actFilters = toolBar->addAction(
+    QAction* actFilters = new QAction(
         QIcon::fromTheme(QStringLiteral("document-properties")), "Filters...",
-        this, &MainTreeQtView::showFilterDialog);
+        this);
+    connect(actFilters, &QAction::triggered,
+            this, &MainTreeQtView::showFilterDialog);
     actFilters->setToolTip("Access / phase filters for this tree");
-    QAction* actFind = toolBar->addAction(
-        QIcon::fromTheme(QStringLiteral("edit-find")), "Find...",
-        this, &MainTreeQtView::onFindKey);
+    makeButton(actFilters);
+    QAction* actFind = new QAction(
+        QIcon::fromTheme(QStringLiteral("edit-find")), "Find...", this);
+    connect(actFind, &QAction::triggered, this, &MainTreeQtView::onFindKey);
     actFind->setShortcut(QKeySequence::Find);
     actFind->setToolTip("Find a node by name (Ctrl+F)");
-    QAction* actNext = toolBar->addAction(
-        QIcon::fromTheme(QStringLiteral("go-next")), "Next",
-        this, &MainTreeQtView::onRepeatKey);
+    addAction(actFind);            // keep the shortcut active (was on the bar)
+    makeButton(actFind);
+    QAction* actNext = new QAction(
+        QIcon::fromTheme(QStringLiteral("go-next")), "Next", this);
+    connect(actNext, &QAction::triggered, this, &MainTreeQtView::onRepeatKey);
     actNext->setShortcut(QKeySequence::FindNext);
     actNext->setToolTip("Find next match (F3)");
+    addAction(actNext);
+    makeButton(actNext);
 
     // Undo/Redo live ONLY here (and on the diagram bars), NOT on the main
     // window toolbar: with several models open it must be unambiguous WHICH
@@ -536,13 +564,15 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     // mutates (_pDoc). Always visible, docked or floated. Same MFC glyphs / size
     // as the rest of the bar; enable tracks the doc's undo/redo stack
     // (refreshed in updateToolBarEnables).
-    _undoRedoSep = toolBar->addSeparator();
-    _undoAction = toolBar->addAction(Qt_ToolBarIcon(TG_EDIT_UNDO), "Undo",
-        this, [this] { _pDoc->Undo(); });
+    addSep();
+    _undoAction = new QAction(Qt_ToolBarIcon(TG_EDIT_UNDO), "Undo", this);
+    connect(_undoAction, &QAction::triggered, this, [this] { _pDoc->Undo(); });
     _undoAction->setToolTip("Undo (Ctrl+Z)");
-    _redoAction = toolBar->addAction(Qt_ToolBarIcon(TG_EDIT_REDO), "Redo",
-        this, [this] { _pDoc->Redo(); });
+    makeButton(_undoAction);
+    _redoAction = new QAction(Qt_ToolBarIcon(TG_EDIT_REDO), "Redo", this);
+    connect(_redoAction, &QAction::triggered, this, [this] { _pDoc->Redo(); });
     _redoAction->setToolTip("Redo (Ctrl+Y)");
+    makeButton(_redoAction);
 
     layout->insertWidget(0, toolBar);
 
