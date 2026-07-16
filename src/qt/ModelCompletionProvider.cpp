@@ -292,6 +292,49 @@ QString iteratorCtorSignature(const QString& typeName,
     return sig + pad + to + "* ref" + to + " = 0)";
 }
 
+// The iterator's OWN dot-interface: one constant set, generated identically
+// for every relation iterator (include/CB_Iterator*.h). `iX->` dereferences
+// to the target class; `iX.` reaches only these. "<To>" in the return type
+// stands for the relation's target class.
+struct IteratorOwnMethod
+{
+    const char* name;
+    const char* type;      // return type incl. trailing space
+    const char* note;
+};
+const IteratorOwnMethod kIteratorOwnMethods[] = {
+    { "Get",     "<To>* ", "The element the iterator stands on"
+                           " (0 before the first ++/-- or after the last)." },
+    { "IsFirst", "int ",   "Whether the iterator stands on the relation's"
+                           " first element." },
+    { "IsLast",  "int ",   "Whether the iterator stands on the relation's"
+                           " last element." },
+    { "Reset",   "void ",  "Rewind: the next ++/-- starts over from the"
+                           " first/last element." },
+};
+
+const IteratorOwnMethod* iteratorOwnMethod(const QString& name)
+{
+    for (const IteratorOwnMethod& m : kIteratorOwnMethods)
+        if (name == QLatin1String(m.name))
+            return &m;
+    return nullptr;
+}
+
+// The iterator TYPE name when the expression ending at endPos (exclusive --
+// the position of the '.') is a variable declared of one, else empty.
+QString iteratorVarType(const QString& text, int endPos, const TypeMaps& maps)
+{
+    int start = endPos;
+    while (start > 0 && isIdentChar(text[start - 1]))
+        --start;
+    if (start == endPos)
+        return QString();
+    const QString type =
+        declaredVariables(text, maps).value(text.mid(start, endPos - start));
+    return maps.iterators.contains(type) ? type : QString();
+}
+
 // An iterator TYPE row (scope-qualified where needed): the relation's icon
 // (the iterator exists because of that relation), "iterator" as the detail.
 CodeCompletionItem iteratorItem(const QString& typeName, int relationIcon)
@@ -443,8 +486,18 @@ BaseClass* resolveExpressionType(Method* pMethod, const QString& text,
 
         BaseClass* pReceiver = nullptr;
         if (nameStart >= 1 && text[nameStart - 1] == '.')
+        {
+            // `iX.Get()` -- the iterator's own method: Get() yields the
+            // relation's target class (so `iX.Get()->` chains on); the
+            // other own methods return no model type.
+            const QString itType =
+                iteratorVarType(text, nameStart - 1, maps);
+            if (!itType.isEmpty())
+                return methodName == QLatin1String("Get")
+                    ? maps.iterators.value(itType).target : nullptr;
             pReceiver = resolveExpressionType(pMethod, text, nameStart - 1,
                                               maps, depth + 1);
+        }
         else if (nameStart >= 2 && text[nameStart - 2] == '-' &&
                  text[nameStart - 1] == '>')
             pReceiver = resolveExpressionType(pMethod, text, nameStart - 2,
@@ -929,7 +982,14 @@ bool ModelCompletionProvider::callsMethod(const QString& code,
         bool qualified = true;
         BaseClass* pReceiver = nullptr;
         if (hit >= 1 && code[hit - 1] == '.')
+        {
+            // `iX.Reset()` is the ITERATOR's method -- never a hit on a
+            // same-named method of the target class.
+            if (iteratorOwnMethod(name) &&
+                !iteratorVarType(code, hit - 1, maps).isEmpty())
+                continue;
             pReceiver = resolveExpressionType(_pMethod, code, hit - 1, maps);
+        }
         else if (hit >= 2 && code[hit - 2] == '-' && code[hit - 1] == '>')
             pReceiver = resolveExpressionType(_pMethod, code, hit - 2, maps);
         else if (hit >= 2 && code[hit - 2] == ':' && code[hit - 1] == ':')
@@ -1012,8 +1072,20 @@ QVector<QPair<int, int>> ModelCompletionProvider::unresolvedCalls(
         // a free function or a macro, which the model does not know.
         BaseClass* pReceiver = nullptr;
         if (nameStart >= 1 && text[nameStart - 1] == '.')
+        {
+            // `iX.IsLast()` -- dot on an iterator VARIABLE reaches the
+            // iterator's own fixed interface, never the target class.
+            if (!iteratorVarType(text, nameStart - 1, maps).isEmpty())
+            {
+                if (!iteratorOwnMethod(text.mid(nameStart,
+                                                nameEnd - nameStart)) &&
+                    !inCommentOrString(text.left(nameStart)))
+                    out.append(qMakePair(nameStart, nameEnd - nameStart));
+                continue;
+            }
             pReceiver = resolveExpressionType(_pMethod, text, nameStart - 1,
                                               maps);
+        }
         else if (nameStart >= 2 && text[nameStart - 2] == '-' &&
                  text[nameStart - 1] == '>')
             pReceiver = resolveExpressionType(_pMethod, text, nameStart - 2,
@@ -1080,6 +1152,33 @@ QString ModelCompletionProvider::hoverText(const QString& text, int pos)
         {
             const IteratorInfo& info = maps.iterators.value(type);
             return hoverHtml(iteratorCtorSignature(type, info), info.note);
+        }
+    }
+
+    // `iX.IsLast` -- the iterator's own fixed interface. An unknown CALLED
+    // name after an iterator's '.' gets the method-not-found warning (it is
+    // never resolved against the TARGET class: that call does not compile).
+    if (start >= 1 && text[start - 1] == '.')
+    {
+        const QString itType = iteratorVarType(text, start - 1, maps);
+        if (!itType.isEmpty())
+        {
+            const IteratorOwnMethod* m = iteratorOwnMethod(name);
+            if (!m)
+            {
+                int k = end;
+                while (k < len && text[k].isSpace())
+                    ++k;
+                if (k < len && text[k] == '(')
+                    return warningHtml("No method '" + name
+                                     + "' in iterator " + itType);
+                return QString();
+            }
+            BaseClass* pTarget = maps.iterators.value(itType).target;
+            QString ret = QLatin1String(m->type);
+            ret.replace(QLatin1String("<To>"),
+                        pTarget ? toQ(pTarget->GetName()) : QString("?"));
+            return hoverHtml(ret + name + "()", CbString(m->note));
         }
     }
 
@@ -1381,6 +1480,31 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
     // The expression may be a variable OR a call chain (GetRow(i)->).
     if (access == "." || access == "->")
     {
+        // `iX.` -- the iterator's own fixed interface (`iX->` keeps
+        // dereferencing to the target class below).
+        if (access == ".")
+        {
+            const QString itType = iteratorVarType(text, basePos, maps);
+            if (!itType.isEmpty())
+            {
+                const IteratorInfo& info = maps.iterators.value(itType);
+                for (const IteratorOwnMethod& m : kIteratorOwnMethods)
+                {
+                    CodeCompletionItem item;
+                    item.display = QLatin1String(m.name) + "()";
+                    item.insert  = item.display;
+                    QString ret = QLatin1String(m.type);
+                    ret.replace(QLatin1String("<To>"), info.target
+                        ? toQ(info.target->GetName()) : QString("?"));
+                    item.detail = ret.trimmed();
+                    if (info.icon >= 0)
+                        item.icon = Qt_ModelIcon(info.icon);
+                    items.append(item);
+                }
+                sortItems(items);
+                return items;
+            }
+        }
         const bool isThis = (basePos >= 4 &&
                              text.mid(basePos - 4, 4) == "this" &&
                              (basePos == 4 || !isIdentChar(text[basePos - 5])));
