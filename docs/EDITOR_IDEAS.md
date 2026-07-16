@@ -53,11 +53,15 @@ Remaining ideas, roughly by value-per-effort:
    typing `_` offers exactly the members *not yet initialized* in the init
    text, inserting `_x()` with the caret inside. (A `_`-prefixed word now
    auto-triggers the popup in both panes.)
-6. **Method-not-found diagnostics.** `var->Method()` whose receiver class
-   resolves but lacks the method → red squiggle before save/regenerate.
-   Only for resolvable receivers, so no false alarms.
-7. **Go-to-definition for members/arguments.** ⌘-click on `_member` or an
-   argument → select it in the tree (methods and classes already work).
+6. ✅ DONE 2026-07-16. **Method-not-found diagnostics.** `var->Method()`
+   whose receiver class resolves but lacks the method → red wave underline
+   (debounced) + a hover warning naming the class. Qualified calls to a real
+   modeled class only (no false alarms on unresolvable receivers, bare names,
+   or foreign ExternClasses); base-class methods count as found.
+7. ✅ DONE 2026-07-16. **Go-to-definition for members/arguments.** ⌘-click /
+   F12 on `_member` (through base classes) or an argument → select its row
+   in the tree (the row is its definition; methods and classes already
+   worked).
 
 ## Editor quality-of-life (generic but real daily wins)
 
@@ -83,7 +87,6 @@ Remaining ideas, roughly by value-per-effort:
     button shelling out to cmake with output in a dock is a real (if
     scope-creepy) possibility.
 
-Recommended next pick: the quality-of-life trio **8–10** (comment toggle,
-auto-close pairs, Ctrl+wheel zoom — small, generic daily wins), then **6**
-(method-not-found diagnostics) or **7** (go-to-definition for members /
-arguments) as the next model-powered ones.
+All model-powered ideas (1–7) are done. Remaining: the quality-of-life trio
+**8–10** (comment toggle, auto-close pairs, Ctrl+wheel zoom — small, generic
+daily wins) and the parked **13** (build/run integration).
