@@ -504,6 +504,8 @@ Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `
 
 Three additions have accelerators but no button: **Group** `Ctrl+Shift+G`, **Meta Group** `Ctrl+Shift+P`, **External Class** `Ctrl+Shift+E` (X was unavailable — it is an OS hotkey).
 
+The toolbar **wraps**: the tree itself needs little width, but the button strip does, so when the tree pane is made narrow the buttons flow onto a second (or third) row instead of being clipped — the strip grows a row taller rather than demanding width.
+
 ![The tree toolbar, in the order of the table above: the Add buttons, then Delete, Filters, Find/Next, and the per-view Undo/Redo.](images/Tree_Toolbar.png)
 
 ## The element icons
@@ -1144,6 +1146,9 @@ Method bodies, constructor/destructor bodies and the user sections are edited in
 - **Tab** indents — with a selection, all selected lines shift one indent level; without, spaces are inserted to the next indent stop. **Shift+Tab** un-indents. Indentation is spaces (the width follows the model's *Indent size* setting, default 4).
 - **Move lines up / down** (`Alt+Up` / `Alt+Down`, also on the `Edit` menu) moves the selected lines — or the caret's line — as a block, one line per press, keeping the selection on the moved block so repeated presses keep walking it. A selection ending at column 0 does not drag that last line along.
 - **Reformat code** (`Ctrl+Shift+R`, `Edit` menu) re-indents the selection — or, without a selection, the whole text — with the same rules that drive typing: predictor indent for ordinary lines, `}` one level out, `{` per the Allman rule above, preprocessor lines to column 0. Lines inside block comments are left untouched. One undo step.
+- **Auto-close pairs.** Typing `(`, `[`, `{`, `"` or `'` inserts the matching closer with the caret between them; typing the closer where it already sits steps over it; `Backspace` on an empty pair deletes both halves. With text selected, the opener *surrounds* the selection. Typing `{` then **Enter** expands to an indented three-line block, caret on the middle line. (These stay out of the way — a pair is not inserted when the caret is glued to a word, and a quote not right after a letter.)
+- **Comments.** `Ctrl+/` toggles `//` on the selected lines (or the caret's line) — commenting, or uncommenting when every non-blank line already is; blank lines are left alone. `Ctrl+Shift+B` wraps the selection in a `/* ... */` block comment, or unwraps it when it already is one. Both on the `Edit` menu.
+- **Font zoom.** `Ctrl++` / `Ctrl+-` step the editor font up and down; `Ctrl+0` resets; `Ctrl`+mouse-wheel zooms too.
 - No line wrapping; long lines scroll.
 
 ## Syntax colours
