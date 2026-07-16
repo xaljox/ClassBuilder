@@ -8,6 +8,7 @@
 #include "CppHighlighter.h"
 
 #include <QAbstractItemView>
+#include <QApplication>
 #include <QColor>
 #include <QCompleter>
 #include <QFont>
@@ -15,10 +16,13 @@
 #include <QMouseEvent>
 #include <QLabel>
 #include <QList>
+#include <QPainter>
 #include <QPalette>
 #include <QResizeEvent>
 #include <QScrollBar>
 #include <QStandardItemModel>
+#include <QStyle>
+#include <QStyledItemDelegate>
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QTextEdit>
@@ -801,6 +805,68 @@ bool CodeEditor::viewportEvent(QEvent* event)
 // keystroke whether to (re)query the provider and show, refilter or hide the
 // popup. All knowledge of WHAT to offer lives in the provider.
 
+namespace {
+// The extra model role the popup delegate reads: the muted right-aligned
+// detail text (a method's return type, a variable's type, "class").
+const int kDetailRole = Qt::UserRole + 4;
+
+// Popup row painter: the model icon (decoration role) and the display name on
+// the left, the detail right-aligned in a muted colour. The display name is
+// elided BEFORE the detail column, so the two never overlap; the full-width
+// selection background is the style's, so a selected row reads normally.
+class CompletionItemDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QSize sizeHint(const QStyleOptionViewItem& option,
+                   const QModelIndex& index) const override
+    {
+        QSize size = QStyledItemDelegate::sizeHint(option, index);
+        const QString detail = index.data(kDetailRole).toString();
+        if (!detail.isEmpty())          // reserve the detail column's width
+            size.rwidth() +=
+                option.fontMetrics.horizontalAdvance(detail) + 24;
+        // Compact rows -- the windows11 style pads items touch-friendly tall;
+        // match the who-calls-me popup so the two read consistently.
+        size.setHeight(option.fontMetrics.height() + 2);
+        return size;
+    }
+
+protected:
+    void paint(QPainter* painter, const QStyleOptionViewItem& option,
+               const QModelIndex& index) const override
+    {
+        // The base delegate draws the row (background, selection, icon, and
+        // the display name) with the correct per-platform / per-state text
+        // colour. We ONLY add the detail column -- drawing the name
+        // ourselves double-struck it (the base re-inits from the model) and
+        // mis-coloured the selected row; letting the base own the name fixes
+        // both (JV 2026-07-16). sizeHint() reserves the detail width, so the
+        // name never runs under it.
+        QStyledItemDelegate::paint(painter, option, index);
+
+        const QString detail = index.data(kDetailRole).toString();
+        if (detail.isEmpty())
+            return;
+
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        const QWidget* w = opt.widget;
+        QStyle* style = w ? w->style() : QApplication::style();
+        const QRect textRect =
+            style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
+
+        painter->save();
+        painter->setFont(opt.font);
+        painter->setPen(QColor(0x80, 0x80, 0x80));   // muted, on any background
+        painter->drawText(textRect.adjusted(0, 0, -6, 0),
+                          Qt::AlignRight | Qt::AlignVCenter, detail);
+        painter->restore();
+    }
+};
+} // namespace
+
 void CodeEditor::setCompletionProvider(CodeCompletionProvider* provider)
 {
     _provider = provider;
@@ -812,6 +878,9 @@ void CodeEditor::setCompletionProvider(CodeCompletionProvider* provider)
         _completer->setCompletionMode(QCompleter::PopupCompletion);
         _completer->setCaseSensitivity(Qt::CaseInsensitive);
         _completer->popup()->setFont(codeFont());
+        _completer->popup()->setIconSize(QSize(16, 16));
+        _completer->popup()->setItemDelegate(
+            new CompletionItemDelegate(_completer->popup()));
         connect(_completer,
                 QOverload<const QModelIndex&>::of(&QCompleter::activated),
                 this, &CodeEditor::insertCompletion);
@@ -906,7 +975,14 @@ void CodeEditor::maybeTriggerCompletion(QKeyEvent* event)
 
     bool trigger = false;
     if (isIdentChar(c))
-        trigger = visible || typedPrefixLength() >= 2;
+    {
+        // A prefix that starts with '_' pops the popup at once: member names
+        // (and the constructor init pane's members) are all '_'-prefixed, so
+        // one '_' is a strong signal -- matches "typing _ offers members".
+        const int prefixLen = typedPrefixLength();
+        const bool underscore = prefixLen >= 1 && text[pos - prefixLen] == '_';
+        trigger = visible || prefixLen >= 2 || underscore;
+    }
     else if (c == '.')
         trigger = true;
     else if (c == '>')
@@ -935,10 +1011,13 @@ void CodeEditor::triggerCompletion()
     for (const CodeCompletionItem& item : items)
     {
         QStandardItem* row = new QStandardItem(item.display);
+        if (!item.icon.isNull())
+            row->setIcon(item.icon);
         row->setData(item.insert, Qt::UserRole);
         row->setData(item.caretBack, Qt::UserRole + 1);
         row->setData(item.selectBack, Qt::UserRole + 2);
         row->setData(item.selectLen, Qt::UserRole + 3);
+        row->setData(item.detail, Qt::UserRole + 4);
         _completionModel->appendRow(row);
     }
 

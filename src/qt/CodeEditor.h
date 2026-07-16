@@ -18,6 +18,7 @@
 
 #include <QPlainTextEdit>
 #include <QFont>
+#include <QIcon>
 #include <QSet>
 
 class QCompleter;
@@ -35,11 +36,15 @@ class CppHighlighter;
 // its argument NAMES), and `caretBack` steps the caret back after insertion.
 // When selectLen > 0, the range ending `selectBack` chars before the end of
 // the insert is selected instead -- the first argument name, ready to be
-// overtyped.
+// overtyped. `icon` is the model icon for the row (kind = method / member /
+// argument / type / iterator); `detail` is the muted right-aligned text (a
+// method's return type, a variable's type, "class").
 struct CodeCompletionItem
 {
     QString display;
     QString insert;
+    QIcon   icon;
+    QString detail;
     int     caretBack  = 0;
     int     selectBack = 0;
     int     selectLen  = 0;

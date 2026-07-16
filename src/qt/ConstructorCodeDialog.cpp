@@ -208,11 +208,15 @@ ConstructorCodeDialog::ConstructorCodeDialog(Constructor* pConstructor,
                 this, [this, ed] { Qt_ShowWhoCallsMe(ed, _pConstructor); });
     }
 
-    // Model-aware completion -- one provider serves both editors (the
-    // context comes from the text each editor hands in per request).
+    // Model-aware completion. The body pane gets the normal provider; the
+    // init pane a second provider in init-list mode, so typing a member name
+    // there offers the members not yet initialized (`_x()`), while hover /
+    // parameter hints / F12 behave the same in both.
     _completion = new ModelCompletionProvider(_pConstructor);
-    _ui->editInit->setCompletionProvider(_completion);
     _ui->editCode->setCompletionProvider(_completion);
+    _initCompletion = new ModelCompletionProvider(_pConstructor);
+    _initCompletion->setInitListMode(true);
+    _ui->editInit->setCompletionProvider(_initCompletion);
 
     // Focus the body editor now AND whenever the host dock focuses the
     // dialog (tab activation routes focus through the dialog's focus proxy).
@@ -230,6 +234,7 @@ ConstructorCodeDialog::~ConstructorCodeDialog()
     if (_pConstructor)
         _pConstructor->SetOpenWidget(nullptr);
     delete _completion;
+    delete _initCompletion;
     delete _ui;
 }
 

@@ -62,6 +62,16 @@ public:
     // Null when nothing resolves. Drives F12 go-to-definition.
     Gti* definitionAtCursor(const QString& text, int pos);
 
+    // Constructor init-list mode (the init pane): at a naming position --
+    // top level, no member access -- completion offers exactly the members
+    // NOT yet initialized in the init text, inserting `_x()` with the caret
+    // inside the parens. Inside an initializer value it falls back to normal
+    // completion. Off by default; the body pane keeps the normal provider.
+    void setInitListMode(bool on) { _initListMode = on; }
+
 private:
+    QList<CodeCompletionItem> initListCompletions(const QString& text);
+
     Method* _pMethod;
+    bool    _initListMode = false;
 };

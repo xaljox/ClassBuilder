@@ -69,7 +69,8 @@ private:
     CodeEditor*  _focusEdit = nullptr;   // last code editor that held focus
     bool         _splitterSized = false; // size the split only on the first show
 
-    class ModelCompletionProvider* _completion = nullptr;  // owned, serves both editors
+    class ModelCompletionProvider* _completion = nullptr;      // body pane, owned
+    class ModelCompletionProvider* _initCompletion = nullptr;  // init pane (init-list mode), owned
 
     // Menus reused to build the editors' right-click context menu.
     QMenu* _editMenu   = nullptr;

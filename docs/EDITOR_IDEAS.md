@@ -41,12 +41,18 @@ Remaining ideas, roughly by value-per-effort:
 3. ✅ DONE 2026-07-15. **Parameter hints.** While typing inside `Name(...)`,
    show the full signature as a tooltip — argument names, types, defaults;
    active argument bold, overload picked by the argument index.
-4. **Completion popup enrichment.** Model icons per kind
-   (method/member/argument/type/iterator — `Qt_ModelIcon` exists) and a
-   return-type column.
-5. **Init-list completion** (constructor init pane): typing `_` offers
-   exactly the members *not yet initialized* in the init text, inserting
-   `_x()` with the caret inside.
+4. ✅ DONE 2026-07-16. **Completion popup enrichment.** Model icons per kind
+   (method/member/argument/type/iterator — iterators carry the relation's
+   FromRelation icon) and a muted right-aligned detail column (a method's
+   return type, a variable's type, `class`, `iterator`/`loop`). Compact
+   rows matching the who-calls-me popup. Bonus: hover on an iterator TYPE
+   shows `class Owner::XIterator`; on an iterator VARIABLE the synthesized
+   constructor signature (filter arg only when the relation's filter option
+   is on) — the class-vs-variable parallel of `Column` / `Column cc;`.
+5. ✅ DONE 2026-07-16. **Init-list completion** (constructor init pane):
+   typing `_` offers exactly the members *not yet initialized* in the init
+   text, inserting `_x()` with the caret inside. (A `_`-prefixed word now
+   auto-triggers the popup in both panes.)
 6. **Method-not-found diagnostics.** `var->Method()` whose receiver class
    resolves but lacks the method → red squiggle before save/regenerate.
    Only for resolvable receivers, so no false alarms.
@@ -77,6 +83,7 @@ Remaining ideas, roughly by value-per-effort:
     button shelling out to cmake with output in a dock is a real (if
     scope-creepy) possibility.
 
-Recommended next pick: **5** (init-list completion — the init pane is the
-one spot completion still ignores) or the quality-of-life trio **8–10**;
-**4** (popup icons + return types) is pure polish on what's there.
+Recommended next pick: the quality-of-life trio **8–10** (comment toggle,
+auto-close pairs, Ctrl+wheel zoom — small, generic daily wins), then **6**
+(method-not-found diagnostics) or **7** (go-to-definition for members /
+arguments) as the next model-powered ones.

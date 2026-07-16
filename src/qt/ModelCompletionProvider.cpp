@@ -2,6 +2,7 @@
 
 #include "ModelCompletionProvider.h"
 #include "QtModelText.h"             // toQ / toCb
+#include "QtModelIcons.h"            // Qt_ModelIcon (per-kind popup icons)
 
 #include <QHash>
 #include <QSet>
@@ -23,6 +24,11 @@ struct IteratorInfo
     BaseClass* target = nullptr;   // row-> offers THIS class's methods
     Class*     from   = nullptr;   // RowIterator iRow(<a Matrix*>)
     QString    toName;             // "Row" -- for the loop variable name
+    int        icon   = -1;        // the RELATION's icon (the iterator exists
+                                   // because of that relation)
+    bool       filter = false;     // relation's filter option: with it the
+                                   // iterator ctor takes a filter method
+    CbString   note;               // the relation's @NOTE, for hover
 };
 
 // The model's name-to-class lookups, rebuilt per completion request (the
@@ -52,6 +58,10 @@ TypeMaps buildTypeMaps(Method* pMethod)
             info.target = iRelation->GetToClass();
             info.from   = iClass.Get();
             info.toName = toQ(iRelation->GetToName());
+            info.icon   = iRelation->GetFromRelation()
+                        ? iRelation->GetFromRelation()->GetIcon() : -1;
+            info.filter = iRelation->GetFilter();
+            info.note   = iRelation->GetNote();
             maps.iterators.insert(info.toName + "Iterator", info);
             maps.relationIterators.append(info);
         }
@@ -191,6 +201,8 @@ CodeCompletionItem methodItem(Method* pMethod)
     CodeCompletionItem item;
     item.display = name + "(" + displayArgs + ")";
     item.insert  = name + "(" + insertArgs + ")";
+    item.icon    = Qt_ModelIcon(pMethod->GetIcon());
+    item.detail  = toQ(pMethod->GetTypeName()).trimmed();   // return type
     if (!firstName.isEmpty())
     {
         item.selectLen  = firstName.length();
@@ -205,6 +217,29 @@ CodeCompletionItem wordItem(const QString& word)
     CodeCompletionItem item;
     item.display = word;
     item.insert  = word;
+    return item;
+}
+
+// A member / argument row: the (prefixed) name, its model icon, its type as
+// the muted detail.
+CodeCompletionItem variableItem(const QString& name, Variable* pVariable)
+{
+    CodeCompletionItem item;
+    item.display = name;
+    item.insert  = name;
+    item.icon    = Qt_ModelIcon(pVariable->GetIcon());
+    item.detail  = toQ(pVariable->GetTypeName()).trimmed();
+    return item;
+}
+
+// A class / extern-class name row: the class icon, "class" as the detail.
+CodeCompletionItem classItem(const QString& name, BaseClass* pClass)
+{
+    CodeCompletionItem item;
+    item.display = name;
+    item.insert  = name;
+    item.icon    = Qt_ModelIcon(pClass->GetIcon());
+    item.detail  = "class";
     return item;
 }
 
@@ -239,17 +274,51 @@ QString iteratorReceiver(Method* pMethod, const IteratorInfo& info,
     return QString();
 }
 
+// The constructor signature of a relation iterator (the CB_IteratorMulti
+// macro form): the owner pointer to iterate from, plus a reference-element
+// argument -- and, only when the relation's filter option is on, a filter
+// method argument in between. This is the "what do I supply" tooltip;
+// iterators are generated types with no modeled constructor, so it is
+// synthesized from the relation.
+QString iteratorCtorSignature(const QString& typeName,
+                              const IteratorInfo& info)
+{
+    const QString from = info.from   ? toQ(info.from->GetName())   : "?";
+    const QString to   = info.target ? toQ(info.target->GetName()) : "?";
+    const QString pad(typeName.length() + 1, ' ');
+    QString sig = typeName + "(const " + from + "* iter" + from + ",\n";
+    if (info.filter)
+        sig += pad + "bool (" + to + "::*filter)() const = 0,\n";
+    return sig + pad + to + "* ref" + to + " = 0)";
+}
+
+// An iterator TYPE row (scope-qualified where needed): the relation's icon
+// (the iterator exists because of that relation), "iterator" as the detail.
+CodeCompletionItem iteratorItem(const QString& typeName, int relationIcon)
+{
+    CodeCompletionItem item;
+    item.display = typeName;
+    item.insert  = typeName;
+    if (relationIcon >= 0)
+        item.icon = Qt_ModelIcon(relationIcon);
+    item.detail  = "iterator";
+    return item;
+}
+
 // The "<Name>Iterator loop" item for `typeName` (scope-qualified where
 // needed): the full while-loop skeleton, the constructor argument
 // pre-filled with `receiver`.
 CodeCompletionItem loopItem(const QString& typeName, const QString& toName,
-                            const QString& receiver)
+                            const QString& receiver, int relationIcon)
 {
     const QString loopVar = "i" + toName;
     CodeCompletionItem item;
     item.display = typeName + " loop";
     item.insert  = QString("%1 %2(%3);\nwhile (++%2)\n{\n}")
                        .arg(typeName, loopVar, receiver);
+    if (relationIcon >= 0)
+        item.icon = Qt_ModelIcon(relationIcon);
+    item.detail  = "loop";
     return item;
 }
 
@@ -903,6 +972,29 @@ QString ModelCompletionProvider::hoverText(const QString& text, int pos)
 
     const TypeMaps maps = buildTypeMaps(_pMethod);
 
+    // A relation iterator, split like class vs variable:
+    //  * the TYPE name (ColumnIterator) -> "class Matrix::ColumnIterator" --
+    //    iterators are always defined within a class scope, so this mirrors
+    //    hovering a class name;
+    //  * a VARIABLE declared of it (ColumnIterator iColumn) -> the
+    //    synthesized constructor signature (what arguments to supply),
+    //    mirroring hovering a `Column cc;` variable to see Column's ctors.
+    if (maps.iterators.contains(name))
+    {
+        const IteratorInfo& info = maps.iterators.value(name);
+        const QString scope = info.from
+            ? toQ(info.from->GetName()) + "::" : QString();
+        return hoverHtml("class " + scope + name, info.note);
+    }
+    {
+        const QString type = declaredVariables(text, maps).value(name);
+        if (maps.iterators.contains(type))
+        {
+            const IteratorInfo& info = maps.iterators.value(type);
+            return hoverHtml(iteratorCtorSignature(type, info), info.note);
+        }
+    }
+
     // The receiver, resolved exactly like definitionAtCursor.
     bool qualified = true;
     BaseClass* pReceiver = nullptr;
@@ -1053,6 +1145,53 @@ Gti* ModelCompletionProvider::definitionAtCursor(const QString& text, int pos)
     return nullptr;
 }
 
+// Constructor init pane: the members of the edited constructor's class that
+// are NOT yet initialized in `text`, each inserting `_x()` with the caret
+// between the parens. "Already initialized" = the member's prefixed name
+// appears as a call (`_x(`) somewhere in the init text; the partial name
+// being typed has no '(' yet, so it never excludes itself.
+QList<CodeCompletionItem> ModelCompletionProvider::initListCompletions(
+    const QString& text)
+{
+    QList<CodeCompletionItem> items;
+
+    auto alreadyInitialized = [&text](const QString& name)
+    {
+        const int len = text.length();
+        int from = 0;
+        while (true)
+        {
+            const int hit = text.indexOf(name, from);
+            if (hit < 0)
+                return false;
+            from = hit + 1;
+            if (hit > 0 && isIdentChar(text[hit - 1]))
+                continue;
+            int after = hit + name.length();
+            if (after < len && isIdentChar(text[after]))
+                continue;
+            while (after < len && (text[after] == ' ' || text[after] == '\t'))
+                ++after;
+            if (after < len && text[after] == '(')
+                return true;
+        }
+    };
+
+    BaseClass::MemberIterator iMember(_pMethod->GetBaseClass());
+    while (++iMember)
+    {
+        const QString name = toQ(iMember->GetPrefixedName());
+        if (name.isEmpty() || alreadyInitialized(name))
+            continue;
+        CodeCompletionItem item = variableItem(name, iMember.Get());
+        item.insert    = name + "()";
+        item.caretBack = 1;            // caret between ( and )
+        items.append(item);
+    }
+    sortItems(items);
+    return items;
+}
+
 QList<CodeCompletionItem> ModelCompletionProvider::completions(
     const QString& textToCursor, int& prefixLen)
 {
@@ -1098,6 +1237,22 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
     // No popup inside comments and string / char literals.
     if (inCommentOrString(text.left(basePos)))
         return items;
+
+    // Constructor init pane, at a top-level naming position (no member
+    // access, not inside an initializer's value parens): offer the members
+    // not yet initialized. Inside a value (paren depth > 0) fall through to
+    // the normal completion below.
+    if (_initListMode && access.isEmpty())
+    {
+        int depth = 0;
+        for (int i = 0; i < basePos; ++i)
+        {
+            if (text[i] == '(')      ++depth;
+            else if (text[i] == ')') --depth;
+        }
+        if (depth <= 0)
+            return initListCompletions(text);
+    }
 
     const TypeMaps maps = buildTypeMaps(_pMethod);
     QSet<QString> seen;
@@ -1148,10 +1303,13 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
                     info.target = iRelation->GetToClass();
                     info.from   = pAsClass;
                     info.toName = toQ(iRelation->GetToName());
+                    info.icon   = iRelation->GetFromRelation()
+                                ? iRelation->GetFromRelation()->GetIcon() : -1;
+                    info.filter = iRelation->GetFilter();
                     const QString typeName = info.toName + "Iterator";
-                    items.append(wordItem(typeName));
+                    items.append(iteratorItem(typeName, info.icon));
                     items.append(loopItem(typeName, info.toName,
-                        iteratorReceiver(_pMethod, info, vars)));
+                        iteratorReceiver(_pMethod, info, vars), info.icon));
                 }
             }
         }
@@ -1188,7 +1346,7 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
             if (!hasConstructor && !seen.contains(it.key()))
             {
                 seen.insert(it.key());     // no modeled constructor: the
-                items.append(wordItem(it.key()));  // bare class name then
+                items.append(classItem(it.key(), it.value()));  // bare name
             }
         }
         sortItems(items);
@@ -1203,7 +1361,7 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
         if (!name.isEmpty() && !seen.contains(name))
         {
             seen.insert(name);
-            items.append(wordItem(name));
+            items.append(variableItem(name, iArgument.Get()));
         }
     }
 
@@ -1213,7 +1371,13 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
         if (!seen.contains(it.key()))
         {
             seen.insert(it.key());
-            items.append(wordItem(it.key()));
+            // A declared local: its type is the muted detail; the type's
+            // class icon when it names a model class (else no icon).
+            CodeCompletionItem item = wordItem(it.key());
+            item.detail = it.value();
+            if (BaseClass* pClass = maps.classes.value(it.value()))
+                item.icon = Qt_ModelIcon(pClass->GetIcon());
+            items.append(item);
         }
     }
 
@@ -1224,7 +1388,7 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
         if (!name.isEmpty() && !seen.contains(name))
         {
             seen.insert(name);
-            items.append(wordItem(name));
+            items.append(variableItem(name, iMember.Get()));
         }
     }
 
@@ -1235,7 +1399,7 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
         if (!seen.contains(it.key()))
         {
             seen.insert(it.key());
-            items.append(wordItem(it.key()));
+            items.append(classItem(it.key(), it.value()));
         }
 
     // Iterator types, one per relation, each with a second "loop" item (the
@@ -1254,14 +1418,19 @@ QList<CodeCompletionItem> ModelCompletionProvider::completions(
         if (!seen.contains(typeName))
         {
             seen.insert(typeName);
-            items.append(wordItem(typeName));
+            items.append(iteratorItem(typeName, info.icon));
         }
         items.append(loopItem(typeName, info.toName,
-                              iteratorReceiver(_pMethod, info, vars)));
+                              iteratorReceiver(_pMethod, info, vars),
+                              info.icon));
     }
 
     if (!seen.contains("this"))
-        items.append(wordItem("this"));
+    {
+        CodeCompletionItem item = wordItem("this");
+        item.detail = toQ(_pMethod->GetBaseClass()->GetName());
+        items.append(item);
+    }
 
     sortItems(items);
     return items;
