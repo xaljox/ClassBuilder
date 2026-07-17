@@ -910,18 +910,40 @@ bool CodeEditor::autoCloseKeyPressEvent(QKeyEvent* event)
         return true;
     }
 
-    // Backspace on an empty pair (`(|)`, `"|"`, ...) deletes both halves.
+    // Backspace on an empty pair (`(|)`, `"|"`, ...) deletes both halves --
+    // but only when the LINE is balanced for that bracket kind. Unbalanced,
+    // the closer belongs to an OUTER construct: in `if (pRow->IsLast(|)` the
+    // `)` is the if's (IsLast's own was just backspaced away), and eating it
+    // silently breaks the if; deleting only the opener restores the balance
+    // instead (JV 2026-07-18, the "eaten if-closer" repro).
     if (event->key() == Qt::Key_Backspace &&
         event->modifiers() == Qt::NoModifier && !cur.hasSelection())
     {
         const int oi = openers.indexOf(prev);
         if (oi >= 0 && next == closers[oi])
         {
-            cur.beginEditBlock();
-            cur.deleteChar();                    // the closer
-            cur.deletePreviousChar();            // the opener
-            cur.endEditBlock();
-            return true;
+            bool eatBoth = true;              // quotes: no reliable count
+            if (prev == '(' || prev == '[' || prev == '{')
+            {
+                int balance = 0;
+                const QString line = cur.block().text();
+                for (QChar ch : line)
+                {
+                    if (ch == prev)
+                        ++balance;
+                    else if (ch == next)
+                        --balance;
+                }
+                eatBoth = (balance == 0);
+            }
+            if (eatBoth)
+            {
+                cur.beginEditBlock();
+                cur.deleteChar();                // the closer
+                cur.deletePreviousChar();        // the opener
+                cur.endEditBlock();
+                return true;
+            }
         }
         return false;
     }
@@ -931,13 +953,36 @@ bool CodeEditor::autoCloseKeyPressEvent(QKeyEvent* event)
         return false;
     const QChar c = typed[0];
 
-    // Type-over: a closer typed where it already sits just steps over it.
+    // Type-over: a closer typed where it already sits just steps over it --
+    // but only when the line up to the caret still has an unmatched opener
+    // for it. With everything balanced, the closer under the caret belongs
+    // to an OUTER construct (the `if (`'s, say) and stepping over it would
+    // silently swallow the keystroke -- insert normally instead.
     if (!cur.hasSelection() && next == c &&
         (c == ')' || c == ']' || c == '}' || c == '"' || c == '\''))
     {
-        cur.movePosition(QTextCursor::Right);
-        setTextCursor(cur);
-        return true;
+        bool unmatched = true;              // quotes: no reliable count, keep
+        if (c == ')' || c == ']' || c == '}')
+        {
+            const QChar open = c == ')' ? '(' : c == ']' ? '[' : '{';
+            int balance = 0;
+            const QString line = cur.block().text();
+            for (int i = 0; i < cur.positionInBlock(); ++i)
+            {
+                if (line[i] == open)
+                    ++balance;
+                else if (line[i] == c)
+                    --balance;
+            }
+            unmatched = balance > 0;
+        }
+        if (unmatched)
+        {
+            cur.movePosition(QTextCursor::Right);
+            setTextCursor(cur);
+            return true;
+        }
+        return false;                       // a NEW closer: really insert it
     }
 
     const int oi = openers.indexOf(c);
@@ -1107,10 +1152,27 @@ namespace {
 // detail text (a method's return type, a variable's type, "class").
 const int kDetailRole = Qt::UserRole + 4;
 
+// The direct-pick shortcut of a VISIBLE popup row: Cmd+1..9 on macOS,
+// Ctrl+1..9 elsewhere, accepting that row without arrowing down + Enter
+// (see completionKeyPressEvent). Nine slots -- Ctrl/Cmd+0 stays the
+// editor's font-zoom reset, and typing narrows the list anyway. Empty for
+// rows beyond the ninth.
+QString rowShortcutLabel(int row)
+{
+    if (row < 0 || row >= 9)
+        return QString();
+#ifdef __APPLE__
+    return QChar(0x2318) + QString::number(row + 1);        // ⌘1
+#else
+    return "Ctrl+" + QString::number(row + 1);
+#endif
+}
+
 // Popup row painter: the model icon (decoration role) and the display name on
-// the left, the detail right-aligned in a muted colour. The display name is
-// elided BEFORE the detail column, so the two never overlap; the full-width
-// selection background is the style's, so a selected row reads normally.
+// the left, the detail plus the row's direct-pick shortcut right-aligned in
+// muted colours. The display name is elided BEFORE those columns, so they
+// never overlap; the full-width selection background is the style's, so a
+// selected row reads normally.
 class CompletionItemDelegate : public QStyledItemDelegate
 {
 public:
@@ -1124,6 +1186,10 @@ public:
         if (!detail.isEmpty())          // reserve the detail column's width
             size.rwidth() +=
                 option.fontMetrics.horizontalAdvance(detail) + 24;
+        const QString hint = rowShortcutLabel(index.row());
+        if (!hint.isEmpty())            // and the shortcut column's
+            size.rwidth() +=
+                option.fontMetrics.horizontalAdvance(hint) + 12;
         // Compact rows -- the windows11 style pads items touch-friendly tall;
         // match the who-calls-me popup so the two read consistently.
         size.setHeight(option.fontMetrics.height() + 2);
@@ -1136,15 +1202,16 @@ protected:
     {
         // The base delegate draws the row (background, selection, icon, and
         // the display name) with the correct per-platform / per-state text
-        // colour. We ONLY add the detail column -- drawing the name
+        // colour. We ONLY add the right-hand columns -- drawing the name
         // ourselves double-struck it (the base re-inits from the model) and
         // mis-coloured the selected row; letting the base own the name fixes
-        // both (JV 2026-07-16). sizeHint() reserves the detail width, so the
-        // name never runs under it.
+        // both (JV 2026-07-16). sizeHint() reserves their width, so the
+        // name never runs under them.
         QStyledItemDelegate::paint(painter, option, index);
 
         const QString detail = index.data(kDetailRole).toString();
-        if (detail.isEmpty())
+        const QString hint = rowShortcutLabel(index.row());
+        if (detail.isEmpty() && hint.isEmpty())
             return;
 
         QStyleOptionViewItem opt = option;
@@ -1156,9 +1223,20 @@ protected:
 
         painter->save();
         painter->setFont(opt.font);
-        painter->setPen(QColor(0x80, 0x80, 0x80));   // muted, on any background
-        painter->drawText(textRect.adjusted(0, 0, -6, 0),
-                          Qt::AlignRight | Qt::AlignVCenter, detail);
+        int right = -6;
+        if (!hint.isEmpty())            // shortcut at the far right edge
+        {
+            painter->setPen(QColor(0xA0, 0xA0, 0xA0));
+            painter->drawText(textRect.adjusted(0, 0, right, 0),
+                              Qt::AlignRight | Qt::AlignVCenter, hint);
+            right -= opt.fontMetrics.horizontalAdvance(hint) + 12;
+        }
+        if (!detail.isEmpty())
+        {
+            painter->setPen(QColor(0x80, 0x80, 0x80));   // muted, any bg
+            painter->drawText(textRect.adjusted(0, 0, right, 0),
+                              Qt::AlignRight | Qt::AlignVCenter, detail);
+        }
         painter->restore();
     }
 };
@@ -1213,6 +1291,24 @@ bool CodeEditor::completionKeyPressEvent(QKeyEvent* event)
     // own event filter drives the popup; we just must not act on them).
     if (_completer->popup()->isVisible())
     {
+        // Cmd+1..9 (mac; ControlModifier = the Cmd key there) / Ctrl+1..9:
+        // accept the Nth visible row directly -- the rows show the shortcut
+        // (see rowShortcutLabel). KeypadModifier masked out: the numeric pad
+        // digits carry it on macOS and must work the same.
+        const Qt::KeyboardModifiers mods =
+            event->modifiers() & ~Qt::KeypadModifier;
+        if (mods == Qt::ControlModifier &&
+            event->key() >= Qt::Key_1 && event->key() <= Qt::Key_9)
+        {
+            const QModelIndex idx = _completer->completionModel()->index(
+                event->key() - Qt::Key_1, 0);
+            if (idx.isValid())
+            {
+                _completer->popup()->hide();
+                insertCompletion(idx);
+            }
+            return true;               // ours even when the row is empty
+        }
         switch (event->key())
         {
         case Qt::Key_Enter:
@@ -1255,6 +1351,21 @@ void CodeEditor::maybeTriggerCompletion(QKeyEvent* event)
         return;
 
     const bool visible = _completer->popup()->isVisible();
+
+    // A bare modifier going down (Cmd on its way to Cmd+3, Shift for a
+    // capital) is not typing -- it must not dismiss the popup.
+    switch (event->key())
+    {
+    case Qt::Key_Control:
+    case Qt::Key_Shift:
+    case Qt::Key_Alt:
+    case Qt::Key_Meta:
+    case Qt::Key_AltGr:
+    case Qt::Key_CapsLock:
+        return;
+    default:
+        break;
+    }
 
     if (event->key() == Qt::Key_Backspace)
     {
