@@ -160,8 +160,8 @@
         ClassTo* Get() { return _ref##NameTo; }\
         void Reset() { _ref##NameTo = _prev##NameTo = _next##NameTo = (ClassTo*)0; }\
         \
-        int IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
-        int IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
+        bool IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
+        bool IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
         \
         static void Check(ClassTo* item##NameTo)\
         {\
@@ -356,8 +356,8 @@
         ClassTo* Get() { return _ref##NameTo; }\
         void Reset() { _ref##NameTo = _prev##NameTo = _next##NameTo = (ClassTo*)0; }\
         \
-        int IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
-        int IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
+        bool IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
+        bool IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
         \
         static void Check(ClassTo* item##NameTo)\
         {\
@@ -493,8 +493,8 @@
         ClassTo* Get() { return _ref##NameTo; }\
         void Reset() { _ref##NameTo = _prev##NameTo = _next##NameTo = (ClassTo*)0; }\
         \
-        int IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
-        int IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
+        bool IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
+        bool IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
         \
         static void Check(ClassTo* item##NameTo);\
         static void CheckAll(ClassFrom* item##NameFrom);\
@@ -709,8 +709,8 @@ void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo, ClassTo* newItem#
         ClassTo* Get() { return _ref##NameTo; }\
         void Reset() { _ref##NameTo = _prev##NameTo = _next##NameTo = (ClassTo*)0; }\
         \
-        int IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
-        int IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
+        bool IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
+        bool IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
         \
         static void Check(ClassTo* item##NameTo);\
         static void CheckAll(ClassFrom* item##NameFrom);\

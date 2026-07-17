@@ -305,9 +305,9 @@ struct IteratorOwnMethod
 const IteratorOwnMethod kIteratorOwnMethods[] = {
     { "Get",     "<To>* ", "The element the iterator stands on"
                            " (0 before the first ++/-- or after the last)." },
-    { "IsFirst", "int ",   "Whether the iterator stands on the relation's"
+    { "IsFirst", "bool ",  "Whether the iterator stands on the relation's"
                            " first element." },
-    { "IsLast",  "int ",   "Whether the iterator stands on the relation's"
+    { "IsLast",  "bool ",  "Whether the iterator stands on the relation's"
                            " last element." },
     { "Reset",   "void ",  "Rewind: the next ++/-- starts over from the"
                            " first/last element." },

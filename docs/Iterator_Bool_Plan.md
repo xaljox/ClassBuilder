@@ -1,10 +1,14 @@
 # Plan: iterator `IsFirst()` / `IsLast()` from `int` to `bool`
 
-Status: **analysis done, not yet executed** (JV 2026-07-17: "not a job for now").
+Status: **EXECUTED 2026-07-17** (phases 1-3 on macOS: headers flipped by JV,
+editor table updated, full rebuild clean, self-host regeneration = zero diff,
+hover shows `bool`). Remaining: plain recompile on Windows/Linux at next pull
+(phase 4). The staged `tools/isx_bool_macros/*.h` copies were kept in sync;
+the filter-slot conversion staged there stays a separate, still-open task.
 
 ## Analysis (facts, verified 2026-07-17)
 
-**Definitions.** `int IsLast()` / `int IsFirst()` exist in exactly two runtime
+**Definitions.** `bool IsLast()` / `bool IsFirst()` exist in exactly two runtime
 headers, as macro-generated inline methods of the relation iterators:
 
 - [include/CB_IteratorMulti.h](../include/CB_IteratorMulti.h) — 4 iterator

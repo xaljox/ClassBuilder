@@ -74,8 +74,8 @@
         ClassTo* Get() { return _ref##NameTo; }\
         void Reset() { _ref##NameTo = _prev##NameTo = _next##NameTo = (ClassTo*)0; }\
         \
-        int IsLast() { return (GetLast##NameTo() == _ref##NameTo); }\
-        int IsFirst() { return (GetFirst##NameTo() == _ref##NameTo); }\
+        bool IsLast() { return (GetLast##NameTo() == _ref##NameTo); }\
+        bool IsFirst() { return (GetFirst##NameTo() == _ref##NameTo); }\
         \
         static void Check(ClassTo* item##NameTo);\
         static void Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo);\
@@ -243,8 +243,8 @@ void ClassFrom::NameTo##Iterator::CheckAll()\
         ClassTo* Get() { return _ref##NameTo; }\
         void Reset() { _ref##NameTo = _prev##NameTo = _next##NameTo = (ClassTo*)0; }\
         \
-        int IsLast() { return (GetLast##NameTo() == _ref##NameTo); }\
-        int IsFirst() { return (GetFirst##NameTo() == _ref##NameTo); }\
+        bool IsLast() { return (GetLast##NameTo() == _ref##NameTo); }\
+        bool IsFirst() { return (GetFirst##NameTo() == _ref##NameTo); }\
         \
         static void Check(ClassTo* item##NameTo);\
         static void Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo);\
