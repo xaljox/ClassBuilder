@@ -3,8 +3,14 @@
 Status: **EXECUTED 2026-07-17** (phases 1-3 on macOS: headers flipped by JV,
 editor table updated, full rebuild clean, self-host regeneration = zero diff,
 hover shows `bool`). Remaining: plain recompile on Windows/Linux at next pull
-(phase 4). The staged `tools/isx_bool_macros/*.h` copies were kept in sync;
-the filter-slot conversion staged there stays a separate, still-open task.
+(phase 4).
+
+Note on `tools/isx_bool_macros/`: that directory is the leftover staging of
+the EARLIER, already-applied conversion (the `IsX` family + the iterators'
+filter-predicate slot to `bool` — its README's "STAGED, NOT applied" predates
+the apply; the live headers are byte-identical to its `.bool.h` files). With
+this IsFirst/IsLast flip done, no int-as-bool work remains in the runtime
+headers, and the staging directory only has historical value.
 
 ## Analysis (facts, verified 2026-07-17)
 
