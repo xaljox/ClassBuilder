@@ -1,10 +1,17 @@
 # PORTING_LINUX.md — building ClassBuilder on Linux
 
 Companion to [PORTING_MAC.md](PORTING_MAC.md). Covers building the committed
-sources on Linux. Verified on **Ubuntu 24.04** — both x86_64 (WSL, the first
-green Linux build, commit `ec86adf`) and **arm64** (Parallels on Apple Silicon).
-The committed `linux-x64` preset name is cosmetic; it builds native for whatever
-arch it runs on. On arm64 use arm64 apt packages (not amd64).
+sources on Linux. The committed `linux-x64` preset name is cosmetic; it builds
+native for whatever arch it runs on. On arm64 use arm64 apt packages (not amd64).
+
+**Verified environments:**
+
+| Arch | Distro | Host | Notes |
+|------|--------|------|-------|
+| x86_64 | Ubuntu 24.04 | WSL | First green Linux build, commit `ec86adf` |
+| x86_64 | Ubuntu 26.04 | native box | Native hardware build (not WSL) — the current dev environment |
+| arm64 | Ubuntu 24.04 → **26.04** | Parallels on Apple Silicon | Upgraded to 26.04 for the scaling fix — see "GNOME ≥ 47 scaling" below |
+| arm64 | Raspberry Pi OS (Debian-based) | Pi 500+ | Default distro; distinct arm64 target from the Parallels VM (Broadcom GPU, Pi's Qt apt version) |
 
 ## Two Qt options
 
@@ -50,6 +57,17 @@ cursors, and window dragging. Native Wayland *also* works but on **GNOME/Mutter 
 won't drag Qt's client-side-decoration title bar** and the move/hand cursor is
 missing, so xcb wins for daily use. (Wayland resize cursors need
 `XCURSOR_THEME=Yaru`/`Adwaita`.)
+
+## GNOME ≥ 47 scaling (Mutter)
+
+The arm64 Parallels guest was upgraded **Ubuntu 24.04 → 26.04** to get a newer
+**GNOME/Mutter (≥ 47)** because of scaling issues on the older compositor.
+Mutter ≥ 47 is the threshold where fractional scaling behaves correctly for the
+CB window; on older Mutter the scale was wrong. This is a **desktop/compositor**
+requirement, not a CB-code one — CB's own `View > UI Scale` menu (below) is the
+in-app fallback, but the compositor's fractional scaling is what the 26.04
+upgrade fixed. Verify per-WM: this is specific to GNOME/Mutter and won't
+generalize to labwc/KDE.
 
 ## Rendering crispness (Parallels-specific)
 
