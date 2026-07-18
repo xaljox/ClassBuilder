@@ -1221,19 +1221,36 @@ protected:
         const QRect textRect =
             style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
 
+        // Base the right-hand columns on the SAME text colour the base
+        // delegate uses for the name (its exact group logic), then mute with
+        // alpha. On a selected row that is HighlightedText -- so it stays
+        // readable on a strong selection (GNOME's blue), where a fixed grey
+        // vanished (JV 2026-07-18, Linux). Muted but legible on both.
+        QPalette::ColorGroup cg = (option.state & QStyle::State_Enabled)
+            ? QPalette::Normal : QPalette::Disabled;
+        if (cg == QPalette::Normal && !(option.state & QStyle::State_Active))
+            cg = QPalette::Inactive;
+        const bool selected = option.state & QStyle::State_Selected;
+        const QColor textColor = opt.palette.color(cg,
+            selected ? QPalette::HighlightedText : QPalette::Text);
+
         painter->save();
         painter->setFont(opt.font);
         int right = -6;
         if (!hint.isEmpty())            // shortcut at the far right edge
         {
-            painter->setPen(QColor(0xA0, 0xA0, 0xA0));
+            QColor c = textColor;
+            c.setAlpha(selected ? 200 : 120);
+            painter->setPen(c);
             painter->drawText(textRect.adjusted(0, 0, right, 0),
                               Qt::AlignRight | Qt::AlignVCenter, hint);
             right -= opt.fontMetrics.horizontalAdvance(hint) + 12;
         }
         if (!detail.isEmpty())
         {
-            painter->setPen(QColor(0x80, 0x80, 0x80));   // muted, any bg
+            QColor c = textColor;
+            c.setAlpha(selected ? 230 : 150);
+            painter->setPen(c);
             painter->drawText(textRect.adjusted(0, 0, right, 0),
                               Qt::AlignRight | Qt::AlignVCenter, detail);
         }
