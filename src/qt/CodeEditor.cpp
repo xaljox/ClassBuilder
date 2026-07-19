@@ -1657,8 +1657,19 @@ void CodeEditor::updateExtraSelections()
     // "current" line in both at once.
     if (focused && !isReadOnly())
     {
+        // Current-line tint: a faint wash of the LIVE accent over the editor's
+        // white base -- so the active line tracks the SAME accent as the tree
+        // selection, its hover, and the completion popups, instead of a
+        // hardcoded light blue (JV 2026-07-18). A low mix (~12%) keeps it
+        // subtle, below the tree's hover (10%) / selection (28%) but always in
+        // the theme's colour.
+        const QColor acc = QApplication::palette().color(
+            QPalette::Active, QPalette::Highlight);
+        auto mix = [](int base, int a) { return (base * 88 + a * 12) / 100; };
         QTextEdit::ExtraSelection line;
-        line.format.setBackground(QColor(232, 242, 254));
+        line.format.setBackground(QColor(mix(255, acc.red()),
+                                         mix(255, acc.green()),
+                                         mix(255, acc.blue())));
         line.format.setProperty(QTextFormat::FullWidthSelection, true);
         line.cursor = textCursor();
         line.cursor.clearSelection();

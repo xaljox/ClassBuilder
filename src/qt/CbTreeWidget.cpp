@@ -49,44 +49,27 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
     // (CB_UI_FONT_WEIGHT) never reached the tree -- which is most of the UI text.
     // Passing font().weight() makes the tree follow that one knob on every OS.
     const int wt = font().weight();
-    QString sheet = QString("QTreeView { font-size: %2pt; font-weight: %3; }"
+    // outline:0 -- no item focus rectangle: the style draws a hard (near-black)
+    // outline around the current row when the view has focus, which reads as an
+    // odd box over the soft selection tint. The selection is marked instead by a
+    // full-accent stripe at the row's left edge (see drawBranches) -- JV
+    // 2026-07-18.
+    QString sheet = QString("QTreeView { font-size: %2pt; font-weight: %3;"
+                            " outline: 0px; }"
                             "QTreeView::item { height: %1px; }")
                         .arg(rowHeight).arg(ptSize).arg(wt);
-#ifdef __APPLE__
-    // macOS' style does NOT hover-highlight item-view rows (Windows does), so the
-    // row under the cursor gave no feedback here. Add a subtle hover background so
-    // it reads the same on both -- only on non-selected rows, so it doesn't fight
-    // the selection highlight. (A `:hover` QSS rule also makes Qt enable hover
-    // tracking on the view.) Windows keeps its native hover -- this is macOS-only.
-    sheet += "QTreeView::item:hover:!selected {"
-             "  background: rgba(10, 77, 168, 0.10);"   // accent #0A4DA8 @ ~10%
-             "}";
-    // macOS' native item-view selection paints the FULL saturated system accent
-    // with white text (a focused-table look). Next to it, the native notebook
-    // TAB selection is a soft, light accent tint -- so the two highlights read
-    // as two different blues. Match the tree to the lighter tab/source-list
-    // convention: a translucent accent fill with the normal (dark) text kept.
-    // Derived from the LIVE system accent (QPalette::Highlight), so it tracks
-    // the user's Appearance accent instead of hardcoding blue. rgba() over the
-    // base gives the same soft tint in light and dark mode. (Windows/Linux keep
-    // their native saturated selection -- this is macOS-only.)
-    const QColor acc = QApplication::palette().color(QPalette::Active, QPalette::Highlight);
-    sheet += QString("QTreeView::item:selected {"
-                     "  background: rgba(%1, %2, %3, 0.28);"
-                     "  color: palette(text);"
-                     "}")
-                 .arg(acc.red()).arg(acc.green()).arg(acc.blue());
-#elif defined(__linux__)
-    // Linux: GNOME's native item-view selection is the FULL saturated accent
-    // with white text, and it does NOT hover-highlight rows -- so the tree read
-    // differently from the editor's completion / who-calls-me popups, which take
-    // the soft tint from Qt_ApplySoftSelection (QtSoftSelection.h) on every
-    // platform. Give the tree that SAME recipe so tree and popups are one look:
-    // a translucent LIVE-accent wash (0.28) with the normal dark text kept, plus
-    // the popups' hover tint (0.10) on non-selected rows. Live accent (not the
-    // hardcoded blue above) so it tracks the user's chosen highlight colour and
-    // matches the popup exactly. Windows keeps its native selection (the #else
-    // path below). Mirrors the macOS branch; see also drawBranches().
+    // Selection + hover: the SAME soft accent tint on EVERY platform, matching
+    // the editor's completion / who-calls-me popups (Qt_ApplySoftSelection), so
+    // tree and popups read as one look. The native selections differed per OS
+    // (macOS' full accent + white text, GNOME's full accent, Windows' saturated
+    // -- greenish -- highlight); a translucent LIVE-accent wash (0.28) with the
+    // normal dark text kept -- plus the popups' hover tint (0.10) on
+    // non-selected rows -- unifies them, and reads clearer than any native
+    // saturated fill (JV 2026-07-18: the completion popup look is better than
+    // the native Windows tree selection -- make the tree match it). Live accent
+    // (not a hardcoded blue) so it tracks the user's highlight colour, which on
+    // Windows is the greener system highlight. See also drawBranches() and
+    // QtSoftSelection.h.
     const QColor acc = QApplication::palette().color(QPalette::Active, QPalette::Highlight);
     sheet += QString("QTreeView::item:selected {"
                      "  background: rgba(%1, %2, %3, 0.28);"
@@ -96,7 +79,6 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
                      "  background: rgba(%1, %2, %3, 0.10);"
                      "}")
                  .arg(acc.red()).arg(acc.green()).arg(acc.blue());
-#endif
     setStyleSheet(sheet);
 
     // Model icons: size them just inside the row height (a small inset reads
@@ -289,27 +271,29 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // widget's own style/palette and sampling the pixel it actually painted.
     QColor triColour  = accent;
     QColor connColour = lineColour;
-#if defined(__APPLE__) || defined(__linux__)
-    // macOS + Linux use the soft ::item:selected tint (see the constructor QSS).
-    // The base view paints the saturated native selection across the WHOLE row,
-    // including this branch/indent gutter, before drawBranches runs -- so the
-    // gutter kept the dark accent while the item columns took the light tint
-    // from the ::item:selected QSS, splitting the row into two blues. Repaint
-    // the gutter with the SAME light tint so the selected row is one colour.
-    // rgba(accent,0.28) over Base == blend(Base, accent, 0.28); use the solid
-    // form here since we're filling opaquely over the already-drawn selection.
-    // No chrome flip: the gutter is light now, so the accent triangle and
-    // connectors stay visible without swapping to HighlightedText.
+    // EVERY platform now uses the soft ::item:selected tint (constructor QSS).
+    // The base view paints its native selection across the WHOLE row -- including
+    // this branch/indent gutter -- before drawBranches runs, so without this the
+    // gutter kept the saturated native fill while the item columns took the light
+    // tint, splitting the row into two colours. Repaint the gutter with the SAME
+    // soft tint so the selected row is one colour. rgba(accent,0.28) over Base ==
+    // blend(Base, accent, 0.28); the solid form fills opaquely over the already-
+    // drawn native selection. No chrome flip needed: the gutter is light, so the
+    // accent triangle + connectors stay visible. (Windows used to keep its native
+    // saturated selection + a chrome flip here; unified with Mac/Linux -- JV
+    // 2026-07-18. selectionChromeShouldFlip() is now unused.)
     if (selectionModel() && selectionModel()->isSelected(index))
+    {
         painter->fillRect(rect, blend(
             appPal.color(QPalette::Active, QPalette::Base), accent, 0.28));
-#else
-    if (selectionModel() && selectionModel()->isSelected(index) && selectionChromeShouldFlip())
-    {
-        triColour  = appPal.color(QPalette::Active, QPalette::HighlightedText);
-        connColour = triColour;
+        // A stripe at the row's LEFT edge marks the selection (replaces the
+        // focus outline, JV 2026-07-18). Drawn in the accent -- the SAME colour
+        // as the expand/collapse triangle -- so the tree's palette stays
+        // limited (JV's suggestion). Width scales a touch with the row height.
+        const int barW = qMax(3, rect.height() / 8);   // ~3px (integer-safe)
+        painter->fillRect(QRect(rect.left(), rect.top(), barW, rect.height()),
+                          accent);
     }
-#endif
 
     // Walk root..item; record, per level, whether that node has a sibling
     // below it. hasNext.last() is the item itself; size-1 == its depth.
