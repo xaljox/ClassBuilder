@@ -10,6 +10,7 @@
 
 #include "QtClassDiagramView.h"   // bridge declaration
 #include "QtApp.h"                // Qt_EnsureApplication / Qt_ShowModeless
+#include "QtMenuStyle.h"          // Qt_ApplyCompactMenuStyle (consistent menus)
 #include "QtModelText.h"          // toQ
 #include "QtRelationDiagramOnlyDialog.h"  // Qt_CreateRelationDiagramOnlyDialog
 #include "QtDependencyDialog.h"           // Qt_CreateDependencyDialog
@@ -3841,6 +3842,7 @@ void ClassDiagramCanvas::contextMenuEvent(QContextMenuEvent* e)
     }
 
     QMenu menu(this);
+    Qt_ApplyCompactMenuStyle(&menu);   // consistent with the tree/editor menus
     QAction* aOpen = menu.addAction(tr("&Open"));
     aOpen->setEnabled(openEnabled);
     QAction* aEdit = menu.addAction(tr("&Edit Attributes"));

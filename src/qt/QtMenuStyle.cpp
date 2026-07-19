@@ -21,8 +21,11 @@ QColor blend(const QColor& a, const QColor& b, double t)
 QString Qt_CompactMenuStyleSheet()
 {
     const QPalette pal = qApp->palette();
-    const QColor bg   = pal.color(QPalette::Active,   QPalette::Window);
-    const QColor text = pal.color(QPalette::Active,   QPalette::WindowText);
+    // Base (white), not Window (the darker grey): matches the app-wide QMenu
+    // rule (QtApp.cpp) so the code-editor menus have the SAME background as the
+    // tree / diagram context menus (JV 2026-07-18).
+    const QColor bg   = pal.color(QPalette::Active,   QPalette::Base);
+    const QColor text = pal.color(QPalette::Active,   QPalette::Text);
 
     // Disabled text: the palette's Disabled role -- EXCEPT on macOS, where
     // Qt leaves it (nearly) equal to the active text (the native style greys
@@ -35,21 +38,24 @@ QString Qt_CompactMenuStyleSheet()
     if (diff < 48)
         dis = blend(bg, text, 0.45);
 
-    // Neutral, theme-relative shades derived from the menu background by
-    // nudging it toward the text colour -- this stays a grey hover (not the
-    // accent) and follows a light/dark theme automatically.
-    const QColor hover  = blend(bg, text, 0.15);
+    // Selected item: the FULL theme accent with its highlighted text -- so the
+    // right-click menus match the tree's context menu (and the native GNOME/
+    // macOS menus), instead of the old neutral grey hover (JV 2026-07-18). The
+    // separator/border stay theme-relative greys derived from the menu
+    // background, so they follow a light/dark theme automatically.
+    const QColor accent   = pal.color(QPalette::Active, QPalette::Highlight);
+    const QColor accentTx = pal.color(QPalette::Active, QPalette::HighlightedText);
     const QColor sep    = blend(bg, text, 0.28);
     const QColor border = blend(bg, text, 0.40);
 
     return QString(
         "QMenu { background:%1; border:1px solid %2; }"
         "QMenu::item { padding:2px 28px 2px 12px; color:%3; }"
-        "QMenu::item:selected { background:%4; color:%3; }"
+        "QMenu::item:selected { background:%4; color:%7; }"
         "QMenu::item:disabled { color:%5; }"
         "QMenu::separator { height:1px; background:%6; margin:3px 6px; }")
         .arg(bg.name(), border.name(), text.name(),
-             hover.name(), dis.name(), sep.name());
+             accent.name(), dis.name(), sep.name(), accentTx.name());
 }
 
 namespace {

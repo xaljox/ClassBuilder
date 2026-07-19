@@ -9,6 +9,7 @@
 
 #include "QtSequenceDiagramView.h"   // bridge declaration
 #include "QtApp.h"                   // Qt_EnsureApplication / Qt_ShowModeless
+#include "QtMenuStyle.h"             // Qt_ApplyCompactMenuStyle (consistent menus)
 #include "QtModelText.h"             // toQ
 #include "CbPainter_QPainter.h"
 #include "QtHandleMetrics.h"         // QtHandle::grabToleranceModel
@@ -1646,6 +1647,7 @@ void SequenceDiagramCanvas::contextMenuEvent(QContextMenuEvent* e)
     }
 
     QMenu menu(this);
+    Qt_ApplyCompactMenuStyle(&menu);   // consistent with the tree/editor menus
     QAction* aOpen   = menu.addAction(openText);
     aOpen->setEnabled(openEnabled);
     QAction* aEdit   = menu.addAction(editText);

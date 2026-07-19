@@ -5,6 +5,7 @@
 
 #include "QtMainTreeView.h"   // Qt_ShowMainTreeView / Qt_MainTreeNavigate / ...
 #include "QtApp.h"            // Qt_EnsureApplication / Qt_ShowModeless
+#include "QtMenuStyle.h"      // Qt_ApplyCompactMenuStyle (consistent menus)
 #include "QtModelText.h"      // toQ
 #include "QtModelIcons.h"     // Qt_ModelIcon (Actor has no toolbar-strip glyph)
 #include "QtToolBarIcons.h"   // Qt_ToolBarIcon (the real MFC toolbar glyphs)
@@ -1088,6 +1089,8 @@ void MainTreeQtView::onContextMenu(const QPoint& pos)
         return;
 
     QMenu menu(this);
+    Qt_ApplyCompactMenuStyle(&menu);   // base bg + accent selection, compact,
+                                       // same look on every platform
     auto add = [&](QMenu* m, const QString& text, TreeAction a)
     {
         QAction* act = m->addAction(text);

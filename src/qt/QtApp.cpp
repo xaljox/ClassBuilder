@@ -555,6 +555,35 @@ void Qt_EnsureApplication()
         "  color: black;"
         "  border: 1px solid #767676;"
         "}";
+#ifdef _WIN32
+    // Context-menu highlight: the modern Windows 11 style paints the selected
+    // menu item a flat darker GREY and IGNORES a QSS background-color on the
+    // item (only the text colour obeyed, giving white-on-grey). To force the
+    // accent, QSS must OWN the item rendering -- so style the whole QMenu
+    // (background/border/padding/separator), then the selected item takes the
+    // theme accent, matching the tree / list selection everywhere else (JV
+    // 2026-07-18). palette() refs follow the LIVE accent without rebuilding the
+    // sheet.
+    sheet +=
+        "QMenu {"
+        "  background-color: palette(base);"
+        "  border: 1px solid palette(mid);"
+        "  padding: 2px;"
+        "}"
+        "QMenu::item {"
+        "  padding: 2px 28px 2px 12px;"   // compact, matches Qt_CompactMenuStyleSheet
+        "  background: transparent;"
+        "}"
+        "QMenu::item:selected {"
+        "  background-color: palette(highlight);"
+        "  color: palette(highlighted-text);"
+        "}"
+        "QMenu::separator {"
+        "  height: 1px;"
+        "  background: palette(mid);"
+        "  margin: 4px 6px;"
+        "}";
+#endif
     if (!sheet.isEmpty())
         qApp->setStyleSheet(sheet);
 
