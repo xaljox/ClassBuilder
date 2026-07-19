@@ -6,6 +6,7 @@
 #include "QtApp.h"           // Qt_SelectInModelTree
 #include "QtModelText.h"     // toQ
 #include "QtModelIcons.h"    // Qt_ModelIcon
+#include "QtSoftSelection.h" // Qt_ApplySoftSelection
 
 #include <QApplication>
 #include <QFocusEvent>
@@ -127,6 +128,9 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
     list->setAttribute(Qt::WA_DeleteOnClose, true);
     list->setFont(CodeEditor::codeFont());
     list->setIconSize(QSize(16, 16));
+    // Selection look: the tree's soft accent tint, matching the completion
+    // popup (the two must read consistently) -- see QtSoftSelection.h.
+    Qt_ApplySoftSelection(list);
 
     // Compact rows via an explicit per-item size hint -- the windows11
     // style pads list items touch-friendly tall (a stylesheet padding

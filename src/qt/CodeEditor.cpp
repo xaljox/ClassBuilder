@@ -6,6 +6,7 @@
 
 #include "CodeEditor.h"
 #include "CppHighlighter.h"
+#include "QtSoftSelection.h"
 
 #include <QAbstractItemView>
 #include <QApplication>
@@ -1221,18 +1222,17 @@ protected:
         const QRect textRect =
             style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
 
-        // Base the right-hand columns on the SAME text colour the base
-        // delegate uses for the name (its exact group logic), then mute with
-        // alpha. On a selected row that is HighlightedText -- so it stays
-        // readable on a strong selection (GNOME's blue), where a fixed grey
-        // vanished (JV 2026-07-18, Linux). Muted but legible on both.
+        // The popup's selection is the tree-matching soft accent tint
+        // (Qt_ApplySoftSelection), so the right-hand columns always sit on a
+        // light background: the normal Text colour, muted with alpha, reads
+        // in every state on every platform. (Before the tint, a selected row
+        // needed HighlightedText to survive GNOME's saturated blue -- JV
+        // 2026-07-18, Linux; the light tint removes that case.)
         QPalette::ColorGroup cg = (option.state & QStyle::State_Enabled)
             ? QPalette::Normal : QPalette::Disabled;
         if (cg == QPalette::Normal && !(option.state & QStyle::State_Active))
             cg = QPalette::Inactive;
-        const bool selected = option.state & QStyle::State_Selected;
-        const QColor textColor = opt.palette.color(cg,
-            selected ? QPalette::HighlightedText : QPalette::Text);
+        const QColor textColor = opt.palette.color(cg, QPalette::Text);
 
         painter->save();
         painter->setFont(opt.font);
@@ -1240,7 +1240,7 @@ protected:
         if (!hint.isEmpty())            // shortcut at the far right edge
         {
             QColor c = textColor;
-            c.setAlpha(selected ? 200 : 120);
+            c.setAlpha(120);
             painter->setPen(c);
             painter->drawText(textRect.adjusted(0, 0, right, 0),
                               Qt::AlignRight | Qt::AlignVCenter, hint);
@@ -1249,7 +1249,7 @@ protected:
         if (!detail.isEmpty())
         {
             QColor c = textColor;
-            c.setAlpha(selected ? 230 : 150);
+            c.setAlpha(150);
             painter->setPen(c);
             painter->drawText(textRect.adjusted(0, 0, right, 0),
                               Qt::AlignRight | Qt::AlignVCenter, detail);
@@ -1273,6 +1273,10 @@ void CodeEditor::setCompletionProvider(CodeCompletionProvider* provider)
         _completer->popup()->setIconSize(QSize(16, 16));
         _completer->popup()->setItemDelegate(
             new CompletionItemDelegate(_completer->popup()));
+        // Selection look: the tree's soft accent tint instead of the
+        // platform default (saturated accent on macOS/GNOME, grey inactive
+        // fill on Windows) -- see QtSoftSelection.h.
+        Qt_ApplySoftSelection(_completer->popup());
         connect(_completer,
                 QOverload<const QModelIndex&>::of(&QCompleter::activated),
                 this, &CodeEditor::insertCompletion);
