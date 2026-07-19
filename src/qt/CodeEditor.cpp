@@ -192,7 +192,11 @@ QFont CodeEditor::codeFont()
 CodeEditor::CodeEditor(QWidget* parent)
     : QPlainTextEdit(parent)
 {
-    _basePt = _zoomPt = codeFont().pointSize();
+    _basePt = codeFont().pointSize();
+    // Adopt the shared zoom level so a newly opened editor already matches the
+    // others (e.g. reopening a dialog after zooming elsewhere).
+    _zoomPt = (s_zoomPt > 0) ? s_zoomPt : _basePt;
+    liveEditors().append(this);
     applyEditorFont(_zoomPt);        // font + tab stops (overrides app QSS)
 
     // Force crisp black-on-white -- do not inherit a washed-out palette
@@ -228,6 +232,13 @@ CodeEditor::CodeEditor(QWidget* parent)
             this, &CodeEditor::updateDiagnostics);
     connect(this, &QPlainTextEdit::textChanged,
             this, [this] { _diagnosticTimer->start(); });
+
+    // Keep the footer band above the horizontal scrollbar: a line longer than
+    // the viewport makes that scrollbar appear (or disappear) without resizing
+    // the editor, so the bands must be re-laid-out on that range change too --
+    // resizeEvent alone doesn't fire for it.
+    connect(horizontalScrollBar(), &QScrollBar::rangeChanged,
+            this, [this](int, int) { layoutBands(); });
 
     updateExtraSelections();
 }
@@ -831,21 +842,21 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
         const QString t = event->text();
         if (key == Qt::Key_0 || t == "0")
         {
-            applyEditorFont(_basePt);
+            applySharedZoom(_basePt);
             event->accept();
             return;
         }
         if (key == Qt::Key_Plus || key == Qt::Key_Equal ||
             t == "+" || t == "=")
         {
-            applyEditorFont(_zoomPt + 1);
+            applySharedZoom(_zoomPt + 1);
             event->accept();
             return;
         }
         if (key == Qt::Key_Minus || key == Qt::Key_Underscore ||
             t == "-" || t == "_")
         {
-            applyEditorFont(_zoomPt - 1);
+            applySharedZoom(_zoomPt - 1);
             event->accept();
             return;
         }
@@ -1052,6 +1063,31 @@ bool CodeEditor::autoCloseKeyPressEvent(QKeyEvent* event)
     return false;
 }
 
+// Shared zoom state: one level for every open code editor (see header). -1
+// until the first editor is constructed / the user first zooms.
+int CodeEditor::s_zoomPt = -1;
+
+QList<CodeEditor*>& CodeEditor::liveEditors()
+{
+    static QList<CodeEditor*> editors;
+    return editors;
+}
+
+CodeEditor::~CodeEditor()
+{
+    liveEditors().removeAll(this);
+}
+
+// Store the new zoom level and apply it to EVERY live editor, so all panes of
+// one logical edit (constructor init + body, the User Sections editors, ...)
+// scale together instead of independently. Bounds match applyEditorFont().
+void CodeEditor::applySharedZoom(int pt)
+{
+    s_zoomPt = qBound(6, pt, 32);
+    for (CodeEditor* ed : liveEditors())
+        ed->applyEditorFont(s_zoomPt);
+}
+
 // Set the editor's font size. The app-wide stylesheet carries a bare
 // `QWidget { font-size }` rule that OVERRIDES setFont() -- so plain setFont /
 // zoomIn does nothing. A widget-local stylesheet wins over the inherited one,
@@ -1065,6 +1101,11 @@ void CodeEditor::applyEditorFont(int pt)
     setStyleSheet(QString("font-size:%1pt;").arg(_zoomPt));
     QFontMetricsF fm(f);
     setTabStopDistance(fm.horizontalAdvance(' ') * _indentSize);
+    // The marker bands (signature header, //@CODE footer) must zoom with the
+    // code: their own font drives their height, and the editor's font-size
+    // stylesheet above would otherwise cascade into them, enlarging the
+    // rendered text past the (un-grown) band height and clipping the letters.
+    refreshBands();
 }
 
 // Ctrl+wheel zooms the editor font in small steps.
@@ -1074,7 +1115,7 @@ void CodeEditor::wheelEvent(QWheelEvent* event)
     {
         const int delta = event->angleDelta().y();
         if (delta != 0)
-            applyEditorFont(_zoomPt + (delta > 0 ? 1 : -1));
+            applySharedZoom(_zoomPt + (delta > 0 ? 1 : -1));
         event->accept();
         return;
     }
@@ -1896,7 +1937,7 @@ void CodeEditor::setHeaderText(const QString& text)
     _headerPlain = text;
     renderHeader();
     _header->setVisible(!text.isEmpty());
-    updateBandMargins();
+    refreshBands();   // apply the current zoom font, then reserve/lay out
 }
 
 bool CodeEditor::eventFilter(QObject* obj, QEvent* event)
@@ -1935,7 +1976,29 @@ void CodeEditor::setFooterText(const QString& text)
         _footer = makeBand(this);
     _footer->setText(bandHtml(text, QString(), QSet<QString>()));
     _footer->setVisible(!text.isEmpty());
-    updateBandMargins();
+    refreshBands();   // apply the current zoom font, then reserve/lay out
+}
+
+// Apply the current zoom font to the bands so their height AND rendered text
+// both track the editor zoom. Setting font-size in each band's OWN stylesheet
+// makes it win over the editor's cascading font-size rule (applyEditorFont),
+// and setFont at the same size keeps sizeHint()/height in step with the render
+// -- without this the cascade grew the text but not the band, clipping it.
+void CodeEditor::refreshBands()
+{
+    QFont f = codeFont();
+    f.setPointSize(_zoomPt);
+    const QString css =
+        QString("background:#e8e8e8; padding:1px 3px; font-size:%1pt;")
+            .arg(_zoomPt);
+    for (QLabel* b : {_header, _footer})
+    {
+        if (!b)
+            continue;
+        b->setFont(f);
+        b->setStyleSheet(css);
+    }
+    updateBandMargins();   // re-reserve height for the new font + reposition
 }
 
 // Reserve viewport space for whichever bands are active, then position them.
@@ -1949,22 +2012,26 @@ void CodeEditor::updateBandMargins()
     layoutBands();
 }
 
-// Span each band across the full editor width, pinned top / bottom, above
-// the viewport.
+// Span each band across the full editor width, pinned to the top / bottom of
+// the VIEWPORT (not contentsRect). Anchoring on the viewport is what keeps the
+// footer above a horizontal scrollbar: when the scrollbar appears the viewport
+// shrinks from the bottom, so viewport().bottom() rises and the footer sits in
+// the reserved margin just above the scrollbar instead of being overlapped by
+// it. Width still spans the full frame so the grey band runs edge to edge.
 void CodeEditor::layoutBands()
 {
     const QRect cr = contentsRect();
+    const QRect vp = viewport()->geometry();
     if (bandActive(_header))
     {
-        _header->setGeometry(cr.left(), cr.top(), cr.width(),
-                             _header->sizeHint().height());
+        const int h = _header->sizeHint().height();
+        _header->setGeometry(cr.left(), vp.top() - h, cr.width(), h);
         _header->raise();
     }
     if (bandActive(_footer))
     {
         const int h = _footer->sizeHint().height();
-        _footer->setGeometry(cr.left(), cr.bottom() - h + 1,
-                             cr.width(), h);
+        _footer->setGeometry(cr.left(), vp.bottom() + 1, cr.width(), h);
         _footer->raise();
     }
 }

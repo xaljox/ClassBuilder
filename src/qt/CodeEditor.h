@@ -20,6 +20,7 @@
 #include <QFont>
 #include <QIcon>
 #include <QPair>
+#include <QList>
 #include <QSet>
 #include <QVector>
 
@@ -103,6 +104,7 @@ class CodeEditor : public QPlainTextEdit
     Q_OBJECT
 public:
     explicit CodeEditor(QWidget* parent = nullptr);
+    ~CodeEditor() override;
 
     // Indent step in spaces (the MFC DataModel::GetIndentSize). Default 4.
     void setIndentSize(int spaces);
@@ -238,6 +240,14 @@ private:
     // (a bare `QWidget { font-size }` rule would otherwise pin it, defeating
     // setFont/zoom); recomputes the tab stops. `pt` is clamped.
     void applyEditorFont(int pt);
+    // Font zoom is SHARED across every open code editor so the panes of one
+    // logical edit (e.g. a constructor's init list + body, or the six User
+    // Sections editors) always scale together -- zooming one zooms them all.
+    // The user-zoom gestures call applySharedZoom(); it stores the level and
+    // re-applies it to every live editor. applyEditorFont() above is the
+    // per-editor apply it drives.
+    static void applySharedZoom(int pt);
+    static QList<CodeEditor*>& liveEditors();
     // Pin QPalette::Highlight/HighlightedText to the live theme accent (the
     // text-selection colour). One place, called from the constructor and from
     // reapplyThemeAccent() on a live accent change.
@@ -252,6 +262,11 @@ private:
     // Reserve viewport margins for the marker bands + place them in the frame.
     void updateBandMargins();
     void layoutBands();
+    // Apply the CURRENT zoom font to the marker bands (font + matching
+    // font-size in their own stylesheet, so their height and rendered text
+    // both track the editor zoom) and re-reserve their margins. Guarded on
+    // null, so it is safe to call before a band exists.
+    void refreshBands();
 
     // Recompute the extra selections: the current-line tint plus, when the
     // caret abuts a brace, the highlight of it and its match.
@@ -304,6 +319,7 @@ private:
 
     int _basePt = 11;                // codeFont() point size (zoom baseline)
     int _zoomPt = 11;                // current editor point size
+    static int s_zoomPt;             // shared zoom level for all editors (-1 = unset)
 
     // Method-not-found diagnostics: [start, length] call ranges to wave-
     // underline, refreshed (debounced) by _diagnosticTimer off textChanged.
