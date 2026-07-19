@@ -664,15 +664,27 @@ void QtShellWindow::emergencySaveAll()
     }
 }
 
-// macOS: the native NSOpenPanel/NSSavePanel behind QFileDialog's static
-// helpers does not appear in this app (the in-app Qt dialogs -- e.g. the File
-// New flow -- show fine, but the native file panel shows nothing). Force Qt's
-// own file dialog there. Windows/Linux keep the native panel.
-#ifdef __APPLE__
-static const QFileDialog::Options kCbFileDialogOpts = QFileDialog::DontUseNativeDialog;
-#else
-static const QFileDialog::Options kCbFileDialogOpts = QFileDialog::Options();
+// Which file-dialog backend CB's open/save helpers use. Non-Windows forces
+// Qt's OWN dialog so the open/save experience is one consistent thing:
+//  * macOS: the native NSOpenPanel/NSSavePanel shows nothing behind
+//    QFileDialog's static helpers in this app -- Qt's own dialog is the only
+//    one that works.
+//  * Linux: the native GTK/portal chooser (a) ignores QT_SCALE_FACTOR (Qt's
+//    software UI-scale), so it renders tiny under a non-1.0 "View > UI Scale",
+//    and (b) shows ALL files with the non-matching ones greyed/disabled, so a
+//    full directory needs scrolling to reach the .cbz. Qt's own dialog scales
+//    with the rest of CB and HIDES non-matching files (only *.cbz + folders) --
+//    matching macOS, one behaviour across both. CB is not sandboxed, so losing
+//    the portal chooser costs nothing.
+//  * Windows: the native panel scales and filters correctly -- keep it.
+static QFileDialog::Options cbFileDialogOpts()
+{
+#ifdef _WIN32
+    return QFileDialog::Options();
+#else   // macOS + Linux: Qt's own dialog (consistent, scales, filters out)
+    return QFileDialog::DontUseNativeDialog;
 #endif
+}
 
 void QtShellWindow::buildMenus()
 {
@@ -684,7 +696,7 @@ void QtShellWindow::buildMenus()
     file->addAction("&Open...", QKeySequence::Open, this, [this] {
         const QString path = QFileDialog::getOpenFileName(
             this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-            nullptr, kCbFileDialogOpts);
+            nullptr, cbFileDialogOpts());
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -851,7 +863,7 @@ void QtShellWindow::buildToolBar()
                             "Open", this, [this] {
         const QString path = QFileDialog::getOpenFileName(
             this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-            nullptr, kCbFileDialogOpts);
+            nullptr, cbFileDialogOpts());
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -1634,7 +1646,7 @@ bool QtShellWindow::saveDocumentAs()
     QString initial = toQ(doc->GetPathName());
     QString path = QFileDialog::getSaveFileName(
         this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-        nullptr, kCbFileDialogOpts);
+        nullptr, cbFileDialogOpts());
     if (path.isEmpty())
         return false;
     if (!path.endsWith(".cbz", Qt::CaseInsensitive))
