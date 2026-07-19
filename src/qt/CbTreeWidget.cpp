@@ -297,7 +297,18 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // rounded indicator, a custom-themed flat fill). selectionChromeShouldFlip()
     // sidesteps all guessing by rendering a probe selected cell through this
     // widget's own style/palette and sampling the pixel it actually painted.
-    QColor triColour  = accent;
+    // The expand triangle (and the selection stripe drawn in the same colour,
+    // below) are small SOLID glyphs: a relatively light accent -- the default
+    // macOS system blue, a pastel desktop accent -- reads washed out at that
+    // size against the light tree, where the very same colour works fine as a
+    // row-sized tint fill. Derive the glyph colour from the accent by clamping
+    // its HSL lightness: a dark accent passes through unchanged, a light one
+    // is deepened (hue and saturation kept) until it carries at glyph size
+    // (JV 2026-07-19).
+    QColor triColour = accent;
+    if (triColour.lightnessF() > 0.40)
+        triColour.setHslF(qMax(0.0f, triColour.hslHueF()),
+                          triColour.hslSaturationF(), 0.40f);
     QColor connColour = lineColour;
     // EVERY platform now uses the soft ::item:selected tint (constructor QSS).
     // The base view paints its native selection across the WHOLE row -- including
@@ -315,12 +326,13 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
         painter->fillRect(rect, blend(
             appPal.color(QPalette::Active, QPalette::Base), accent, 0.28));
         // A stripe at the row's LEFT edge marks the selection (replaces the
-        // focus outline, JV 2026-07-18). Drawn in the accent -- the SAME colour
-        // as the expand/collapse triangle -- so the tree's palette stays
-        // limited (JV's suggestion). Width scales a touch with the row height.
+        // focus outline, JV 2026-07-18). Drawn in the SAME colour as the
+        // expand/collapse triangle (the lightness-clamped accent, see
+        // triColour above) so the tree's palette stays limited (JV's
+        // suggestion). Width scales a touch with the row height.
         const int barW = qMax(3, rect.height() / 8);   // ~3px (integer-safe)
         painter->fillRect(QRect(rect.left(), rect.top(), barW, rect.height()),
-                          accent);
+                          triColour);
     }
 
     // Walk root..item; record, per level, whether that node has a sibling

@@ -308,11 +308,20 @@ namespace {
 // theme-derived -- tree chrome/triangles, the selection & hover tint, the
 // editor text selection, diagram selection -- keys off QPalette::Active/
 // Highlight, so this is the one place the "main accent" is decided:
-//   * macOS  -- a deliberate deep blue (#0A4DA8): high-contrast on the white
-//     tree (the light macOS system accent left the triangles barely visible),
-//     plus the light-grey dialog Window / white Base that make edit boxes pop.
-//     Re-applied on every ApplicationPaletteChange so a light/dark switch can't
-//     wipe it.
+//   * macOS  -- the VIVID system accent (QPalette::Accent = NSColor
+//     controlAccentColor, e.g. #0A60FF for the default blue). Qt's macOS
+//     Highlight role is the PALE text-selection wash (~#A5CDFF) -- unusable as
+//     the app accent (near-invisible tree chrome, washed-out selections) --
+//     which is why a hardcoded deep blue (#0A4DA8) lived here first. That
+//     darker pin is no longer needed: the unified soft tint keeps the tree
+//     gutter light, so the chrome never flips to white and the system accent
+//     is contrasty enough (JV 2026-07-19). Pinning Highlight to the Accent
+//     role makes the styled context menus the SAME blue as the native menu
+//     bar's highlight, and CB follows the user's chosen accent colour, like
+//     Windows/Linux. Also pinned: the light-grey dialog Window / white Base
+//     that make edit boxes pop. Re-applied on every ApplicationPaletteChange
+//     (the Accent role tracks a live accent change; a light/dark switch can't
+//     wipe the rest).
 //   * Windows / Linux -- the SYSTEM accent is the source; nothing to fill, so
 //     this is a no-op and CB simply follows the desktop's chosen accent.
 // Only writes the palette when it actually differs, so calling this from the
@@ -320,7 +329,8 @@ namespace {
 void Cb_ApplyAccentPalette()
 {
 #ifdef __APPLE__
-    const QColor accent(0x0A, 0x4D, 0xA8);      // deep blue (Mac-style), one knob
+    const QColor accent =
+        qApp->palette().color(QPalette::Active, QPalette::Accent);
     const QColor dialogGrey(0xEC, 0xEC, 0xEC);
     QPalette want = qApp->palette();
     want.setColor(QPalette::Active,   QPalette::Highlight, accent);
