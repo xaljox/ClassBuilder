@@ -10,6 +10,7 @@
 #include "QtSaveSourceDialog.h"      // Qt_ShowSaveSourceDialog
 #include "QtApp.h"                   // Qt_EnsureApplication / Qt_ExecModal
 #include "QtModelText.h"             // toQ / toCb
+#include "QtSoftSelection.h"         // Qt_ApplyProgressAccent
 
 #include <QCoreApplication>
 #include <QLineEdit>
@@ -30,6 +31,7 @@ SaveSourceDialog::SaveSourceDialog(DataModel* pDataModel, QWidget* parent)
     _ui->setupUi(this);
 
     _ui->editAuthor->setText(toQ(_pDataModel->GetAuthor()));
+    Qt_ApplyProgressAccent(_ui->progressBar);   // accent-tinted fill
     _ui->progressBar->setRange(0, _pDataModel->GetClassCount() + 1);
     _ui->progressBar->setValue(0);
 

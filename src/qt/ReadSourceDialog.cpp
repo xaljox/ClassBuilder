@@ -10,6 +10,7 @@
 
 #include "QtReadSourceDialog.h"      // Qt_ShowReadSourceDialog
 #include "QtApp.h"                   // Qt_EnsureApplication / Qt_ExecModal
+#include "QtSoftSelection.h"         // Qt_ApplyProgressAccent
 
 #include <QCoreApplication>
 #include <QPlainTextEdit>
@@ -30,6 +31,7 @@ ReadSourceDialog::ReadSourceDialog(DataModel* pDataModel, QWidget* parent)
 {
     _ui->setupUi(this);
 
+    Qt_ApplyProgressAccent(_ui->progressBar);   // accent-tinted fill
     _ui->progressBar->setRange(0, _pDataModel->GetClassCount() + 1);
     _ui->progressBar->setValue(0);
 

@@ -664,26 +664,20 @@ void QtShellWindow::emergencySaveAll()
     }
 }
 
-// Which file-dialog backend CB's open/save helpers use. Non-Windows forces
-// Qt's OWN dialog so the open/save experience is one consistent thing:
-//  * macOS: the native NSOpenPanel/NSSavePanel shows nothing behind
-//    QFileDialog's static helpers in this app -- Qt's own dialog is the only
-//    one that works.
-//  * Linux: the native GTK/portal chooser (a) ignores QT_SCALE_FACTOR (Qt's
-//    software UI-scale), so it renders tiny under a non-1.0 "View > UI Scale",
-//    and (b) shows ALL files with the non-matching ones greyed/disabled, so a
-//    full directory needs scrolling to reach the .cbz. Qt's own dialog scales
-//    with the rest of CB and HIDES non-matching files (only *.cbz + folders) --
-//    matching macOS, one behaviour across both. CB is not sandboxed, so losing
-//    the portal chooser costs nothing.
-//  * Windows: the native panel scales and filters correctly -- keep it.
+// Qt's OWN file dialog on EVERY platform, so open/save is one consistent
+// thing across Windows, macOS and Linux:
+//  * it follows CB's software "View > UI Scale" (QT_SCALE_FACTOR) -- the
+//    native panels only scale with the OS DPI, never CB's own scale, so under
+//    a non-1.0 UI scale the native dialog stayed small (JV 2026-07-18, Windows;
+//    same as Linux earlier);
+//  * it HIDES non-matching files (only *.cbz + folders) instead of showing a
+//    whole directory with the non-matches greyed/disabled;
+//  * macOS' native panel shows nothing behind QFileDialog's static helpers in
+//    this app anyway, so Qt's dialog is the only one that works there.
+// CB is not sandboxed, so losing the native/portal chooser costs nothing.
 static QFileDialog::Options cbFileDialogOpts()
 {
-#ifdef _WIN32
-    return QFileDialog::Options();
-#else   // macOS + Linux: Qt's own dialog (consistent, scales, filters out)
     return QFileDialog::DontUseNativeDialog;
-#endif
 }
 
 void QtShellWindow::buildMenus()

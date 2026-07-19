@@ -4263,13 +4263,10 @@ void ClassDiagramQtView::exportSvg()
     QString def = _canvas->diagramName();
     if (def.isEmpty())
         def = "classdiagram";
-    // macOS: force Qt's own file dialog (the native NSSavePanel does not appear
-    // in this app -- same gap as the File Open panel in QtShellWindow).
-#ifdef __APPLE__
+    // Qt's own file dialog on every platform -- consistent with the File
+    // Open/Save panels (see QtShellWindow's cbFileDialogOpts): follows CB's
+    // software UI-scale and matches everywhere.
     const QFileDialog::Options svgOpts = QFileDialog::DontUseNativeDialog;
-#else
-    const QFileDialog::Options svgOpts = QFileDialog::Options();
-#endif
     QString path = QFileDialog::getSaveFileName(
         this, "Export Diagram as SVG", def + ".svg", "SVG files (*.svg)",
         nullptr, svgOpts);

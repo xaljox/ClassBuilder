@@ -16,6 +16,7 @@
 #include <QApplication>
 #include <QColor>
 #include <QPalette>
+#include <QProgressBar>
 #include <QString>
 
 // The soft selection/hover tint, derived PURELY from the live theme accent
@@ -47,6 +48,23 @@ inline QColor Qt_SoftSelectionColor(double alpha)
     return QColor(mix(base.red(),   acc.red()),
                   mix(base.green(), acc.green()),
                   mix(base.blue(),  acc.blue()));
+}
+
+// Colour a progress bar's fill with the SAME tint as a selected tree row
+// (Qt_SoftSelectionColor(0.28) -- the stronger-than-hover, not-full-accent
+// variant JV asked for), over a plain base track, so Read/Write Source
+// progress reads in the theme accent and matches the tree/popup selection.
+inline void Qt_ApplyProgressAccent(QProgressBar* bar)
+{
+    const QColor chunk = Qt_SoftSelectionColor(0.28);
+    bar->setStyleSheet(QString(
+        "QProgressBar {"
+        "  border: 1px solid palette(mid); border-radius: 3px;"
+        "  background: palette(base); text-align: center;"
+        "  color: palette(text);"
+        "}"
+        "QProgressBar::chunk { background-color: rgb(%1, %2, %3); }")
+        .arg(chunk.red()).arg(chunk.green()).arg(chunk.blue()));
 }
 
 // Give a popup list the tree's soft selection look: the opaque accent tint
