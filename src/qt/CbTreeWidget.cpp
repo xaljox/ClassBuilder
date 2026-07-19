@@ -2,6 +2,7 @@
 // See CbTreeWidget.h.
 
 #include "CbTreeWidget.h"
+#include "QtSoftSelection.h"   // Qt_SoftSelectionColor -- shared opaque accent tint
 
 #include <QPainter>
 #include <QString>
@@ -70,15 +71,25 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
     // (not a hardcoded blue) so it tracks the user's highlight colour, which on
     // Windows is the greener system highlight. See also drawBranches() and
     // QtSoftSelection.h.
-    const QColor acc = QApplication::palette().color(QPalette::Active, QPalette::Highlight);
+    // OPAQUE accent tint (not a translucent rgba): a translucent wash lets the
+    // platform style's own selection fill show through underneath -- on GNOME a
+    // saturated blue unrelated to the accent -- which split the selected row into
+    // an accent gutter + a native-blue item body (and tinted hover blue). The
+    // opaque fill covers that native paint, so the row is one accent-derived
+    // colour on every platform. Same blend weights (0.28 / 0.10) and same helper
+    // as the editor popups, so tree and popups stay identical. See
+    // QtSoftSelection.h and drawBranches() (whose gutter uses the same blend).
+    const QColor sel   = Qt_SoftSelectionColor(0.28);
+    const QColor hover = Qt_SoftSelectionColor(0.10);
     sheet += QString("QTreeView::item:selected {"
-                     "  background: rgba(%1, %2, %3, 0.28);"
+                     "  background: rgb(%1, %2, %3);"
                      "  color: palette(text);"
                      "}"
                      "QTreeView::item:hover:!selected {"
-                     "  background: rgba(%1, %2, %3, 0.10);"
+                     "  background: rgb(%4, %5, %6);"
                      "}")
-                 .arg(acc.red()).arg(acc.green()).arg(acc.blue());
+                 .arg(sel.red()).arg(sel.green()).arg(sel.blue())
+                 .arg(hover.red()).arg(hover.green()).arg(hover.blue());
     setStyleSheet(sheet);
 
     // Model icons: size them just inside the row height (a small inset reads

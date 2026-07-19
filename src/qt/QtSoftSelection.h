@@ -18,27 +18,53 @@
 #include <QPalette>
 #include <QString>
 
-// Give a popup list the tree's soft selection look: a translucent accent
-// wash with the normal (dark) text colour kept, plus the same subtle hover
-// tint on non-selected rows. Call once after the view is created.
+// The soft selection/hover tint, derived PURELY from the live theme accent
+// (QPalette::Active/Highlight) blended OVER the Base background into an OPAQUE
+// colour -- computed here rather than left as a translucent QSS wash.
+//
+// Why opaque matters: a translucent rgba() background lets the platform style's
+// OWN selection fill show through underneath (on GNOME a saturated blue that is
+// unrelated to the accent). That is exactly what split a selected tree row into
+// "accent gutter + native-blue item", tinted the hover blue, and painted the
+// completion/who-calls-me popups blue -- only Base-coloured areas came out in
+// the accent. An opaque fill covers that native paint entirely, so the visible
+// colour is 100% the accent on every platform (blue on Windows/Mac where the
+// accent is blue, orange under an orange GNOME accent, etc.).
+//
+// Read the ACTIVE group explicitly: the Inactive Highlight is the grey
+// unfocused-selection colour, and a popup is never the active window (same
+// reasoning as CbTreeWidget::drawBranches). `alpha` is the blend weight
+// (0.28 selection, 0.10 hover) -- identical to CbTreeWidget's gutter, so tree
+// and popups read as one look.
+inline QColor Qt_SoftSelectionColor(double alpha)
+{
+    const QPalette pal  = QApplication::palette();
+    const QColor   acc  = pal.color(QPalette::Active, QPalette::Highlight);
+    const QColor   base = pal.color(QPalette::Active, QPalette::Base);
+    const auto mix = [alpha](int b, int a) {
+        return int(b * (1.0 - alpha) + a * alpha + 0.5);
+    };
+    return QColor(mix(base.red(),   acc.red()),
+                  mix(base.green(), acc.green()),
+                  mix(base.blue(),  acc.blue()));
+}
+
+// Give a popup list the tree's soft selection look: the opaque accent tint
+// above with the normal (dark) text colour kept, plus the same subtle hover
+// tint on non-selected rows. Call once after the view is created. (A :hover
+// QSS rule is also what switches hover tracking on for the view.)
 inline void Qt_ApplySoftSelection(QAbstractItemView* view)
 {
-    // Read the ACTIVE application palette explicitly: the Inactive Highlight
-    // is the grey unfocused-selection colour, and a popup is never active
-    // (same reasoning as CbTreeWidget::drawBranches).
-    const QColor acc =
-        QApplication::palette().color(QPalette::Active, QPalette::Highlight);
-    // Same recipe as CbTreeWidget's macOS ::item:selected rule: rgba() over
-    // the base background keeps the tint soft in light and dark mode. The
-    // :hover rule mirrors the tree's hover feedback -- and a hover QSS rule
-    // is also what switches hover tracking on for the view.
+    const QColor sel   = Qt_SoftSelectionColor(0.28);
+    const QColor hover = Qt_SoftSelectionColor(0.10);
     view->setStyleSheet(QString(
         "QAbstractItemView::item:selected {"
-        "  background: rgba(%1, %2, %3, 0.28);"
+        "  background: rgb(%1, %2, %3);"
         "  color: palette(text);"
         "}"
         "QAbstractItemView::item:hover:!selected {"
-        "  background: rgba(%1, %2, %3, 0.10);"
+        "  background: rgb(%4, %5, %6);"
         "}")
-        .arg(acc.red()).arg(acc.green()).arg(acc.blue()));
+        .arg(sel.red()).arg(sel.green()).arg(sel.blue())
+        .arg(hover.red()).arg(hover.green()).arg(hover.blue()));
 }

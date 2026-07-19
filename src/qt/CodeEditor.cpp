@@ -196,10 +196,21 @@ CodeEditor::CodeEditor(QWidget* parent)
     applyEditorFont(_zoomPt);        // font + tab stops (overrides app QSS)
 
     // Force crisp black-on-white -- do not inherit a washed-out palette
-    // from the app-wide style.
+    // from the app-wide style. Pin the TEXT SELECTION to the live theme accent
+    // (QPalette::Active/Highlight) + its contrasting text, so a selection in the
+    // editor follows the accent on every platform -- the same colour the tree,
+    // diagram and popups key off. Read the ACTIVE group explicitly (Inactive
+    // Highlight is the grey unfocused-selection colour); without pinning it, the
+    // gtk3 platform style can paint the text-edit selection in its OWN selection
+    // colour rather than the accent.
     QPalette pal = palette();
+    const QPalette appPal = QApplication::palette();
     pal.setColor(QPalette::Base, Qt::white);
     pal.setColor(QPalette::Text, Qt::black);
+    pal.setColor(QPalette::Highlight,
+                 appPal.color(QPalette::Active, QPalette::Highlight));
+    pal.setColor(QPalette::HighlightedText,
+                 appPal.color(QPalette::Active, QPalette::HighlightedText));
     setPalette(pal);
 
     setLineWrapMode(QPlainTextEdit::NoWrap);
