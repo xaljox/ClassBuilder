@@ -76,6 +76,26 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
                      "  color: palette(text);"
                      "}")
                  .arg(acc.red()).arg(acc.green()).arg(acc.blue());
+#elif defined(__linux__)
+    // Linux: GNOME's native item-view selection is the FULL saturated accent
+    // with white text, and it does NOT hover-highlight rows -- so the tree read
+    // differently from the editor's completion / who-calls-me popups, which take
+    // the soft tint from Qt_ApplySoftSelection (QtSoftSelection.h) on every
+    // platform. Give the tree that SAME recipe so tree and popups are one look:
+    // a translucent LIVE-accent wash (0.28) with the normal dark text kept, plus
+    // the popups' hover tint (0.10) on non-selected rows. Live accent (not the
+    // hardcoded blue above) so it tracks the user's chosen highlight colour and
+    // matches the popup exactly. Windows keeps its native selection (the #else
+    // path below). Mirrors the macOS branch; see also drawBranches().
+    const QColor acc = QApplication::palette().color(QPalette::Active, QPalette::Highlight);
+    sheet += QString("QTreeView::item:selected {"
+                     "  background: rgba(%1, %2, %3, 0.28);"
+                     "  color: palette(text);"
+                     "}"
+                     "QTreeView::item:hover:!selected {"
+                     "  background: rgba(%1, %2, %3, 0.10);"
+                     "}")
+                 .arg(acc.red()).arg(acc.green()).arg(acc.blue());
 #endif
     setStyleSheet(sheet);
 
@@ -269,7 +289,8 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // widget's own style/palette and sampling the pixel it actually painted.
     QColor triColour  = accent;
     QColor connColour = lineColour;
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
+    // macOS + Linux use the soft ::item:selected tint (see the constructor QSS).
     // The base view paints the saturated native selection across the WHOLE row,
     // including this branch/indent gutter, before drawBranches runs -- so the
     // gutter kept the dark accent while the item columns took the light tint
@@ -277,8 +298,8 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // the gutter with the SAME light tint so the selected row is one colour.
     // rgba(accent,0.28) over Base == blend(Base, accent, 0.28); use the solid
     // form here since we're filling opaquely over the already-drawn selection.
-    // No chrome flip on macOS: the gutter is light now, so the accent triangle
-    // and connectors stay visible without swapping to HighlightedText.
+    // No chrome flip: the gutter is light now, so the accent triangle and
+    // connectors stay visible without swapping to HighlightedText.
     if (selectionModel() && selectionModel()->isSelected(index))
         painter->fillRect(rect, blend(
             appPal.color(QPalette::Active, QPalette::Base), accent, 0.28));
