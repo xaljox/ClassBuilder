@@ -19,6 +19,13 @@ class CbTreeWidget : public QTreeWidget
 public:
     explicit CbTreeWidget(QWidget* parent = nullptr);
 
+    // Re-derive the accent-based selection/hover tint from the CURRENT theme
+    // accent and repaint. Called by the app-wide accent watcher (QtApp.cpp)
+    // when the desktop accent changes while CB is open, so the tree never sits
+    // in a stale colour. Cheap (one setStyleSheet + repaint); accent changes
+    // are rare.
+    void reapplyThemeAccent();
+
 protected:
     void drawBranches(QPainter* painter, const QRect& rect,
                       const QModelIndex& index) const override;
@@ -39,6 +46,13 @@ private:
     // which reliably predicts how a given theme renders selection. Lazily
     // computed and cached; invalidated by changeEvent on palette/style change.
     bool selectionChromeShouldFlip() const;
+
+    // Build + apply this tree's stylesheet (row height, font, and the
+    // accent-derived selection/hover tint). Called from the constructor and
+    // again from reapplyThemeAccent() on a live accent change -- one place that
+    // owns the sheet, so the two can never drift.
+    void applyThemeStyleSheet();
+
     mutable bool _chromeFlipCached = false;
     mutable bool _chromeFlip = false;
 

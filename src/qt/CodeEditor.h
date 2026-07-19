@@ -173,6 +173,11 @@ public:
     // '.', '->', '::' and after 2 identifier chars; Ctrl+Space forces it.
     void setCompletionProvider(CodeCompletionProvider* provider);
 
+    // Re-pin the text-selection colours to the CURRENT theme accent. Called by
+    // the app-wide accent watcher (QtApp.cpp) when the desktop accent changes
+    // while CB is open, so the editor selection follows the accent live.
+    void reapplyThemeAccent();
+
     // Re-indent the selected lines (or the whole text without a selection)
     // with the same predictor that drives typing, as one undo step. Lines
     // inside block comments are left untouched.
@@ -233,6 +238,10 @@ private:
     // (a bare `QWidget { font-size }` rule would otherwise pin it, defeating
     // setFont/zoom); recomputes the tab stops. `pt` is clamped.
     void applyEditorFont(int pt);
+    // Pin QPalette::Highlight/HighlightedText to the live theme accent (the
+    // text-selection colour). One place, called from the constructor and from
+    // reapplyThemeAccent() on a live accent change.
+    void applyThemeAccent();
 
     // Auto-close pairs: an opener inserts its closer (caret between); a closer
     // typed where it already sits steps over it; Backspace on an empty pair

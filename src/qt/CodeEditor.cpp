@@ -196,22 +196,13 @@ CodeEditor::CodeEditor(QWidget* parent)
     applyEditorFont(_zoomPt);        // font + tab stops (overrides app QSS)
 
     // Force crisp black-on-white -- do not inherit a washed-out palette
-    // from the app-wide style. Pin the TEXT SELECTION to the live theme accent
-    // (QPalette::Active/Highlight) + its contrasting text, so a selection in the
-    // editor follows the accent on every platform -- the same colour the tree,
-    // diagram and popups key off. Read the ACTIVE group explicitly (Inactive
-    // Highlight is the grey unfocused-selection colour); without pinning it, the
-    // gtk3 platform style can paint the text-edit selection in its OWN selection
-    // colour rather than the accent.
+    // from the app-wide style.
     QPalette pal = palette();
-    const QPalette appPal = QApplication::palette();
     pal.setColor(QPalette::Base, Qt::white);
     pal.setColor(QPalette::Text, Qt::black);
-    pal.setColor(QPalette::Highlight,
-                 appPal.color(QPalette::Active, QPalette::Highlight));
-    pal.setColor(QPalette::HighlightedText,
-                 appPal.color(QPalette::Active, QPalette::HighlightedText));
     setPalette(pal);
+    // Pin the text-selection colour to the live theme accent (see below).
+    applyThemeAccent();
 
     setLineWrapMode(QPlainTextEdit::NoWrap);
     setTabChangesFocus(false);
@@ -239,6 +230,34 @@ CodeEditor::CodeEditor(QWidget* parent)
             this, [this] { _diagnosticTimer->start(); });
 
     updateExtraSelections();
+}
+
+void CodeEditor::applyThemeAccent()
+{
+    // Pin the TEXT SELECTION to the live theme accent (QPalette::Active/Highlight)
+    // + its contrasting text, so a selection in the editor follows the accent on
+    // every platform -- the same colour the tree, diagram and popups key off.
+    // Read the ACTIVE group explicitly (Inactive Highlight is the grey
+    // unfocused-selection colour); without pinning it, the gtk3 platform style
+    // can paint the text-edit selection in its OWN selection colour, not the
+    // accent. Base/Text (white/black) are set once in the constructor and left
+    // untouched here -- only the accent-derived roles need re-deriving.
+    const QPalette appPal = QApplication::palette();
+    QPalette pal = palette();
+    pal.setColor(QPalette::Highlight,
+                 appPal.color(QPalette::Active, QPalette::Highlight));
+    pal.setColor(QPalette::HighlightedText,
+                 appPal.color(QPalette::Active, QPalette::HighlightedText));
+    setPalette(pal);
+}
+
+void CodeEditor::reapplyThemeAccent()
+{
+    // The desktop accent changed while CB is open: re-pin the selection colour.
+    // The completion popup is a separate widget re-derived by the app watcher
+    // via its cbSoftSelection marker, so it is not touched here.
+    applyThemeAccent();
+    viewport()->update();
 }
 
 void CodeEditor::setModelTypes(const QSet<QString>& names)

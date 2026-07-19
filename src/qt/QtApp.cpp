@@ -21,6 +21,13 @@
 #include <QSettings>
 #include <QString>
 #include <QWidget>
+#include <QAbstractItemView>
+#include <QColor>
+#include <QList>
+#include <QPalette>
+#include "CbTreeWidget.h"      // live accent re-derive (Cb_OnAppPaletteChanged)
+#include "CodeEditor.h"
+#include "QtSoftSelection.h"   // Qt_ApplySoftSelection (popup re-tint)
 #ifndef _WIN32   // macOS + Linux: file-open event + button-font filter use these
 #include <QFileOpenEvent>
 #include <QPushButton>
@@ -295,6 +302,84 @@ static void Cb_MacDisableFontSmoothing()
 }
 #endif
 
+namespace {
+
+// THE single point that fills the app-wide accent per platform. Everything
+// theme-derived -- tree chrome/triangles, the selection & hover tint, the
+// editor text selection, diagram selection -- keys off QPalette::Active/
+// Highlight, so this is the one place the "main accent" is decided:
+//   * macOS  -- a deliberate deep blue (#0A4DA8): high-contrast on the white
+//     tree (the light macOS system accent left the triangles barely visible),
+//     plus the light-grey dialog Window / white Base that make edit boxes pop.
+//     Re-applied on every ApplicationPaletteChange so a light/dark switch can't
+//     wipe it.
+//   * Windows / Linux -- the SYSTEM accent is the source; nothing to fill, so
+//     this is a no-op and CB simply follows the desktop's chosen accent.
+// Only writes the palette when it actually differs, so calling this from the
+// ApplicationPaletteChange handler (below) can't loop.
+void Cb_ApplyAccentPalette()
+{
+#ifdef __APPLE__
+    const QColor accent(0x0A, 0x4D, 0xA8);      // deep blue (Mac-style), one knob
+    const QColor dialogGrey(0xEC, 0xEC, 0xEC);
+    QPalette want = qApp->palette();
+    want.setColor(QPalette::Active,   QPalette::Highlight, accent);
+    want.setColor(QPalette::Inactive, QPalette::Highlight, accent);
+    want.setColor(QPalette::Active,   QPalette::HighlightedText, Qt::white);
+    want.setColor(QPalette::Inactive, QPalette::HighlightedText, Qt::white);
+    want.setColor(QPalette::Active,   QPalette::Window, dialogGrey);
+    want.setColor(QPalette::Inactive, QPalette::Window, dialogGrey);
+    want.setColor(QPalette::Active,   QPalette::Base,   Qt::white);
+    want.setColor(QPalette::Inactive, QPalette::Base,   Qt::white);
+    if (want != qApp->palette())
+        qApp->setPalette(want);
+#endif
+    // Windows / Linux: intentionally nothing -- the system accent is authoritative.
+}
+
+// The desktop accent/theme changed while CB is open: re-derive EVERY widget
+// that depends on the accent from the (possibly new) value, so nothing sits in
+// a stale colour and there is no mixed look -- no restart needed. Cheap and
+// rare (fires only on an accent/theme change). The tree branch triangles/lines
+// read the live accent every paint, so their widgets just repaint.
+void Cb_OnAppPaletteChanged()
+{
+    Cb_ApplyAccentPalette();   // keep the macOS override; no-op on Win/Linux
+    const QList<QWidget*> widgets = QApplication::allWidgets();
+    for (QWidget* w : widgets)
+    {
+        if (auto* tree = qobject_cast<CbTreeWidget*>(w))
+            tree->reapplyThemeAccent();
+        else if (auto* editor = qobject_cast<CodeEditor*>(w))
+            editor->reapplyThemeAccent();
+        else if (auto* view = qobject_cast<QAbstractItemView*>(w))
+        {
+            // Completion / who-calls-me popups tag themselves in
+            // Qt_ApplySoftSelection, so QtApp need not know their concrete type.
+            if (view->property("cbSoftSelection").toBool())
+                Qt_ApplySoftSelection(view);
+        }
+    }
+}
+
+// Watches the one event that announces a desktop accent/theme change --
+// QEvent::ApplicationPaletteChange, delivered to qApp. Installed on qApp so it
+// works on every platform without touching the per-platform CbApplication.
+class CbAccentWatcher : public QObject
+{
+public:
+    using QObject::QObject;
+protected:
+    bool eventFilter(QObject* obj, QEvent* e) override
+    {
+        if (e->type() == QEvent::ApplicationPaletteChange)
+            Cb_OnAppPaletteChanged();
+        return QObject::eventFilter(obj, e);
+    }
+};
+
+} // namespace
+
 void Qt_EnsureApplication()
 {
     if (qApp)
@@ -398,34 +483,12 @@ void Qt_EnsureApplication()
         qApp->setFont(appFont);
     }
 
-#ifdef __APPLE__
-    // Accent colour. The issue isn't the hue -- it's contrast: macOS' light-blue
-    // system accent leaves the tree's expand/collapse triangles and connector
-    // lines (custom-drawn from QPalette::Highlight in CbTreeWidget::drawBranches)
-    // barely visible on the white tree. Pin a DARKER blue -- still squarely in
-    // the macOS style, just enough contrast to read on white -- as the app-wide
-    // Highlight (drives tree chrome + diagram selection, both keyed off it).
-    // Windows keeps its own (OS) accent -- this block is __APPLE__-only.
-    // One knob: the `accent` RGB below, tune to taste.
-    {
-        const QColor accent(0x0A, 0x4D, 0xA8);   // deep blue (Mac-style, high contrast)
-        QPalette pal = qApp->palette();
-        pal.setColor(QPalette::Active,   QPalette::Highlight, accent);
-        pal.setColor(QPalette::Inactive, QPalette::Highlight, accent);
-        pal.setColor(QPalette::Active,   QPalette::HighlightedText, Qt::white);
-        pal.setColor(QPalette::Inactive, QPalette::HighlightedText, Qt::white);
-
-        // Dialog background: a light grey Window vs a white Base, like Windows --
-        // so white edit boxes stand out against the dialog by contrast (the real
-        // reason they "popped" on Windows; no edit-box border needed).
-        const QColor dialogGrey(0xEC, 0xEC, 0xEC);
-        pal.setColor(QPalette::Active,   QPalette::Window, dialogGrey);
-        pal.setColor(QPalette::Inactive, QPalette::Window, dialogGrey);
-        pal.setColor(QPalette::Active,   QPalette::Base,   Qt::white);
-        pal.setColor(QPalette::Inactive, QPalette::Base,   Qt::white);
-        qApp->setPalette(pal);
-    }
-#endif
+    // The app-wide accent: filled per platform by the ONE chokepoint (macOS pins
+    // a high-contrast deep blue + the light dialog palette; Windows/Linux follow
+    // the system accent). Everything theme-derived keys off QPalette::Highlight.
+    // See Cb_ApplyAccentPalette() above; re-run live on accent change by
+    // CbAccentWatcher (installed below).
+    Cb_ApplyAccentPalette();
 
     // App-wide stylesheet: the font size (see above) + soften the QGroupBox
     // frame -- the modern Windows style draws a hard, near-black 1px box that
@@ -499,6 +562,11 @@ void Qt_EnsureApplication()
     // Keep push buttons rounded under the native (stylesheet-free) style.
     qApp->installEventFilter(new CbButtonFontFilter(qApp));
 #endif
+
+    // Live accent: re-derive tree/editor/popup tints when the desktop accent
+    // changes while CB is open (no restart, no mixed colours). Cross-platform;
+    // a no-op in practice on macOS (its accent is pinned) but harmless there.
+    qApp->installEventFilter(new CbAccentWatcher(qApp));
 
     // Install the process-wide headless text-measure painter. Model-side layout
     // methods (lifeline auto-width, class auto-size, OptimizePlacement, the

@@ -55,6 +55,10 @@ inline QColor Qt_SoftSelectionColor(double alpha)
 // QSS rule is also what switches hover tracking on for the view.)
 inline void Qt_ApplySoftSelection(QAbstractItemView* view)
 {
+    // Mark the view so the app-wide accent watcher (QtApp.cpp) can find every
+    // soft-selection popup and re-derive its tint when the theme accent changes
+    // while CB is open -- without QtApp needing to know each popup's type.
+    view->setProperty("cbSoftSelection", true);
     const QColor sel   = Qt_SoftSelectionColor(0.28);
     const QColor hover = Qt_SoftSelectionColor(0.10);
     view->setStyleSheet(QString(

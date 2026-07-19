@@ -27,6 +27,34 @@
 CbTreeWidget::CbTreeWidget(QWidget* parent)
     : QTreeWidget(parent)
 {
+    applyThemeStyleSheet();
+
+    // Model icons: size them just inside the row height (a small inset reads
+    // best -- lands ~the MFC tree's 24px with a little breathing room; the bare
+    // Qt default decoration size was smaller, so the res/*.ico art scaled
+    // worse). Set here so EVERY tree (main view + all dialog trees, which are
+    // all CbTreeWidget) is consistent. Does not affect the row height above.
+    // Sharper icons need SVG model art (the planned redo); MFC-zoom tracking is
+    // a later slice -- see qt/PORT_DIALOGS.md.
+    const int kIconInset = 1;
+    const int rowHeight = fontMetrics().height() - 1;
+    setIconSize(QSize(rowHeight - kIconInset, rowHeight - kIconInset));
+}
+
+void CbTreeWidget::reapplyThemeAccent()
+{
+    // The desktop accent changed while CB is open -- re-derive the tint (and
+    // drop the probe cache) so the tree matches the new accent live. The
+    // branch triangles/lines already read the live accent every paint, so a
+    // repaint is all they need.
+    _chromeFlipCached = false;
+    applyThemeStyleSheet();
+    if (viewport())
+        viewport()->update();
+}
+
+void CbTreeWidget::applyThemeStyleSheet()
+{
     // Compact the tree rows to the text lists' row height so a tree and a
     // list side by side in one dialog (FindMethod, IteratorWizard) line up.
     // The lists size each item via QtCompact's compactItemSize =
@@ -91,17 +119,6 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
                  .arg(sel.red()).arg(sel.green()).arg(sel.blue())
                  .arg(hover.red()).arg(hover.green()).arg(hover.blue());
     setStyleSheet(sheet);
-
-    // Model icons: size them just inside the row height (a small inset reads
-    // best -- lands ~the MFC tree's 24px with a little breathing room; the bare
-    // Qt default decoration size was smaller, so the res/*.ico art scaled
-    // worse). Set here so EVERY tree (main view + all dialog trees, which are
-    // all CbTreeWidget) is consistent. Does not affect the row height above.
-    // Sharper icons need SVG model art (the planned redo); MFC-zoom tracking is
-    // a later slice -- see qt/PORT_DIALOGS.md.
-//    const int kIconInset = 3;
-    const int kIconInset = 1;
-    setIconSize(QSize(rowHeight - kIconInset, rowHeight - kIconInset));
 }
 
 void CbTreeWidget::changeEvent(QEvent* event)
