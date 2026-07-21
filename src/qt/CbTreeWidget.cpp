@@ -43,11 +43,9 @@ CbTreeWidget::CbTreeWidget(QWidget* parent)
 
 void CbTreeWidget::reapplyThemeAccent()
 {
-    // The desktop accent changed while CB is open -- re-derive the tint (and
-    // drop the probe cache) so the tree matches the new accent live. The
-    // branch triangles/lines already read the live accent every paint, so a
-    // repaint is all they need.
-    _chromeFlipCached = false;
+    // The desktop accent changed while CB is open -- re-derive the tint so the
+    // tree matches the new accent live. The branch triangles/lines already read
+    // the live accent every paint, so a repaint is all they need.
     applyThemeStyleSheet();
     if (viewport())
         viewport()->update();
@@ -121,16 +119,6 @@ void CbTreeWidget::applyThemeStyleSheet()
     setStyleSheet(sheet);
 }
 
-void CbTreeWidget::changeEvent(QEvent* event)
-{
-    QTreeWidget::changeEvent(event);
-    // The desktop theme (and so the answer selectionChromeShouldFlip cached)
-    // can change while the app is running -- a live qt6ct theme switch, a
-    // light/dark toggle -- so drop the cache and re-probe on the next paint.
-    if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange)
-        _chromeFlipCached = false;
-}
-
 // macOS: when a row's hover/selection tint goes away, Qt invalidates only
 // that row's exact rect -- but the layered row paint (native full-row
 // selection under the QSS tint) can bleed a pixel outside it, so a thin
@@ -167,52 +155,6 @@ void CbTreeWidget::selectionChanged(const QItemSelection& selected,
 #ifdef __APPLE__
     viewport()->update();
 #endif
-}
-
-// Whether the branch triangle/connector chrome (drawn in the theme accent)
-// would be invisible against a REAL selected row's background. Neither the
-// OS nor the QStyle object name reliably predicts this: two Linux desktops
-// can report the same style yet render selection differently depending on
-// the desktop theme (translucency, gradients, a narrower rounded indicator
-// vs. a custom-themed flat opaque fill in exactly the accent colour). So
-// instead of guessing from a colour or a name, render a throwaway selected
-// cell through this widget's OWN style()/palette() -- the exact inputs the
-// real row paint uses -- and sample the pixel it actually produced. Lazily
-// computed once per theme (see changeEvent) since it never varies per-row.
-bool CbTreeWidget::selectionChromeShouldFlip() const
-{
-    if (_chromeFlipCached)
-        return _chromeFlip;
-    _chromeFlipCached = true;
-    _chromeFlip = false;
-
-    const int w = 40, h = 24;
-    QImage probe(w, h, QImage::Format_ARGB32_Premultiplied);
-    probe.fill(Qt::transparent);
-    {
-        QPainter p(&probe);
-        QStyleOptionViewItem opt;
-        opt.initFrom(this);
-        opt.rect = probe.rect();
-        opt.state = QStyle::State_Enabled | QStyle::State_Selected | QStyle::State_Active;
-        opt.palette = palette();
-        opt.showDecorationSelected = true;
-        opt.viewItemPosition = QStyleOptionViewItem::OnlyOne;
-        // No icon/text: an empty item still gets the real selection fill,
-        // and an empty rect keeps the sampled centre pixel clean of glyphs.
-        style()->drawControl(QStyle::CE_ItemViewItem, &opt, &p, this);
-    }
-    const QColor painted = probe.pixelColor(w / 2, h / 2);
-    if (painted.alpha() == 0)
-        return false;   // style painted nothing here -- nothing to collide with
-
-    const QPalette appPal = QApplication::palette();
-    const QColor accent = appPal.color(QPalette::Active, QPalette::Highlight);
-    auto lum = [](const QColor& c) {
-        return 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF();
-    };
-    _chromeFlip = qAbs(lum(painted) - lum(accent)) < 0.12;
-    return _chromeFlip;
 }
 
 #ifdef CB_HAVE_SVG

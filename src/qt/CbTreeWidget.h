@@ -29,7 +29,6 @@ public:
 protected:
     void drawBranches(QPainter* painter, const QRect& rect,
                       const QModelIndex& index) const override;
-    void changeEvent(QEvent* event) override;
     // macOS: repaint the full viewport when the hovered row or the selection
     // changes -- the transition otherwise leaves thin stale stripes (see .cpp).
     // No-ops beyond the base behavior elsewhere.
@@ -38,23 +37,11 @@ protected:
                           const QItemSelection& deselected) override;
 
 private:
-    // Whether a selected row's real, style-painted background collides with
-    // the accent colour the branch chrome is drawn in (see drawBranches).
-    // Determined by actually rendering a probe selected cell through this
-    // widget's style/palette and sampling the pixel -- see .cpp -- instead of
-    // guessing from a palette colour or the style/platform name, neither of
-    // which reliably predicts how a given theme renders selection. Lazily
-    // computed and cached; invalidated by changeEvent on palette/style change.
-    bool selectionChromeShouldFlip() const;
-
     // Build + apply this tree's stylesheet (row height, font, and the
     // accent-derived selection/hover tint). Called from the constructor and
     // again from reapplyThemeAccent() on a live accent change -- one place that
     // owns the sheet, so the two can never drift.
     void applyThemeStyleSheet();
-
-    mutable bool _chromeFlipCached = false;
-    mutable bool _chromeFlip = false;
 
     // macOS: the row the cursor is on -- only a CHANGE of row triggers the
     // full-viewport repaint in viewportEvent, not every mouse move.

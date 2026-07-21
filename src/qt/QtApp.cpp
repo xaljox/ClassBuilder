@@ -620,15 +620,18 @@ void Qt_EnsureApplication()
         "  color: black;"
         "  border: 1px solid #767676;"
         "}";
-#ifdef _WIN32
-    // Context-menu highlight: the modern Windows 11 style paints the selected
-    // menu item a flat darker GREY and IGNORES a QSS background-color on the
-    // item (only the text colour obeyed, giving white-on-grey). To force the
-    // accent, QSS must OWN the item rendering -- so style the whole QMenu
-    // (background/border/padding/separator), then the selected item takes the
-    // theme accent, matching the tree / list selection everywhere else (JV
-    // 2026-07-18). palette() refs follow the LIVE accent without rebuilding the
-    // sheet.
+    // Menus: every QMenu CB shows -- menu-bar dropdowns, tool-button menus, and
+    // any context menu that is not explicitly styled -- takes the accent on the
+    // selected item, the same compact metrics, on EVERY platform. It was Windows
+    // -only, which made the menus one of the places CB behaved differently per
+    // OS (JV 2026-07-21: after the accent choice the behaviour has to match).
+    // The rule has to own the WHOLE QMenu, not just ::item:selected: the modern
+    // Windows 11 style paints the selected item a flat darker GREY and ignores a
+    // QSS background-color on the item alone (only the text colour obeyed, so it
+    // came out white-on-grey). palette() refs follow the LIVE accent without
+    // rebuilding the sheet. macOS keeps its NATIVE menu BAR regardless -- that
+    // is an NSMenu owned by the OS, not a QMenu -- so this reaches its popup
+    // menus only.
     sheet +=
         "QMenu {"
         "  background-color: palette(base);"
@@ -648,7 +651,6 @@ void Qt_EnsureApplication()
         "  background: palette(mid);"
         "  margin: 4px 6px;"
         "}";
-#endif
     if (!sheet.isEmpty())
         qApp->setStyleSheet(sheet);
 
