@@ -325,7 +325,10 @@ QColor g_systemAccent;
 //   * macOS -- QPalette::Accent (NSColor controlAccentColor), the colour the
 //     native menus highlight with. NOT Highlight: on macOS that role is the pale
 //     text-selection wash (~#A5CDFF), far too light to be the app accent.
-//   * Linux -- QPalette::Accent as the theme fills it, Highlight otherwise.
+//     (macOS fills Accent; Linux does not -- see below.)
+//   * Linux -- QPalette::Highlight. The theme puts the chosen desktop accent
+//     there; QPalette::Accent is left at Qt's built-in default blue, and since
+//     that is a valid colour it cannot be told apart by an isValid() test.
 // So the fetch is per-platform on purpose; everything after it is not.
 QColor Cb_SystemAccent()
 {
@@ -341,8 +344,17 @@ QColor Cb_SystemAccent()
         accent = QColor(int(abgr & 0xFF), int((abgr >> 8) & 0xFF),
                         int((abgr >> 16) & 0xFF));
     }
-#else
+#elif defined(__APPLE__)
     accent = pal.color(QPalette::Active, QPalette::Accent);
+#else
+    // Linux: the desktop accent lands in Highlight, NOT in Accent. Measured on
+    // Ubuntu 26.04 / GNOME (Fusion style): with the desktop accent set to teal,
+    // Highlight = #308280 (the chosen colour) while Accent stayed at Qt's
+    // built-in default #308cc6 blue. That default is a VALID colour, so the
+    // isValid() fallback below never fired and every desktop accent rendered as
+    // that blue. Read Highlight directly here; CB's own write-back is handled by
+    // the g_writtenAccent check below (which keeps the last real system value).
+    accent = pal.color(QPalette::Active, QPalette::Highlight);
 #endif
 
     // Reading back CB's own write is not a fetch: keep the last real system
