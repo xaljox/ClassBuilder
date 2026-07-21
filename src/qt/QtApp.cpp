@@ -303,6 +303,13 @@ static void Cb_MacDisableFontSmoothing()
 }
 #endif
 
+// Defined below, after the helpers it uses: builds + applies the app-wide
+// stylesheet. Declared here so the palette watcher can re-run it, which is
+// what keeps its DERIVED colours (hairlines, the focus accent) in step with
+// a live accent/theme change -- QSS palette() refs follow by themselves, but
+// anything computed in C++ has to be rebuilt.
+static void Cb_ApplyAppStyleSheet();
+
 namespace {
 
 // The accent CB last wrote into the palette, so the fetch below can tell a
@@ -483,6 +490,10 @@ void Cb_ApplyAccentPalette()
 void Cb_OnAppPaletteChanged()
 {
     Cb_ApplyAccentPalette();   // keep the macOS override; no-op on Win/Linux
+    // Rebuild the app-wide sheet: its derived colours (the hairline greys, the
+    // field focus accent) are computed in C++, so unlike a palette() ref they
+    // do NOT follow an accent/theme change on their own.
+    Cb_ApplyAppStyleSheet();
     const QList<QWidget*> widgets = QApplication::allWidgets();
     for (QWidget* w : widgets)
     {
@@ -517,6 +528,164 @@ protected:
 };
 
 } // namespace
+
+static void Cb_ApplyAppStyleSheet()
+{
+    // App-wide stylesheet: the font size (see above) + soften the QGroupBox
+    // frame -- the modern Windows style draws a hard, near-black 1px box that
+    // is too "in your face"; a soft theme-grey (palette `mid`) reads better.
+    //
+    // Tree connector lines are NOT done here -- a stylesheet cannot pick a
+    // branch glyph per node (no notion of depth). CbTreeWidget::drawBranches
+    // does that; see CbTreeWidget.cpp.
+    QString sheet;
+    // The FONT via stylesheet is a Windows-only need (its default UI font is
+    // pixel-sized, so setFont's pointSize doesn't render). It must NOT go on
+    // macOS: a `QWidget` QSS rule there routes EVERY widget -- including
+    // QPushButton -- through Qt's stylesheet renderer in a way that squares the
+    // native rounded button.
+    // macOS gets NO app stylesheet (so edit fields AND combos keep the native
+    // focus ring); the square-button side effect of that is fixed separately by
+    // shrinking just the button font to fit the native rounded bezel (see
+    // CbButtonFontFilter). Windows keeps its QSS: the font (its default UI font
+    // is pixel-sized so setFont's pointSize doesn't render) + QGroupBox softening.
+#ifndef __APPLE__
+    sheet += QString("QWidget { font-size: %1pt; font-weight: %2; }")
+                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
+    // Frame in the derived hairline grey, NOT palette(mid): that role is
+    // #ffffff on Ubuntu/GNOME, so the group boxes framed themselves white on
+    // near-white and read as no frame at all (JV 2026-07-21).
+    sheet += QString(
+        "QGroupBox {"
+        "  border: 1px solid %1;"
+        "  border-radius: 4px;"
+        "  margin-top: 1.4ex;"
+        "}").arg(Qt_ThemeLineColor().name());
+    sheet +=
+        "QGroupBox::title {"
+        "  subcontrol-origin: margin;"
+        "  subcontrol-position: top left;"
+        "  left: 8px;"
+        "  padding: 0 3px;"
+        "}";
+#else
+    // macOS gets NO blanket QWidget QSS (it would square the native buttons and
+    // strip the native focus ring -- see above). But QMacStyle draws the
+    // QGroupBox title in a small system font that reads tiny and faint next to
+    // the 15pt UI everywhere else. Scope a QSS rule to JUST QGroupBox (buttons /
+    // edits / combos stay native) to give the title the app font size + weight,
+    // and match the Windows/Linux soft-border group look at the same time.
+    sheet += QString("QGroupBox {"
+                     "  font-size: %1pt;"
+                     "  font-weight: %2;"
+                     "  border: 1px solid %3;"
+                     "  border-radius: 4px;"
+                     "  margin-top: 1.4ex;"
+                     "}")
+                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT)
+                 .arg(Qt_ThemeLineColor().name());
+    sheet +=
+        "QGroupBox::title {"
+        "  subcontrol-origin: margin;"
+        "  subcontrol-position: top left;"
+        "  left: 8px;"
+        "  padding: 0 3px;"
+        "}";
+#endif
+    // MULTI-LINE edit fields -- macOS + Linux only, NOT Windows (JV 2026-07-21).
+    //
+    // The gap this fills is narrow: a multi-line editor gets NO focus marking
+    // from Fusion at all, and on macOS the native hairline is a near-invisible
+    // grey on the derived panel colour with no halo surviving CB's styling -- so
+    // a focused note field was marked by nothing but the caret. Single-line
+    // fields are NOT styled: they already get a 1px focus frame natively, and
+    // adding ours only made them differ in WIDTH from the untouched controls
+    // beside them -- and chasing every remaining control to match is not worth it
+    // (JV 2026-07-21).
+    //
+    // Windows is out entirely: the Windows 11 style marks focus on the whole
+    // field family -- line edits, combo boxes, spin boxes -- with its accent
+    // underline, so styling only some of them put two field languages in one
+    // dialog. Extending the rule to combos is worse, not better: with a box rule
+    // and no ::drop-down rule QStyleSheetStyle falls back to the BASE style for
+    // the arrow (qstylesheetstyle.cpp, CC_ComboBox -> SC_ComboBoxArrow), so a
+    // classic triangle lands next to Fluent chevrons. Consistency INSIDE a dialog
+    // beats consistency across platforms here.
+    //
+    // The frame: the hairline grey (Qt_ThemeLineColor, same as the group boxes)
+    // 1px, and the ACCENT on focus -- also 1px, the width the native single-line
+    // frames use, so nothing thickens on focus and no padding compensation is
+    // needed (2px read as too heavy next to the untouched combo boxes).
+    //
+    // The focus accent is Qt_ChromeAccent(), NOT the raw palette(highlight):
+    // Fusion draws a focused single-line frame in highlight.darker(125) -- for a
+    // teal accent #266866 -- so the raw accent (#308280) put a visibly
+    // lighter/thinner line around the note field than around the text field
+    // beside it. Qt_ChromeAccent's lightness clamp lands on the same colour, so
+    // one derivation now serves both the tree glyphs and this ring. It is
+    // computed, not a palette() ref, so it only follows a live accent change
+    // because Cb_ApplyAppStyleSheet is re-run by the palette watcher.
+#ifndef _WIN32
+    // EXACT-class selectors (leading dot): CodeEditor is a QPlainTextEdit
+    // subclass with its own look (current-line wash, marker bands) and must not
+    // be re-framed by a blanket rule.
+    sheet += QString(
+        ".QPlainTextEdit, .QTextEdit {"
+        "  border: 1px solid %1;"
+        "  border-radius: 4px;"
+        "  background: palette(base);"
+        "  padding: 1px;"
+        "}"
+        ".QPlainTextEdit:focus, .QTextEdit:focus {"
+        "  border: 1px solid %2;"
+        "}").arg(Qt_ThemeLineColor().name(), Qt_ChromeAccent().name());
+    // Disabled fields must LOOK disabled: the explicit field styling replaces
+    // the native greying, so a disabled field kept its white background and
+    // read as editable (JV 2026-07-21: the ClassDialog template group). Sink
+    // it into the panel: dialog background, muted text, fainter border.
+    // Qt_ThemeLineColor's Window->WindowText mix doubles as the muted-text
+    // derivation (0.45), same maths QtMenuStyle uses for disabled items.
+    sheet += QString(
+        ".QPlainTextEdit:disabled, .QTextEdit:disabled {"
+        "  background: palette(window);"
+        "  color: %1;"
+        "  border-color: %2;"
+        "}")
+        .arg(Qt_ThemeLineColor(0.45).name())
+        .arg(Qt_ThemeLineColor(0.25).name());
+#endif   // !_WIN32 -- Windows keeps the native field look
+    // Tooltips in the classic soft info-yellow (the Win32 look) on every
+    // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
+    // so nothing else is touched.
+    sheet +=
+        "QToolTip {"
+        "  background-color: #FFFFE1;"
+        "  color: black;"
+        "  border: 1px solid #767676;"
+        "}";
+    // Menus: every QMenu CB shows -- menu-bar dropdowns, tool-button menus, and
+    // any context menu that is not explicitly styled -- takes the accent on the
+    // selected item, the same compact metrics, on EVERY platform. It was Windows
+    // -only, which made the menus one of the places CB behaved differently per
+    // OS (JV 2026-07-21: after the accent choice the behaviour has to match).
+    // The rule has to own the WHOLE QMenu, not just ::item:selected: the modern
+    // Windows 11 style paints the selected item a flat darker GREY and ignores a
+    // QSS background-color on the item alone (only the text colour obeyed, so it
+    // came out white-on-grey). palette() refs follow the LIVE accent without
+    // rebuilding the sheet. macOS keeps its NATIVE menu BAR regardless -- that
+    // is an NSMenu owned by the OS, not a QMenu -- so this reaches its popup
+    // menus only.
+    // ONE source for every menu in CB: the same sheet the explicitly-styled
+    // context menus get (Qt_ApplyCompactMenuStyle), so a menu-bar dropdown and a
+    // right-click menu are identical on every platform. It also fixes the
+    // invisible separator/border this block used to have: `palette(mid)` is
+    // #ffffff on Ubuntu/GNOME while the menu background is #fcfcfc, so both were
+    // painted white on near-white. QtMenuStyle derives those greys from the
+    // background instead; the accent parts stay live palette() refs.
+    sheet += Qt_CompactMenuStyleSheet();
+    if (!sheet.isEmpty())
+        qApp->setStyleSheet(sheet);
+}
 
 void Qt_EnsureApplication()
 {
@@ -628,151 +797,10 @@ void Qt_EnsureApplication()
     // CbAccentWatcher (installed below).
     Cb_ApplyAccentPalette();
 
-    // App-wide stylesheet: the font size (see above) + soften the QGroupBox
-    // frame -- the modern Windows style draws a hard, near-black 1px box that
-    // is too "in your face"; a soft theme-grey (palette `mid`) reads better.
-    //
-    // Tree connector lines are NOT done here -- a stylesheet cannot pick a
-    // branch glyph per node (no notion of depth). CbTreeWidget::drawBranches
-    // does that; see CbTreeWidget.cpp.
-    QString sheet;
-    // The FONT via stylesheet is a Windows-only need (its default UI font is
-    // pixel-sized, so setFont's pointSize doesn't render). It must NOT go on
-    // macOS: a `QWidget` QSS rule there routes EVERY widget -- including
-    // QPushButton -- through Qt's stylesheet renderer in a way that squares the
-    // native rounded button.
-    // macOS gets NO app stylesheet (so edit fields AND combos keep the native
-    // focus ring); the square-button side effect of that is fixed separately by
-    // shrinking just the button font to fit the native rounded bezel (see
-    // CbButtonFontFilter). Windows keeps its QSS: the font (its default UI font
-    // is pixel-sized so setFont's pointSize doesn't render) + QGroupBox softening.
-#ifndef __APPLE__
-    sheet += QString("QWidget { font-size: %1pt; font-weight: %2; }")
-                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
-    // Frame in the derived hairline grey, NOT palette(mid): that role is
-    // #ffffff on Ubuntu/GNOME, so the group boxes framed themselves white on
-    // near-white and read as no frame at all (JV 2026-07-21).
-    sheet += QString(
-        "QGroupBox {"
-        "  border: 1px solid %1;"
-        "  border-radius: 4px;"
-        "  margin-top: 1.4ex;"
-        "}").arg(Qt_ThemeLineColor().name());
-    sheet +=
-        "QGroupBox::title {"
-        "  subcontrol-origin: margin;"
-        "  subcontrol-position: top left;"
-        "  left: 8px;"
-        "  padding: 0 3px;"
-        "}";
-#else
-    // macOS gets NO blanket QWidget QSS (it would square the native buttons and
-    // strip the native focus ring -- see above). But QMacStyle draws the
-    // QGroupBox title in a small system font that reads tiny and faint next to
-    // the 15pt UI everywhere else. Scope a QSS rule to JUST QGroupBox (buttons /
-    // edits / combos stay native) to give the title the app font size + weight,
-    // and match the Windows/Linux soft-border group look at the same time.
-    sheet += QString("QGroupBox {"
-                     "  font-size: %1pt;"
-                     "  font-weight: %2;"
-                     "  border: 1px solid %3;"
-                     "  border-radius: 4px;"
-                     "  margin-top: 1.4ex;"
-                     "}")
-                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT)
-                 .arg(Qt_ThemeLineColor().name());
-    sheet +=
-        "QGroupBox::title {"
-        "  subcontrol-origin: margin;"
-        "  subcontrol-position: top left;"
-        "  left: 8px;"
-        "  padding: 0 3px;"
-        "}";
-#endif
-    // MULTI-LINE edit fields -- macOS + Linux only, NOT Windows (JV 2026-07-21).
-    //
-    // The gap this fills is narrow: a multi-line editor gets NO focus marking
-    // from Fusion at all, and on macOS the native hairline is a near-invisible
-    // grey on the derived panel colour with no halo surviving CB's styling -- so
-    // a focused note field was marked by nothing but the caret. Single-line
-    // fields are NOT styled: they already get a 1px focus frame natively, and
-    // adding ours only made them differ in WIDTH from the untouched controls
-    // beside them -- and chasing every remaining control to match is not worth it
-    // (JV 2026-07-21).
-    //
-    // Windows is out entirely: the Windows 11 style marks focus on the whole
-    // field family -- line edits, combo boxes, spin boxes -- with its accent
-    // underline, so styling only some of them put two field languages in one
-    // dialog. Extending the rule to combos is worse, not better: with a box rule
-    // and no ::drop-down rule QStyleSheetStyle falls back to the BASE style for
-    // the arrow (qstylesheetstyle.cpp, CC_ComboBox -> SC_ComboBoxArrow), so a
-    // classic triangle lands next to Fluent chevrons. Consistency INSIDE a dialog
-    // beats consistency across platforms here.
-    //
-    // The frame: the hairline grey (Qt_ThemeLineColor, same as the group boxes)
-    // 1px, and the ACCENT on focus -- also 1px, the width the native single-line
-    // frames use, so nothing thickens on focus and no padding compensation is
-    // needed. The accent stays a live palette() ref.
-#ifndef _WIN32
-    // EXACT-class selectors (leading dot): CodeEditor is a QPlainTextEdit
-    // subclass with its own look (current-line wash, marker bands) and must not
-    // be re-framed by a blanket rule.
-    sheet += QString(
-        ".QPlainTextEdit, .QTextEdit {"
-        "  border: 1px solid %1;"
-        "  border-radius: 4px;"
-        "  background: palette(base);"
-        "  padding: 1px;"
-        "}"
-        ".QPlainTextEdit:focus, .QTextEdit:focus {"
-        "  border: 1px solid palette(highlight);"
-        "}").arg(Qt_ThemeLineColor().name());
-    // Disabled fields must LOOK disabled: the explicit field styling replaces
-    // the native greying, so a disabled field kept its white background and
-    // read as editable (JV 2026-07-21: the ClassDialog template group). Sink
-    // it into the panel: dialog background, muted text, fainter border.
-    // Qt_ThemeLineColor's Window->WindowText mix doubles as the muted-text
-    // derivation (0.45), same maths QtMenuStyle uses for disabled items.
-    sheet += QString(
-        ".QPlainTextEdit:disabled, .QTextEdit:disabled {"
-        "  background: palette(window);"
-        "  color: %1;"
-        "  border-color: %2;"
-        "}")
-        .arg(Qt_ThemeLineColor(0.45).name())
-        .arg(Qt_ThemeLineColor(0.25).name());
-#endif   // !_WIN32 -- Windows keeps the native field look
-    // Tooltips in the classic soft info-yellow (the Win32 look) on every
-    // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
-    // so nothing else is touched.
-    sheet +=
-        "QToolTip {"
-        "  background-color: #FFFFE1;"
-        "  color: black;"
-        "  border: 1px solid #767676;"
-        "}";
-    // Menus: every QMenu CB shows -- menu-bar dropdowns, tool-button menus, and
-    // any context menu that is not explicitly styled -- takes the accent on the
-    // selected item, the same compact metrics, on EVERY platform. It was Windows
-    // -only, which made the menus one of the places CB behaved differently per
-    // OS (JV 2026-07-21: after the accent choice the behaviour has to match).
-    // The rule has to own the WHOLE QMenu, not just ::item:selected: the modern
-    // Windows 11 style paints the selected item a flat darker GREY and ignores a
-    // QSS background-color on the item alone (only the text colour obeyed, so it
-    // came out white-on-grey). palette() refs follow the LIVE accent without
-    // rebuilding the sheet. macOS keeps its NATIVE menu BAR regardless -- that
-    // is an NSMenu owned by the OS, not a QMenu -- so this reaches its popup
-    // menus only.
-    // ONE source for every menu in CB: the same sheet the explicitly-styled
-    // context menus get (Qt_ApplyCompactMenuStyle), so a menu-bar dropdown and a
-    // right-click menu are identical on every platform. It also fixes the
-    // invisible separator/border this block used to have: `palette(mid)` is
-    // #ffffff on Ubuntu/GNOME while the menu background is #fcfcfc, so both were
-    // painted white on near-white. QtMenuStyle derives those greys from the
-    // background instead; the accent parts stay live palette() refs.
-    sheet += Qt_CompactMenuStyleSheet();
-    if (!sheet.isEmpty())
-        qApp->setStyleSheet(sheet);
+    // App-wide stylesheet (fonts, group boxes, edit fields, menus). Built in
+    // ONE place so the accent watcher can rebuild it when the desktop accent
+    // or theme changes -- see Cb_ApplyAppStyleSheet.
+    Cb_ApplyAppStyleSheet();
 
 #ifdef __APPLE__
     // Keep push buttons rounded under the native (stylesheet-free) style.
