@@ -689,19 +689,31 @@ void Qt_EnsureApplication()
         "  padding: 0 3px;"
         "}";
 #endif
-    // Edit fields -- EVERY platform (JV 2026-07-21). This was macOS-only, where
-    // the native hairline frame is a near-invisible light grey on the derived
-    // panel colour and no native focus halo survives CB's styling, so besides
-    // the caret NOTHING marked the focused field. But focus was marked a
-    // DIFFERENT way on each OS -- a native accent underline on Windows, a ring
-    // on macOS, and on Linux (Fusion) only the single-line QLineEdit got a focus
-    // colour at all, so a focused note / multi-line field was unmarked. That is
-    // the same per-OS drift the rest of the colour work removed, so the rule is
-    // shared now: the hairline grey (Qt_ThemeLineColor, same as the group boxes)
-    // 1px normally, the ACCENT on focus (2px, padding shrunk by 1px so the text
-    // does not shift). The accent stays a live palette() ref.
-    // The line edits EMBEDDED in combo/spin boxes get no frame of their own
-    // -- their container draws the field chrome.
+    // Edit fields -- macOS + Linux ONLY, NOT Windows (JV 2026-07-21).
+    //
+    // The reason it exists: on macOS the native hairline frame is a near-
+    // invisible light grey on the derived panel colour and no native focus halo
+    // survives CB's styling, so besides the caret nothing marked the focused
+    // field; on Linux (Fusion) the single-line QLineEdit gets a focus colour but
+    // the MULTI-line editors get none at all.
+    //
+    // The reason Windows is excluded again: the Windows 11 style marks focus on
+    // the WHOLE field family -- line edits, combo boxes, spin boxes -- with its
+    // accent underline. Styling only the plain edits put two field languages in
+    // one dialog (our rounded ring next to Fluent underlines), and extending the
+    // rule to combos/spin boxes is worse: with a box rule and no ::drop-down rule
+    // QStyleSheetStyle falls back to the BASE style for the arrow
+    // (qstylesheetstyle.cpp, CC_ComboBox -> SC_ComboBoxArrow), so a classic
+    // triangle lands next to Fluent chevrons. Consistency INSIDE a dialog beats
+    // consistency across platforms here, so Windows keeps its native field look
+    // whole (JV 2026-07-21: "dan beter alles Windows native").
+    //
+    // Where it does apply: the hairline grey (Qt_ThemeLineColor, same as the
+    // group boxes) 1px normally, the ACCENT on focus (2px, padding shrunk by 1px
+    // so the text does not shift). The accent stays a live palette() ref. The
+    // line edits EMBEDDED in combo/spin boxes get no frame of their own -- their
+    // container draws the field chrome.
+#ifndef _WIN32
     sheet += QString(
         "QLineEdit {"
         "  border: 1px solid %1;").arg(Qt_ThemeLineColor().name());
@@ -750,6 +762,7 @@ void Qt_EnsureApplication()
         "}")
         .arg(Qt_ThemeLineColor(0.45).name())
         .arg(Qt_ThemeLineColor(0.25).name());
+#endif   // !_WIN32 -- Windows keeps the native field look
     // Tooltips in the classic soft info-yellow (the Win32 look) on every
     // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
     // so nothing else is touched.
