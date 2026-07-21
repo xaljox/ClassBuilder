@@ -355,6 +355,53 @@ QColor Cb_SystemAccent()
     return g_systemAccent.isValid() ? g_systemAccent : accent;
 }
 
+// The dialog/panel background, derived from the input-field background.
+//
+// A dialog reads as a surface with edit boxes, lists and trees ON it, and that
+// only works while the two backgrounds differ: where QPalette::Window sits too
+// close to QPalette::Base the fields dissolve into the dialog and only their
+// (thin, styled-away) frames still mark them. macOS hands Qt a near-white
+// Window, which is exactly that case -- CB used to pin a grey there, per-OS.
+//
+// Shared rule instead: measure the contrast ratio between Window and Base and,
+// when it is below the target, step Window further AWAY from Base -- darker
+// under a light theme, lighter under a dark one -- keeping the theme's own hue.
+// A theme that already separates them is left alone. Same target everywhere, so
+// the platforms land on the same relationship (and, since all three use a white
+// Base in a light theme, on the same grey) instead of three different ones.
+// One knob: the ratio (JV 2026-07-21).
+QColor Cb_PanelColour(const QColor& base, const QColor& window)
+{
+    const auto lum = [](const QColor& c) {
+        const auto lin = [](double v) {
+            return v <= 0.03928 ? v / 12.92
+                                : std::pow((v + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * lin(c.redF()) + 0.7152 * lin(c.greenF())
+             + 0.0722 * lin(c.blueF());
+    };
+    const auto contrast = [&lum](const QColor& a, const QColor& b) {
+        const double la = lum(a), lb = lum(b);
+        return (qMax(la, lb) + 0.05) / (qMin(la, lb) + 0.05);
+    };
+    const double kTarget = 1.18;      // the separation the macOS pin had
+    if (contrast(window, base) >= kTarget)
+        return window;
+
+    const float step = (base.lightnessF() > 0.5f) ? -0.01f : 0.01f;
+    float h = 0, s = 0, l = 0, a = 0;
+    window.getHslF(&h, &s, &l, &a);
+    QColor c = window;
+    for (int i = 0; i < 60 && l > 0.0f && l < 1.0f; ++i)
+    {
+        l = qBound(0.0f, l + step, 1.0f);
+        c = QColor::fromHslF(qMax(0.0f, h), s, l, a);
+        if (contrast(c, base) >= kTarget)
+            break;
+    }
+    return c;
+}
+
 // THE single point that decides the app-wide accent -- and from here on it is
 // platform-INDEPENDENT: the fetched accent lands in QPalette::Highlight with a
 // derived HighlightedText beside it, and everything theme-derived downstream --
@@ -376,15 +423,16 @@ void Cb_ApplyAccentPalette()
                               ? QColor(forced) : Cb_SystemAccent();
 
     QPalette want = qApp->palette();
-#ifdef __APPLE__
-    // NOT accent-related, and the only per-OS colour left: macOS' near-white
-    // dialog background makes edit boxes disappear, so the dialog Window is a
-    // light grey against a white Base.
-    want.setColor(QPalette::Active,   QPalette::Window, QColor(0xEC, 0xEC, 0xEC));
-    want.setColor(QPalette::Inactive, QPalette::Window, QColor(0xEC, 0xEC, 0xEC));
-    want.setColor(QPalette::Active,   QPalette::Base,   Qt::white);
-    want.setColor(QPalette::Inactive, QPalette::Base,   Qt::white);
-#endif
+
+    // Dialog/panel background: derived from the theme's own Base + Window on
+    // every platform (Cb_PanelColour), replacing the macOS-only grey pin -- the
+    // last per-OS colour. Base itself is left to the theme.
+    const QColor panel = Cb_PanelColour(
+        want.color(QPalette::Active, QPalette::Base),
+        want.color(QPalette::Active, QPalette::Window));
+    want.setColor(QPalette::Active,   QPalette::Window, panel);
+    want.setColor(QPalette::Inactive, QPalette::Window, panel);
+
     // The accent goes in AS CHOSEN -- no correction here. A light accent is
     // perfectly readable as a row-sized tint or a filled selection; only the
     // small solid tree glyphs wash out at that size, and they deepen it
