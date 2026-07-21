@@ -397,7 +397,11 @@ QColor Cb_PanelColour(const QColor& base, const QColor& window)
         const double la = lum(a), lb = lum(b);
         return (qMax(la, lb) + 0.05) / (qMin(la, lb) + 0.05);
     };
-    const double kTarget = 1.18;      // the separation the macOS pin had
+    // 1.18 == the separation the old macOS pin (#ECECEC) had. It looked like
+    // "too little" for a while, but that was the start-at-white loop bug
+    // below masking the derivation entirely; with that fixed, 1.18 verified
+    // as the right weight against 1.30/"#E2E2E2" (too dark -- JV 2026-07-21).
+    const double kTarget = 1.18;
     if (contrast(window, base) >= kTarget)
         return window;
 
@@ -405,9 +409,17 @@ QColor Cb_PanelColour(const QColor& base, const QColor& window)
     float h = 0, s = 0, l = 0, a = 0;
     window.getHslF(&h, &s, &l, &a);
     QColor c = window;
-    for (int i = 0; i < 60 && l > 0.0f && l < 1.0f; ++i)
+    // Step FIRST, bounds-check after: guarding the loop on `l < 1.0f` also
+    // refused to START from a pure-white Window -- exactly what macOS hands
+    // Qt (Window == Base == #ffffff), so the loop never ran and mac dialogs
+    // stayed white while Linux (near-white theme) derived fine (JV
+    // 2026-07-21).
+    for (int i = 0; i < 60; ++i)
     {
-        l = qBound(0.0f, l + step, 1.0f);
+        const float next = qBound(0.0f, l + step, 1.0f);
+        if (next == l)
+            break;              // clamped at an end -- cannot move further
+        l = next;
         c = QColor::fromHslF(qMax(0.0f, h), s, l, a);
         if (contrast(c, base) >= kTarget)
             break;
@@ -676,6 +688,65 @@ void Qt_EnsureApplication()
         "  left: 8px;"
         "  padding: 0 3px;"
         "}";
+    // Edit fields (macOS): the native hairline frame is a near-invisible
+    // light grey on the derived panel colour, and no native focus halo
+    // survives CB's styling -- besides the caret NOTHING marked the focused
+    // field (JV 2026-07-21). Draw an explicit derived frame instead: the
+    // shared hairline grey (Qt_ThemeLineColor, same as the group boxes) 1px
+    // normally, the ACCENT on focus (2px, padding shrunk by 1px so the text
+    // does not shift). The accent stays a live palette() ref.
+    // The line edits EMBEDDED in combo/spin boxes get no frame of their own
+    // -- their container draws the field chrome. Windows/Linux already draw
+    // a clear native border + focus colour; candidate to unify later if the
+    // per-OS difference bothers.
+    sheet += QString(
+        "QLineEdit {"
+        "  border: 1px solid %1;").arg(Qt_ThemeLineColor().name());
+    sheet +=
+        "  border-radius: 4px;"
+        "  background: palette(base);"
+        "  padding: 2px 4px;"
+        "}"
+        "QLineEdit:focus {"
+        "  border: 2px solid palette(highlight);"
+        "  padding: 1px 3px;"
+        "}"
+        "QComboBox QLineEdit, QAbstractSpinBox QLineEdit {"
+        "  border: none;"
+        "  background: transparent;"
+        "  padding: 0;"
+        "}";
+    // The plain MULTI-line edits get the same field frame + focus accent so
+    // single- and multi-line fields read as the same kind of control (JV
+    // 2026-07-21). EXACT-class selectors (leading dot): CodeEditor is a
+    // QPlainTextEdit subclass with its own look (current-line wash, marker
+    // bands) and must not be re-framed by a blanket rule. 1px padding that
+    // drops to 0 on focus keeps the text from shifting under the 2px border.
+    sheet += QString(
+        ".QPlainTextEdit, .QTextEdit {"
+        "  border: 1px solid %1;"
+        "  border-radius: 4px;"
+        "  background: palette(base);"
+        "  padding: 1px;"
+        "}"
+        ".QPlainTextEdit:focus, .QTextEdit:focus {"
+        "  border: 2px solid palette(highlight);"
+        "  padding: 0px;"
+        "}").arg(Qt_ThemeLineColor().name());
+    // Disabled fields must LOOK disabled: the explicit field styling replaces
+    // the native greying, so a disabled field kept its white background and
+    // read as editable (JV 2026-07-21: the ClassDialog template group). Sink
+    // it into the panel: dialog background, muted text, fainter border.
+    // Qt_ThemeLineColor's Window->WindowText mix doubles as the muted-text
+    // derivation (0.45), same maths QtMenuStyle uses for disabled items.
+    sheet += QString(
+        "QLineEdit:disabled, .QPlainTextEdit:disabled, .QTextEdit:disabled {"
+        "  background: palette(window);"
+        "  color: %1;"
+        "  border-color: %2;"
+        "}")
+        .arg(Qt_ThemeLineColor(0.45).name())
+        .arg(Qt_ThemeLineColor(0.25).name());
 #endif
     // Tooltips in the classic soft info-yellow (the Win32 look) on every
     // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
