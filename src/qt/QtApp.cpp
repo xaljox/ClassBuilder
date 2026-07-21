@@ -688,17 +688,20 @@ void Qt_EnsureApplication()
         "  left: 8px;"
         "  padding: 0 3px;"
         "}";
-    // Edit fields (macOS): the native hairline frame is a near-invisible
-    // light grey on the derived panel colour, and no native focus halo
-    // survives CB's styling -- besides the caret NOTHING marked the focused
-    // field (JV 2026-07-21). Draw an explicit derived frame instead: the
-    // shared hairline grey (Qt_ThemeLineColor, same as the group boxes) 1px
-    // normally, the ACCENT on focus (2px, padding shrunk by 1px so the text
+#endif
+    // Edit fields -- EVERY platform (JV 2026-07-21). This was macOS-only, where
+    // the native hairline frame is a near-invisible light grey on the derived
+    // panel colour and no native focus halo survives CB's styling, so besides
+    // the caret NOTHING marked the focused field. But focus was marked a
+    // DIFFERENT way on each OS -- a native accent underline on Windows, a ring
+    // on macOS, and on Linux (Fusion) only the single-line QLineEdit got a focus
+    // colour at all, so a focused note / multi-line field was unmarked. That is
+    // the same per-OS drift the rest of the colour work removed, so the rule is
+    // shared now: the hairline grey (Qt_ThemeLineColor, same as the group boxes)
+    // 1px normally, the ACCENT on focus (2px, padding shrunk by 1px so the text
     // does not shift). The accent stays a live palette() ref.
     // The line edits EMBEDDED in combo/spin boxes get no frame of their own
-    // -- their container draws the field chrome. Windows/Linux already draw
-    // a clear native border + focus colour; candidate to unify later if the
-    // per-OS difference bothers.
+    // -- their container draws the field chrome.
     sheet += QString(
         "QLineEdit {"
         "  border: 1px solid %1;").arg(Qt_ThemeLineColor().name());
@@ -747,7 +750,6 @@ void Qt_EnsureApplication()
         "}")
         .arg(Qt_ThemeLineColor(0.45).name())
         .arg(Qt_ThemeLineColor(0.25).name());
-#endif
     // Tooltips in the classic soft info-yellow (the Win32 look) on every
     // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
     // so nothing else is touched.
