@@ -69,6 +69,37 @@ in-app fallback, but the compositor's fractional scaling is what the 26.04
 upgrade fixed. Verify per-WM: this is specific to GNOME/Mutter and won't
 generalize to labwc/KDE.
 
+## Theme accent: live switching is desktop-dependent
+
+CB derives its whole colour set from the desktop accent, which on Linux it reads
+from `QPalette::Highlight` (NOT `QPalette::Accent` -- the theme leaves that at
+Qt's built-in default blue; see `Cb_SystemAccent` in QtApp.cpp). Changing the
+accent while CB is open is picked up by `CbAccentWatcher`, which listens for
+`QEvent::ApplicationPaletteChange` -- but only where the platform integration
+actually delivers that event.
+
+**Measured on Ubuntu 26.04 / GNOME (Qt 6.10.2, Fusion): it never does.** The
+accent is translated correctly at startup (`gsettings ... accent-color` = `teal`
+→ `#308280`, `blue` → `#0073e5`), but switching it produces no palette-change
+event at all. Verified against all three suspects, each ruled out:
+
+| Setup | accent read at startup | event on switch |
+|-------|------------------------|-----------------|
+| plain | yes | no |
+| `QT_QPA_PLATFORMTHEME=gtk3` (`qt6-gtk-platformtheme` installed) | yes | no |
+| with CB's own `qApp->setPalette()` | yes | no |
+
+So on GNOME the new accent appears **after a CB restart**. It has been seen
+working live on another Linux desktop (the Pi) and on Windows, so this is a
+per-desktop difference, not a CB bug -- the watcher fires wherever the event
+arrives.
+
+**Do not "fix" it by watching gsettings.** The setting holds a NAME, and the RGB
+Qt uses is derived from it by the theme layer, so CB would need its own
+name→colour map -- a second source of truth that will drift from what Qt does at
+startup. If live switching on GNOME is ever wanted, use the setting only as a
+TRIGGER and reuse the self-relaunch the View > UI Scale menu already has.
+
 ## Rendering crispness (Parallels-specific)
 
 Blurry/soft rendering under Parallels is **not** a Qt/backend issue — it's
