@@ -75,6 +75,30 @@ inline QColor Qt_SoftSelectionColor(double alpha)
                   mix(base.blue(),  acc.blue()));
 }
 
+// A hairline grey for borders, frames and pane edges -- DERIVED from the window
+// background toward the text colour, never taken from a palette role.
+//
+// No role is reliable for this. Measured on Ubuntu 26.04 / GNOME (Fusion): the
+// `mid` role is #ffffff while the window background is #fcfcfc, so every
+// `palette(mid)` border painted WHITE on near-white. The group-box frames, the
+// document-tab borders and the pane edge under them all vanished on Linux while
+// reading as a clear dark line on Windows/macOS (JV 2026-07-21) -- the same root
+// cause as the invisible menu separator. Deriving from the background guarantees
+// contrast in a light AND a dark theme by construction, and gives every hairline
+// in CB one colour.
+inline QColor Qt_ThemeLineColor(double alpha = 0.40)
+{
+    const QPalette pal = QApplication::palette();
+    const QColor   bg  = pal.color(QPalette::Active, QPalette::Window);
+    const QColor   tx  = pal.color(QPalette::Active, QPalette::WindowText);
+    const auto mix = [alpha](int b, int t) {
+        return int(b * (1.0 - alpha) + t * alpha + 0.5);
+    };
+    return QColor(mix(bg.red(),   tx.red()),
+                  mix(bg.green(), tx.green()),
+                  mix(bg.blue(),  tx.blue()));
+}
+
 // Colour a progress bar's fill with the SAME tint as a selected tree row
 // (Qt_SoftSelectionColor(0.28) -- the stronger-than-hover, not-full-accent
 // variant JV asked for), over a plain base track, so Read/Write Source
@@ -84,7 +108,7 @@ inline void Qt_ApplyProgressAccent(QProgressBar* bar)
     const QColor chunk = Qt_SoftSelectionColor(0.28);
     bar->setStyleSheet(QString(
         "QProgressBar {"
-        "  border: 1px solid palette(mid); border-radius: 3px;"
+        "  border: 1px solid " + Qt_ThemeLineColor().name() + "; border-radius: 3px;"
         "  background: palette(base); text-align: center;"
         "  color: palette(text);"
         "}"

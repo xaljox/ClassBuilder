@@ -4,6 +4,7 @@
 
 #include "QtShell.h"
 #include "QtApp.h"            // Qt_EnsureApplication
+#include "QtSoftSelection.h"  // Qt_ThemeLineColor (the one hairline grey)
 #include "QtModelText.h"      // toQ
 #include "MainTreeQtView.h"
 #include "QtDiagramZoom.h"
@@ -425,9 +426,10 @@ public:
             && w->property("cbDocTabsWired").toBool())
         {
             const QRect r = opt->rect;
+            // Derived hairline, not palette(Mid): that role is #ffffff on
+            // Ubuntu/GNOME, which drew this pane edge white on near-white.
             p->fillRect(QRect(r.left(), r.bottom(), r.width(), 1),
-                        QApplication::palette().color(QPalette::Active,
-                                                      QPalette::Mid));
+                        Qt_ThemeLineColor());
             return;
         }
 #endif
@@ -1084,7 +1086,7 @@ void QtShellWindow::wireDockTabBars()
         const QColor  winCol  = appPal.color(QPalette::Active, QPalette::Window);
         const QString selBg   = winCol.name();               // == title-bar strip
         const QString unselBg = winCol.darker(110).name();   // recessed
-        const QString mid     = appPal.color(QPalette::Active, QPalette::Mid).name();
+        const QString mid     = Qt_ThemeLineColor().name();   // derived, not palette(Mid)
         bar->setDrawBase(true);    // base = the pane edge line across the row
                                    // (drawn by ShellSeparatorStyle, 1px mid)
         bar->setStyleSheet(QString(

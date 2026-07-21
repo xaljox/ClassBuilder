@@ -637,12 +637,16 @@ void Qt_EnsureApplication()
 #ifndef __APPLE__
     sheet += QString("QWidget { font-size: %1pt; font-weight: %2; }")
                  .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
-    sheet +=
+    // Frame in the derived hairline grey, NOT palette(mid): that role is
+    // #ffffff on Ubuntu/GNOME, so the group boxes framed themselves white on
+    // near-white and read as no frame at all (JV 2026-07-21).
+    sheet += QString(
         "QGroupBox {"
-        "  border: 1px solid palette(mid);"
+        "  border: 1px solid %1;"
         "  border-radius: 4px;"
         "  margin-top: 1.4ex;"
-        "}"
+        "}").arg(Qt_ThemeLineColor().name());
+    sheet +=
         "QGroupBox::title {"
         "  subcontrol-origin: margin;"
         "  subcontrol-position: top left;"
@@ -659,11 +663,12 @@ void Qt_EnsureApplication()
     sheet += QString("QGroupBox {"
                      "  font-size: %1pt;"
                      "  font-weight: %2;"
-                     "  border: 1px solid palette(mid);"
+                     "  border: 1px solid %3;"
                      "  border-radius: 4px;"
                      "  margin-top: 1.4ex;"
                      "}")
-                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT);
+                 .arg(CB_UI_FONT_PT).arg(CB_UI_FONT_WEIGHT)
+                 .arg(Qt_ThemeLineColor().name());
     sheet +=
         "QGroupBox::title {"
         "  subcontrol-origin: margin;"
