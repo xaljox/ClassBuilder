@@ -467,8 +467,8 @@ void ConstructorCodeDialog::buildMenu()
         { QTextCursor c = _focusEdit->textCursor(); c.deleteChar();
           _focusEdit->setTextCursor(c); });
     edit->addSeparator();
-    edit->addAction("Select &All", QKeySequence::SelectAll,
-                    this, [this] { _focusEdit->selectAll(); });
+    _selectAllAction = edit->addAction("Select &All", QKeySequence::SelectAll,
+                                       this, [this] { _focusEdit->selectAll(); });
     edit->addSeparator();
     edit->addAction("Move lines &up", QKeySequence("Alt+Up"),
                     this, [this] { _focusEdit->moveSelectedLines(true); });
@@ -626,14 +626,22 @@ void ConstructorCodeDialog::showEditorContextMenu(CodeEditor* ed,
     // Compact rows; colours derived from the live theme palette.
     Qt_ApplyCompactMenuStyle(&menu);
     menu.addActions(_editMenu->actions());
-    menu.addSeparator();
-    menu.addActions(_addMenu->actions());
-    // Insert behind a submenu -- same reason as MethodCodeDialog: the wizards
-    // and the control-structure block are both insert actions, and inline they
-    // made the right-click menu tall (JV 2026-07-21).
-    QMenu* ins = menu.addMenu("&Insert");
-    Qt_ApplyCompactMenuStyle(ins);   // also on the submenu: own popup window
+    // Add and Insert both behind a SUBMENU, mirroring the menu bar -- same
+    // reasoning as MethodCodeDialog: flat, "Argument" gave no hint of what it
+    // does, and the insert commands made the right-click menu tall.
+    QMenu* add = new QMenu("&Add", &menu);
+    Qt_ApplyCompactMenuStyle(add);   // submenus are their own popup window
+    add->addActions(_addMenu->actions());
+    QMenu* ins = new QMenu("&Insert", &menu);
+    Qt_ApplyCompactMenuStyle(ins);
     ins->addActions(_insertMenu->actions());
+
+    // As a PAIR directly after the cut/copy/paste/delete block and above
+    // Select All (JV 2026-07-21) -- the Edit menu already carries a separator
+    // there, so inserting before Select All lands them in it.
+    menu.insertMenu(_selectAllAction, add);
+    menu.insertMenu(_selectAllAction, ins);
+    menu.insertSeparator(_selectAllAction);
     menu.exec(ed->mapToGlobal(pos));
 }
 

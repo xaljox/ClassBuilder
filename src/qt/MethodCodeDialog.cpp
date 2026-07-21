@@ -433,8 +433,8 @@ void MethodCodeDialog::buildMenu()
         { QTextCursor c = ed->textCursor(); c.deleteChar();
           ed->setTextCursor(c); });
     edit->addSeparator();
-    edit->addAction("Select &All", QKeySequence::SelectAll,
-                    ed, &QPlainTextEdit::selectAll);
+    _selectAllAction = edit->addAction("Select &All", QKeySequence::SelectAll,
+                                       ed, &QPlainTextEdit::selectAll);
     edit->addSeparator();
     QAction* aMoveUp = edit->addAction("Move lines &up",
         QKeySequence("Alt+Up"), ed, [ed] { ed->moveSelectedLines(true); });
@@ -593,15 +593,24 @@ void MethodCodeDialog::showEditorContextMenu(const QPoint& pos)
     menu.addActions(_editMenu->actions());
     if (!_pMethod->IsFixed())
     {
-        menu.addSeparator();
-        menu.addActions(_addMenu->actions());
-        // The ten Insert commands -- both blocks (the wizards and the control
-        // structures) are insert actions -- go in a SUBMENU, not inline: flat
-        // they made the right-click menu tall enough to be unpleasant to read
-        // (JV 2026-07-21). The menu bar keeps them as a top-level menu.
-        QMenu* ins = menu.addMenu("&Insert");
-        Qt_ApplyCompactMenuStyle(ins);   // also on the submenu: own popup window
+        // Add and Insert both go in a SUBMENU, mirroring the menu bar -- so
+        // "Argument" reads under an "Add" title here too (flat it was just
+        // "Argument", with no hint of what it does), and the ten Insert
+        // commands don't make the right-click menu unpleasantly tall
+        // (JV 2026-07-21).
+        QMenu* add = new QMenu("&Add", &menu);
+        Qt_ApplyCompactMenuStyle(add);   // submenus are their own popup window
+        add->addActions(_addMenu->actions());
+        QMenu* ins = new QMenu("&Insert", &menu);
+        Qt_ApplyCompactMenuStyle(ins);
         ins->addActions(_insertMenu->actions());
+
+        // As a PAIR directly after the cut/copy/paste/delete block and above
+        // Select All (JV 2026-07-21) -- the Edit menu already carries a
+        // separator there, so inserting before Select All lands them in it.
+        menu.insertMenu(_selectAllAction, add);
+        menu.insertMenu(_selectAllAction, ins);
+        menu.insertSeparator(_selectAllAction);
     }
     menu.exec(_ui->editCode->mapToGlobal(pos));
 }

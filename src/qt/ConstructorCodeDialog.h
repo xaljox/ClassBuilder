@@ -76,6 +76,10 @@ private:
     QMenu* _editMenu   = nullptr;
     QMenu* _addMenu    = nullptr;
     QMenu* _insertMenu = nullptr;
+    // Anchor for the context menu: the Add / Insert submenus are inserted
+    // BEFORE this action, so they land right after the cut/copy/paste/delete
+    // block and above Select All (see showEditorContextMenu).
+    QAction* _selectAllAction = nullptr;
     QList<QMenu*> _allMenus;       // for the key -> action event filter
 
     // Enabled only while an identifier is highlight-active (the yellow
