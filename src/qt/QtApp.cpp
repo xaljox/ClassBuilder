@@ -689,54 +689,34 @@ void Qt_EnsureApplication()
         "  padding: 0 3px;"
         "}";
 #endif
-    // Edit fields -- macOS + Linux ONLY, NOT Windows (JV 2026-07-21).
+    // MULTI-LINE edit fields -- macOS + Linux only, NOT Windows (JV 2026-07-21).
     //
-    // The reason it exists: on macOS the native hairline frame is a near-
-    // invisible light grey on the derived panel colour and no native focus halo
-    // survives CB's styling, so besides the caret nothing marked the focused
-    // field; on Linux (Fusion) the single-line QLineEdit gets a focus colour but
-    // the MULTI-line editors get none at all.
+    // The gap this fills is narrow: a multi-line editor gets NO focus marking
+    // from Fusion at all, and on macOS the native hairline is a near-invisible
+    // grey on the derived panel colour with no halo surviving CB's styling -- so
+    // a focused note field was marked by nothing but the caret. Single-line
+    // fields are NOT styled: they already get a 1px focus frame natively, and
+    // adding ours only made them differ in WIDTH from the untouched controls
+    // beside them -- and chasing every remaining control to match is not worth it
+    // (JV 2026-07-21).
     //
-    // The reason Windows is excluded again: the Windows 11 style marks focus on
-    // the WHOLE field family -- line edits, combo boxes, spin boxes -- with its
-    // accent underline. Styling only the plain edits put two field languages in
-    // one dialog (our rounded ring next to Fluent underlines), and extending the
-    // rule to combos/spin boxes is worse: with a box rule and no ::drop-down rule
-    // QStyleSheetStyle falls back to the BASE style for the arrow
-    // (qstylesheetstyle.cpp, CC_ComboBox -> SC_ComboBoxArrow), so a classic
-    // triangle lands next to Fluent chevrons. Consistency INSIDE a dialog beats
-    // consistency across platforms here, so Windows keeps its native field look
-    // whole (JV 2026-07-21: "dan beter alles Windows native").
+    // Windows is out entirely: the Windows 11 style marks focus on the whole
+    // field family -- line edits, combo boxes, spin boxes -- with its accent
+    // underline, so styling only some of them put two field languages in one
+    // dialog. Extending the rule to combos is worse, not better: with a box rule
+    // and no ::drop-down rule QStyleSheetStyle falls back to the BASE style for
+    // the arrow (qstylesheetstyle.cpp, CC_ComboBox -> SC_ComboBoxArrow), so a
+    // classic triangle lands next to Fluent chevrons. Consistency INSIDE a dialog
+    // beats consistency across platforms here.
     //
-    // Where it does apply: the hairline grey (Qt_ThemeLineColor, same as the
-    // group boxes) 1px normally, the ACCENT on focus (2px, padding shrunk by 1px
-    // so the text does not shift). The accent stays a live palette() ref. The
-    // line edits EMBEDDED in combo/spin boxes get no frame of their own -- their
-    // container draws the field chrome.
+    // The frame: the hairline grey (Qt_ThemeLineColor, same as the group boxes)
+    // 1px, and the ACCENT on focus -- also 1px, the width the native single-line
+    // frames use, so nothing thickens on focus and no padding compensation is
+    // needed. The accent stays a live palette() ref.
 #ifndef _WIN32
-    sheet += QString(
-        "QLineEdit {"
-        "  border: 1px solid %1;").arg(Qt_ThemeLineColor().name());
-    sheet +=
-        "  border-radius: 4px;"
-        "  background: palette(base);"
-        "  padding: 2px 4px;"
-        "}"
-        "QLineEdit:focus {"
-        "  border: 2px solid palette(highlight);"
-        "  padding: 1px 3px;"
-        "}"
-        "QComboBox QLineEdit, QAbstractSpinBox QLineEdit {"
-        "  border: none;"
-        "  background: transparent;"
-        "  padding: 0;"
-        "}";
-    // The plain MULTI-line edits get the same field frame + focus accent so
-    // single- and multi-line fields read as the same kind of control (JV
-    // 2026-07-21). EXACT-class selectors (leading dot): CodeEditor is a
-    // QPlainTextEdit subclass with its own look (current-line wash, marker
-    // bands) and must not be re-framed by a blanket rule. 1px padding that
-    // drops to 0 on focus keeps the text from shifting under the 2px border.
+    // EXACT-class selectors (leading dot): CodeEditor is a QPlainTextEdit
+    // subclass with its own look (current-line wash, marker bands) and must not
+    // be re-framed by a blanket rule.
     sheet += QString(
         ".QPlainTextEdit, .QTextEdit {"
         "  border: 1px solid %1;"
@@ -745,8 +725,7 @@ void Qt_EnsureApplication()
         "  padding: 1px;"
         "}"
         ".QPlainTextEdit:focus, .QTextEdit:focus {"
-        "  border: 2px solid palette(highlight);"
-        "  padding: 0px;"
+        "  border: 1px solid palette(highlight);"
         "}").arg(Qt_ThemeLineColor().name());
     // Disabled fields must LOOK disabled: the explicit field styling replaces
     // the native greying, so a disabled field kept its white background and
@@ -755,7 +734,7 @@ void Qt_EnsureApplication()
     // Qt_ThemeLineColor's Window->WindowText mix doubles as the muted-text
     // derivation (0.45), same maths QtMenuStyle uses for disabled items.
     sheet += QString(
-        "QLineEdit:disabled, .QPlainTextEdit:disabled, .QTextEdit:disabled {"
+        ".QPlainTextEdit:disabled, .QTextEdit:disabled {"
         "  background: palette(window);"
         "  color: %1;"
         "  border-color: %2;"
