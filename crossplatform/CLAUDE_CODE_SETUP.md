@@ -21,7 +21,15 @@ on another. Permissions are split by what is portable:
 
 ### Tracked `.claude/settings.json` (shared, identical everywhere)
 
-- `defaultMode: acceptEdits` — file edits never prompt.
+- `defaultMode: acceptEdits` — the *initial* permission mode.
+- `Edit(**)` / `Write(**)` — edits anywhere **inside the project** never prompt.
+  These are relative patterns, so they stay portable across all three platforms.
+  They exist because `defaultMode` alone proved unreliable: it only sets the
+  mode a session *starts* in, and on the Linux/VS Code-extension setup the
+  session's own mode overrode it, so every edit to `src/qt/*` still prompted.
+  An explicit allow rule does not depend on the mode at all. Safe by the same
+  logic as the deny list below: everything in the project is tracked in git, so
+  any edit is reversible (`git restore .` / `git checkout -- .`).
 - `allow: ["Bash"]` — **all** shell commands run without prompting (curating a
   per-command allowlist was pure whack-a-mole: read tools, pipeline segments, and
   out-of-project Qt work kept surfacing new prompts).
