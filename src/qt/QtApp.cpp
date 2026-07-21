@@ -29,6 +29,7 @@
 #include "CodeEditor.h"
 #include "QtSoftSelection.h"   // Qt_ApplySoftSelection (popup re-tint)
 #include "QtMenuStyle.h"       // Qt_CompactMenuStyleSheet (the one menu sheet)
+#include "QtFieldStyle.h"      // Qt_InstallFieldFrameStyle (multi-line = single-line)
 #ifndef _WIN32   // macOS + Linux: file-open event + button-font filter use these
 #include <QFileOpenEvent>
 #include <QPushButton>
@@ -625,35 +626,14 @@ static void Cb_ApplyAppStyleSheet()
     // one derivation now serves both the tree glyphs and this ring. It is
     // computed, not a palette() ref, so it only follows a live accent change
     // because Cb_ApplyAppStyleSheet is re-run by the palette watcher.
-#ifndef _WIN32
-    // EXACT-class selectors (leading dot): CodeEditor is a QPlainTextEdit
-    // subclass with its own look (current-line wash, marker bands) and must not
-    // be re-framed by a blanket rule.
-    sheet += QString(
-        ".QPlainTextEdit, .QTextEdit {"
-        "  border: 1px solid %1;"
-        "  border-radius: 4px;"
-        "  background: palette(base);"
-        "  padding: 1px;"
-        "}"
-        ".QPlainTextEdit:focus, .QTextEdit:focus {"
-        "  border: 1px solid %2;"
-        "}").arg(Qt_ThemeLineColor().name(), Qt_ChromeAccent().name());
-    // Disabled fields must LOOK disabled: the explicit field styling replaces
-    // the native greying, so a disabled field kept its white background and
-    // read as editable (JV 2026-07-21: the ClassDialog template group). Sink
-    // it into the panel: dialog background, muted text, fainter border.
-    // Qt_ThemeLineColor's Window->WindowText mix doubles as the muted-text
-    // derivation (0.45), same maths QtMenuStyle uses for disabled items.
-    sheet += QString(
-        ".QPlainTextEdit:disabled, .QTextEdit:disabled {"
-        "  background: palette(window);"
-        "  color: %1;"
-        "  border-color: %2;"
-        "}")
-        .arg(Qt_ThemeLineColor(0.45).name())
-        .arg(Qt_ThemeLineColor(0.25).name());
-#endif   // !_WIN32 -- Windows keeps the native field look
+    // NOTE: the multi-line fields are NOT styled here any more. A stylesheet can
+    // only approximate the control frame -- it reproduced the outline but not
+    // the inner contrast row the panel primitive paints, so a focused note field
+    // stayed visibly thinner than the text field beside it however the colour
+    // was tuned. Qt_InstallFieldFrameStyle() routes their frame through that
+    // primitive instead (see QtFieldStyle.h), which is identical BY CONSTRUCTION
+    // and needs no colour of ours at all -- the disabled look comes back from
+    // the native style too.
     // Tooltips in the classic soft info-yellow (the Win32 look) on every
     // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
     // so nothing else is touched.
@@ -811,6 +791,12 @@ void Qt_EnsureApplication()
     // changes while CB is open (no restart, no mixed colours). Cross-platform;
     // a no-op in practice on macOS (its accent is pinned) but harmless there.
     qApp->installEventFilter(new CbAccentWatcher(qApp));
+
+    // Multi-line input fields get the SINGLE-line field's frame, so both read as
+    // one kind of control -- focus marking included. Must come after the app
+    // stylesheet: it replaces the application style, and a stylesheet set
+    // earlier is re-applied on top. See QtFieldStyle.h.
+    Qt_InstallFieldFrameStyle();
 
     // Install the process-wide headless text-measure painter. Model-side layout
     // methods (lifeline auto-width, class auto-size, OptimizePlacement, the
