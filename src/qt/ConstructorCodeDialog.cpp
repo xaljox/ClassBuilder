@@ -628,8 +628,12 @@ void ConstructorCodeDialog::showEditorContextMenu(CodeEditor* ed,
     menu.addActions(_editMenu->actions());
     menu.addSeparator();
     menu.addActions(_addMenu->actions());
-    menu.addSeparator();
-    menu.addActions(_insertMenu->actions());
+    // Insert behind a submenu -- same reason as MethodCodeDialog: the wizards
+    // and the control-structure block are both insert actions, and inline they
+    // made the right-click menu tall (JV 2026-07-21).
+    QMenu* ins = menu.addMenu("&Insert");
+    Qt_ApplyCompactMenuStyle(ins);   // also on the submenu: own popup window
+    ins->addActions(_insertMenu->actions());
     menu.exec(ed->mapToGlobal(pos));
 }
 

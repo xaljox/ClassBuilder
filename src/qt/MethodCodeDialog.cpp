@@ -595,8 +595,13 @@ void MethodCodeDialog::showEditorContextMenu(const QPoint& pos)
     {
         menu.addSeparator();
         menu.addActions(_addMenu->actions());
-        menu.addSeparator();
-        menu.addActions(_insertMenu->actions());
+        // The ten Insert commands -- both blocks (the wizards and the control
+        // structures) are insert actions -- go in a SUBMENU, not inline: flat
+        // they made the right-click menu tall enough to be unpleasant to read
+        // (JV 2026-07-21). The menu bar keeps them as a top-level menu.
+        QMenu* ins = menu.addMenu("&Insert");
+        Qt_ApplyCompactMenuStyle(ins);   // also on the submenu: own popup window
+        ins->addActions(_insertMenu->actions());
     }
     menu.exec(_ui->editCode->mapToGlobal(pos));
 }
