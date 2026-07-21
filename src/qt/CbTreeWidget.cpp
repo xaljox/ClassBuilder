@@ -281,10 +281,15 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // grey), not the theme accent. qApp's palette is the genuine theme one.
     // Use the ACTIVE group explicitly too: the Inactive Highlight is the grey
     // unfocused-selection colour.
+    // Two colours off ONE accent: the row-sized tint blends the accent AS
+    // CHOSEN, while the small solid glyphs take Qt_ChromeAccent() -- the same
+    // accent with its lightness clamped so a light one still carries at glyph
+    // size (shared by every platform, see QtSoftSelection.h).
     const QPalette appPal = QApplication::palette();
     const QColor accent = appPal.color(QPalette::Active, QPalette::Highlight);
+    const QColor glyphColour = Qt_ChromeAccent();
     const QColor lineColour = blend(
-        accent, appPal.color(QPalette::Active, QPalette::Base), 0.25);
+        glyphColour, appPal.color(QPalette::Active, QPalette::Base), 0.25);
 
     // On the selected row the triangle + connector chrome can vanish when the
     // row's REAL, style-painted background collides with the accent they're
@@ -297,18 +302,12 @@ void CbTreeWidget::drawBranches(QPainter* painter, const QRect& rect,
     // rounded indicator, a custom-themed flat fill). selectionChromeShouldFlip()
     // sidesteps all guessing by rendering a probe selected cell through this
     // widget's own style/palette and sampling the pixel it actually painted.
-    // The expand triangle (and the selection stripe drawn in the same colour,
-    // below) are small SOLID glyphs: a relatively light accent -- the default
-    // macOS system blue, a pastel desktop accent -- reads washed out at that
-    // size against the light tree, where the very same colour works fine as a
-    // row-sized tint fill. Derive the glyph colour from the accent by clamping
-    // its HSL lightness: a dark accent passes through unchanged, a light one
-    // is deepened (hue and saturation kept) until it carries at glyph size
-    // (JV 2026-07-19).
-    QColor triColour = accent;
-    if (triColour.lightnessF() > 0.40)
-        triColour.setHslF(qMax(0.0f, triColour.hslHueF()),
-                          triColour.hslSaturationF(), 0.40f);
+    // The expand triangle and the selection stripe are small SOLID glyphs, so
+    // they take the lightness-clamped accent (Qt_ChromeAccent, computed above);
+    // the clamp itself now lives in that one shared helper instead of here, so
+    // every glyph site on every platform uses the same rule (JV 2026-07-19 /
+    // 2026-07-21).
+    QColor triColour  = glyphColour;
     QColor connColour = lineColour;
     // EVERY platform now uses the soft ::item:selected tint (constructor QSS).
     // The base view paints its native selection across the WHOLE row -- including

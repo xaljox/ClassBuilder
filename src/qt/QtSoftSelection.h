@@ -12,6 +12,8 @@
 // active/inactive state.
 #pragma once
 
+#include <cmath>
+
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QColor>
@@ -19,6 +21,29 @@
 #include <QProgressBar>
 #include <QString>
 
+// The accent to draw the tree's small SOLID GLYPHS in -- the expand/collapse
+// triangles, the connector lines, the selected row's left stripe.
+//
+// The one rule, shared by every platform: take the accent as the desktop chose
+// it and clamp its HSL LIGHTNESS. A dark accent passes through untouched; a
+// light one -- the default macOS system blue, a pastel desktop accent -- is
+// deepened along its own hue (hue and saturation kept, so it stays the user's
+// colour) until it carries at glyph size. Only these marks need it: at a few
+// pixels wide they wash out on the light tree where the very same accent works
+// fine as a row-sized tint or a filled selection, which is why the accent
+// itself is NOT corrected at the chokepoint (JV 2026-07-19 / 2026-07-21).
+//
+// One knob (the clamp), one place: the chokepoint (QtApp.cpp) fetches the
+// accent per platform and everything from there -- including this -- is shared,
+// so the same chosen accent gives the same glyphs everywhere.
+inline QColor Qt_ChromeAccent()
+{
+    QColor c = QApplication::palette().color(QPalette::Active,
+                                             QPalette::Highlight);
+    if (c.lightnessF() > 0.40f)
+        c.setHslF(qMax(0.0f, c.hslHueF()), c.hslSaturationF(), 0.40f);
+    return c;
+}
 // The soft selection/hover tint, derived PURELY from the live theme accent
 // (QPalette::Active/Highlight) blended OVER the Base background into an OPAQUE
 // colour -- computed here rather than left as a translucent QSS wash.

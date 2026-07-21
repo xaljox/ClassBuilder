@@ -253,6 +253,10 @@ void CodeEditor::applyThemeAccent()
     // can paint the text-edit selection in its OWN selection colour, not the
     // accent. Base/Text (white/black) are set once in the constructor and left
     // untouched here -- only the accent-derived roles need re-deriving.
+    // The accent AS CHOSEN, like every filled selection in CB: a text selection
+    // is a row-sized fill, so it does not need the deepening the tree's small
+    // glyphs get (Qt_ChromeAccent) -- and its HighlightedText is derived at the
+    // chokepoint, so a light accent gets black text rather than white.
     const QPalette appPal = QApplication::palette();
     QPalette pal = palette();
     pal.setColor(QPalette::Highlight,

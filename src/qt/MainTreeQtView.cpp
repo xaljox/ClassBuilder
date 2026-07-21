@@ -434,7 +434,17 @@ MainTreeQtView::MainTreeQtView(DataModelDoc* pDataModelDoc, void* ownerHwnd,
     // QAction, so shortcuts and the enable/disable gating are unchanged.
     QWidget* toolBar = new QWidget(this);
     FlowLayout* flow = new FlowLayout(toolBar, 0, 1, 1);
-    QSizePolicy tbPolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+    // Vertically PREFERRED, not Minimum. QLayout::totalSizeHint() substitutes
+    // heightForWidth(the layout's MINIMUM width) into a hfw layout's hint, which
+    // for a wrapping strip is every button stacked in ONE column (~550px). A
+    // vertical policy without the shrink flag (Minimum) makes Qt take that hint
+    // as the widget's minimum (qSmartMinSize -> max(sizeHint, minSizeHint)), and
+    // that minimum propagated up through the pane and the dock to the SHELL: the
+    // main window could not be made shorter than ~730px (JV 2026-07-21). With
+    // Preferred the minimum comes from the layout's real minimumSize (one button
+    // row) instead, while the wrapping is unaffected -- QBoxLayout re-derives a
+    // hfw item's height from heightForWidth(actual width) when it lays out.
+    QSizePolicy tbPolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     tbPolicy.setHeightForWidth(true);
     toolBar->setSizePolicy(tbPolicy);
 #ifdef __APPLE__

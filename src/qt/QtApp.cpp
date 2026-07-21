@@ -304,47 +304,102 @@ static void Cb_MacDisableFontSmoothing()
 
 namespace {
 
-// THE single point that fills the app-wide accent per platform. Everything
-// theme-derived -- tree chrome/triangles, the selection & hover tint, the
-// editor text selection, diagram selection -- keys off QPalette::Active/
-// Highlight, so this is the one place the "main accent" is decided:
-//   * macOS  -- the VIVID system accent (QPalette::Accent = NSColor
-//     controlAccentColor, e.g. #0A60FF for the default blue). Qt's macOS
-//     Highlight role is the PALE text-selection wash (~#A5CDFF) -- unusable as
-//     the app accent (near-invisible tree chrome, washed-out selections) --
-//     which is why a hardcoded deep blue (#0A4DA8) lived here first. That
-//     darker pin is no longer needed: the unified soft tint keeps the tree
-//     gutter light, so the chrome never flips to white and the system accent
-//     is contrasty enough (JV 2026-07-19). Pinning Highlight to the Accent
-//     role makes the styled context menus the SAME blue as the native menu
-//     bar's highlight, and CB follows the user's chosen accent colour, like
-//     Windows/Linux. Also pinned: the light-grey dialog Window / white Base
-//     that make edit boxes pop. Re-applied on every ApplicationPaletteChange
-//     (the Accent role tracks a live accent change; a light/dark switch can't
-//     wipe the rest).
-//   * Windows / Linux -- the SYSTEM accent is the source; nothing to fill, so
-//     this is a no-op and CB simply follows the desktop's chosen accent.
+// The accent CB last wrote into the palette, so the fetch below can tell a
+// fresh system value apart from CB's own write coming back at it.
+QColor g_writtenAccent;
+QColor g_systemAccent;
+
+// THE one platform-specific step in the whole colour system: fetch the accent
+// the DESKTOP was set to. Nothing is decided here -- no contrast, no darkening,
+// no per-OS look -- only "which colour did the user pick". Everything after this
+// point is shared code, so the same chosen accent gives the same result on every
+// platform, and every platform can be set to its own.
+//
+// Where that colour lives differs per platform, and the difference is not
+// cosmetic -- each OS hands Qt a DERIVED shade, and a different derivation:
+//   * Windows -- DWM's AccentColor: the swatch itself, from the Personalization
+//     page. Both QPalette::Highlight AND ::Accent come back as a darker rung of
+//     the shade ladder Windows generates around that swatch (measured on a
+//     #258292 accent: Qt reports #1D6978), so using them would mean the same
+//     chosen colour renders darker on Windows than on the other platforms.
+//   * macOS -- QPalette::Accent (NSColor controlAccentColor), the colour the
+//     native menus highlight with. NOT Highlight: on macOS that role is the pale
+//     text-selection wash (~#A5CDFF), far too light to be the app accent.
+//   * Linux -- QPalette::Accent as the theme fills it, Highlight otherwise.
+// So the fetch is per-platform on purpose; everything after it is not.
+QColor Cb_SystemAccent()
+{
+    const QPalette pal = qApp->palette();
+    QColor accent;
+#ifdef _WIN32
+    const QSettings dwm("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\DWM",
+                        QSettings::NativeFormat);
+    const QVariant v = dwm.value("AccentColor");
+    if (v.isValid())
+    {
+        const uint abgr = v.toUInt();          // 0xAABBGGRR
+        accent = QColor(int(abgr & 0xFF), int((abgr >> 8) & 0xFF),
+                        int((abgr >> 16) & 0xFF));
+    }
+#else
+    accent = pal.color(QPalette::Active, QPalette::Accent);
+#endif
+
+    // Reading back CB's own write is not a fetch: keep the last real system
+    // value in that case (Accent is untouched by CB, but Highlight -- the
+    // fallback below -- is not).
+    if (!accent.isValid() || accent == g_writtenAccent)
+        accent = pal.color(QPalette::Active, QPalette::Highlight);
+    if (accent.isValid() && accent != g_writtenAccent)
+        g_systemAccent = accent;
+    return g_systemAccent.isValid() ? g_systemAccent : accent;
+}
+
+// THE single point that decides the app-wide accent -- and from here on it is
+// platform-INDEPENDENT: the fetched accent lands in QPalette::Highlight with a
+// derived HighlightedText beside it, and everything theme-derived downstream --
+// tree chrome/triangles, the selection & hover tint, the editor text selection,
+// diagram selection, Qt's own widget selections -- keys off that one colour.
+// The only per-element derivation is the tree glyphs' lightness clamp
+// (Qt_ChromeAccent, QtSoftSelection.h), which is shared code too.
 // Only writes the palette when it actually differs, so calling this from the
 // ApplicationPaletteChange handler (below) can't loop.
 void Cb_ApplyAccentPalette()
 {
-#ifdef __APPLE__
-    const QColor accent =
-        qApp->palette().color(QPalette::Active, QPalette::Accent);
-    const QColor dialogGrey(0xEC, 0xEC, 0xEC);
+    // Dev hook, every platform: CB_FORCE_ACCENT=#rrggbb stands in for the
+    // desktop's accent for this run, so a LIGHT accent (where the tree glyphs'
+    // clamp kicks in) can be exercised on a machine whose own accent is dark,
+    // and the same value can be compared across platforms. Unset -> the real
+    // system accent, no effect at all.
+    const QString forced = qEnvironmentVariable("CB_FORCE_ACCENT");
+    const QColor accent = (!forced.isEmpty() && QColor::isValidColorName(forced))
+                              ? QColor(forced) : Cb_SystemAccent();
+
     QPalette want = qApp->palette();
-    want.setColor(QPalette::Active,   QPalette::Highlight, accent);
-    want.setColor(QPalette::Inactive, QPalette::Highlight, accent);
-    want.setColor(QPalette::Active,   QPalette::HighlightedText, Qt::white);
-    want.setColor(QPalette::Inactive, QPalette::HighlightedText, Qt::white);
-    want.setColor(QPalette::Active,   QPalette::Window, dialogGrey);
-    want.setColor(QPalette::Inactive, QPalette::Window, dialogGrey);
+#ifdef __APPLE__
+    // NOT accent-related, and the only per-OS colour left: macOS' near-white
+    // dialog background makes edit boxes disappear, so the dialog Window is a
+    // light grey against a white Base.
+    want.setColor(QPalette::Active,   QPalette::Window, QColor(0xEC, 0xEC, 0xEC));
+    want.setColor(QPalette::Inactive, QPalette::Window, QColor(0xEC, 0xEC, 0xEC));
     want.setColor(QPalette::Active,   QPalette::Base,   Qt::white);
     want.setColor(QPalette::Inactive, QPalette::Base,   Qt::white);
+#endif
+    // The accent goes in AS CHOSEN -- no correction here. A light accent is
+    // perfectly readable as a row-sized tint or a filled selection; only the
+    // small solid tree glyphs wash out at that size, and they deepen it
+    // themselves (Qt_ChromeAccent).
+    // Text ON the accent: whichever of black/white it carries better -- derived,
+    // not assumed white (a light accent needs black).
+    const QColor onAccent =
+        (accent.lightnessF() < 0.6f) ? QColor(Qt::white) : QColor(Qt::black);
+    want.setColor(QPalette::Active,   QPalette::Highlight, accent);
+    want.setColor(QPalette::Inactive, QPalette::Highlight, accent);
+    want.setColor(QPalette::Active,   QPalette::HighlightedText, onAccent);
+    want.setColor(QPalette::Inactive, QPalette::HighlightedText, onAccent);
     if (want != qApp->palette())
         qApp->setPalette(want);
-#endif
-    // Windows / Linux: intentionally nothing -- the system accent is authoritative.
+    g_writtenAccent = accent;
 }
 
 // The desktop accent/theme changed while CB is open: re-derive EVERY widget
