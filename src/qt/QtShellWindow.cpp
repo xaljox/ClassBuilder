@@ -740,6 +740,13 @@ void QtShellWindow::buildMenus()
     _actSettings = project->addAction("&Settings...", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectSettings();
     });
+    // Keep it in the Project menu on macOS. Qt's Cocoa menu merges any action
+    // whose text matches a heuristic ("settings", "preferences", "options"...)
+    // into the application menu as Preferences (Cmd+,) -- so "Project > Settings"
+    // silently vanished from the Project menu here, unlike Windows/Linux. These
+    // are per-document PROJECT settings, not app preferences, so pin NoRole to
+    // stop the relocation (no-op off macOS). JV 2026-07-21.
+    _actSettings->setMenuRole(QAction::NoRole);
     _actAddSerialize = project->addAction("Add Seriali&ze...", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectAddSerialize();
     });
