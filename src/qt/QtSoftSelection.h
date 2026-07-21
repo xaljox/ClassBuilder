@@ -104,7 +104,14 @@ inline void Qt_ApplySoftSelection(QAbstractItemView* view)
     view->setProperty("cbSoftSelection", true);
     const QColor sel   = Qt_SoftSelectionColor(0.28);
     const QColor hover = Qt_SoftSelectionColor(0.10);
+    // outline:0 -- no focus ring on the current row. The style draws a hard dark
+    // rectangle around it, and in a popup the current row ALWAYS has focus, so it
+    // sits there permanently as a black band over the soft tint. Exactly the same
+    // ring CbTreeWidget switches off (its QSS carries the same rule since JV
+    // asked for the left stripe instead, 2026-07-18); the popups simply never got
+    // it (JV 2026-07-21). The selection is already marked by the tint below.
     view->setStyleSheet(QString(
+        "QAbstractItemView { outline: 0px; }"
         "QAbstractItemView::item:selected {"
         "  background: rgb(%1, %2, %3);"
         "  color: palette(text);"
