@@ -38,24 +38,30 @@ QString Qt_CompactMenuStyleSheet()
     if (diff < 48)
         dis = blend(bg, text, 0.45);
 
-    // Selected item: the FULL theme accent with its highlighted text -- so the
-    // right-click menus match the tree's context menu (and the native GNOME/
-    // macOS menus), instead of the old neutral grey hover (JV 2026-07-18). The
-    // separator/border stay theme-relative greys derived from the menu
-    // background, so they follow a light/dark theme automatically.
-    const QColor accent   = pal.color(QPalette::Active, QPalette::Highlight);
-    const QColor accentTx = pal.color(QPalette::Active, QPalette::HighlightedText);
+    // Separator + border: greys DERIVED from the menu background toward the text
+    // colour, never a palette role. No role is reliable here -- measured on
+    // Ubuntu 26.04 / GNOME (Fusion) the `mid` role is #ffffff while the menu
+    // background (Base) is #fcfcfc, so a `palette(mid)` separator painted WHITE
+    // on near-white: the gap was reserved but no line was visible (JV
+    // 2026-07-21). Deriving from the background guarantees contrast in a light
+    // AND a dark theme by construction.
     const QColor sep    = blend(bg, text, 0.28);
     const QColor border = blend(bg, text, 0.40);
 
+    // The accent parts stay palette(...) REFS, not baked hex: Qt resolves them
+    // live, so menus keep following an accent change even in the app-wide sheet
+    // (built once at startup). Only the derived greys above have to be concrete.
+    // `background: transparent` on ::item is deliberate -- the Windows 11 style
+    // otherwise paints the item its own flat grey over the menu background.
     return QString(
-        "QMenu { background:%1; border:1px solid %2; }"
-        "QMenu::item { padding:2px 28px 2px 12px; color:%3; }"
-        "QMenu::item:selected { background:%4; color:%7; }"
-        "QMenu::item:disabled { color:%5; }"
-        "QMenu::separator { height:1px; background:%6; margin:3px 6px; }")
-        .arg(bg.name(), border.name(), text.name(),
-             accent.name(), dis.name(), sep.name(), accentTx.name());
+        "QMenu { background:palette(base); border:1px solid %1; padding:2px; }"
+        "QMenu::item { padding:2px 28px 2px 12px; color:palette(text);"
+        " background:transparent; }"
+        "QMenu::item:selected { background:palette(highlight);"
+        " color:palette(highlighted-text); }"
+        "QMenu::item:disabled { color:%2; }"
+        "QMenu::separator { height:1px; background:%3; margin:3px 6px; }")
+        .arg(border.name(), dis.name(), sep.name());
 }
 
 namespace {

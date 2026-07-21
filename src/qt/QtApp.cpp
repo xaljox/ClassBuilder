@@ -28,6 +28,7 @@
 #include "CbTreeWidget.h"      // live accent re-derive (Cb_OnAppPaletteChanged)
 #include "CodeEditor.h"
 #include "QtSoftSelection.h"   // Qt_ApplySoftSelection (popup re-tint)
+#include "QtMenuStyle.h"       // Qt_CompactMenuStyleSheet (the one menu sheet)
 #ifndef _WIN32   // macOS + Linux: file-open event + button-font filter use these
 #include <QFileOpenEvent>
 #include <QPushButton>
@@ -692,25 +693,14 @@ void Qt_EnsureApplication()
     // rebuilding the sheet. macOS keeps its NATIVE menu BAR regardless -- that
     // is an NSMenu owned by the OS, not a QMenu -- so this reaches its popup
     // menus only.
-    sheet +=
-        "QMenu {"
-        "  background-color: palette(base);"
-        "  border: 1px solid palette(mid);"
-        "  padding: 2px;"
-        "}"
-        "QMenu::item {"
-        "  padding: 2px 28px 2px 12px;"   // compact, matches Qt_CompactMenuStyleSheet
-        "  background: transparent;"
-        "}"
-        "QMenu::item:selected {"
-        "  background-color: palette(highlight);"
-        "  color: palette(highlighted-text);"
-        "}"
-        "QMenu::separator {"
-        "  height: 1px;"
-        "  background: palette(mid);"
-        "  margin: 4px 6px;"
-        "}";
+    // ONE source for every menu in CB: the same sheet the explicitly-styled
+    // context menus get (Qt_ApplyCompactMenuStyle), so a menu-bar dropdown and a
+    // right-click menu are identical on every platform. It also fixes the
+    // invisible separator/border this block used to have: `palette(mid)` is
+    // #ffffff on Ubuntu/GNOME while the menu background is #fcfcfc, so both were
+    // painted white on near-white. QtMenuStyle derives those greys from the
+    // background instead; the accent parts stay live palette() refs.
+    sheet += Qt_CompactMenuStyleSheet();
     if (!sheet.isEmpty())
         qApp->setStyleSheet(sheet);
 
