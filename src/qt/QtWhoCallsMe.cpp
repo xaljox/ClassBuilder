@@ -13,6 +13,10 @@
 #include <QKeyEvent>
 #include <QListWidget>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QStyle>
+#include <QStyledItemDelegate>
+#include <QStyleOptionViewItem>
 #include <QVariant>
 
 #define FORWARD_ONLY
@@ -25,6 +29,66 @@ struct Caller
 {
     QString display;
     Method* pMethod = nullptr;
+};
+
+// The direct-pick shortcut label for a popup row: Cmd+1..9 on macOS,
+// Ctrl+1..9 elsewhere. Kept in lockstep with the completion popup's
+// rowShortcutLabel (CodeEditor.cpp) so the two read consistently -- nine
+// slots, empty past the ninth row.
+QString rowShortcutLabel(int row)
+{
+    if (row < 0 || row >= 9)
+        return QString();
+#ifdef __APPLE__
+    return QChar(0x2318) + QString::number(row + 1);        // ⌘1
+#else
+    return "Ctrl+" + QString::number(row + 1);
+#endif
+}
+
+// Row painter: the base delegate draws the icon + caller text; we add the
+// row's direct-pick shortcut right-aligned in a muted colour, mirroring the
+// completion popup's CompletionItemDelegate. Disabled rows -- the
+// "(no callers found)" placeholder -- get no shortcut.
+class CallerItemDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+protected:
+    void paint(QPainter* painter, const QStyleOptionViewItem& option,
+               const QModelIndex& index) const override
+    {
+        QStyledItemDelegate::paint(painter, option, index);
+
+        if (!(option.state & QStyle::State_Enabled))
+            return;
+        const QString hint = rowShortcutLabel(index.row());
+        if (hint.isEmpty())
+            return;
+
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        const QWidget* w = opt.widget;
+        QStyle* style = w ? w->style() : QApplication::style();
+        const QRect textRect =
+            style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
+
+        // The soft accent tint keeps a selected row light, so the normal
+        // Text colour muted with alpha reads in every state (same reasoning
+        // as the completion delegate).
+        QPalette::ColorGroup cg = (option.state & QStyle::State_Active)
+            ? QPalette::Normal : QPalette::Inactive;
+        QColor c = opt.palette.color(cg, QPalette::Text);
+        c.setAlpha(120);
+
+        painter->save();
+        painter->setFont(opt.font);
+        painter->setPen(c);
+        painter->drawText(textRect.adjusted(0, 0, -6, 0),
+                          Qt::AlignRight | Qt::AlignVCenter, hint);
+        painter->restore();
+    }
 };
 
 // The popup list itself: QAbstractItemView ignores Esc instead of closing
@@ -59,6 +123,20 @@ protected:
         if (event->key() == Qt::Key_Escape)
         {
             close();
+            return;
+        }
+        // Cmd+1..9 (mac; ControlModifier = the Cmd key there) / Ctrl+1..9:
+        // activate the Nth row directly, matching the completion popup (see
+        // rowShortcutLabel). Keypad digits carry KeypadModifier on macOS --
+        // mask it out. The disabled "(no callers found)" row is skipped.
+        const Qt::KeyboardModifiers mods =
+            event->modifiers() & ~Qt::KeypadModifier;
+        if (mods == Qt::ControlModifier &&
+            event->key() >= Qt::Key_1 && event->key() <= Qt::Key_9)
+        {
+            if (QListWidgetItem* row = item(event->key() - Qt::Key_1))
+                if (row->flags() & Qt::ItemIsEnabled)
+                    emit itemActivated(row);
             return;
         }
         // macOS: QAbstractItemView only emits itemActivated on double-click
@@ -131,6 +209,8 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
     // Selection look: the tree's soft accent tint, matching the completion
     // popup (the two must read consistently) -- see QtSoftSelection.h.
     Qt_ApplySoftSelection(list);
+    // ...and the same right-aligned Ctrl/Cmd+1..9 direct-pick shortcuts.
+    list->setItemDelegate(new CallerItemDelegate(list));
 
     // Compact rows via an explicit per-item size hint -- the windows11
     // style pads list items touch-friendly tall (a stylesheet padding
@@ -146,14 +226,18 @@ void Qt_ShowWhoCallsMe(CodeEditor* editor, Method* pMethod)
         item->setSizeHint(QSize(metrics.horizontalAdvance(item->text()) + 48,
                                 rowHeight));
     }
-    for (const Caller& caller : callers)
+    for (int i = 0; i < callers.size(); ++i)
     {
+        const Caller& caller = callers.at(i);
         auto* item = new QListWidgetItem(caller.display, list);
         item->setIcon(Qt_ModelIcon(caller.pMethod->GetIcon()));
         item->setData(Qt::UserRole,
                       QVariant::fromValue<void*>(caller.pMethod));
-        item->setSizeHint(QSize(metrics.horizontalAdvance(caller.display) + 48,
-                                rowHeight));
+        int w = metrics.horizontalAdvance(caller.display) + 48;
+        const QString hint = rowShortcutLabel(i);   // reserve the shortcut column
+        if (!hint.isEmpty())
+            w += metrics.horizontalAdvance(hint) + 12;
+        item->setSizeHint(QSize(w, rowHeight));
     }
     if (!callers.isEmpty())
         list->setCurrentRow(0);
