@@ -30,6 +30,7 @@
 #include "QtSoftSelection.h"   // Qt_ApplySoftSelection (popup re-tint)
 #include "QtMenuStyle.h"       // Qt_CompactMenuStyleSheet (the one menu sheet)
 #include "QtFieldStyle.h"      // Qt_InstallFieldFrameStyle (multi-line = single-line)
+#include "QtDesktopTheme.h"    // Linux: accent + icon theme (no platform theme)
 #ifndef _WIN32   // macOS + Linux: file-open event + button-font filter use these
 #include <QFileOpenEvent>
 #include <QPushButton>
@@ -361,14 +362,16 @@ QColor Cb_SystemAccent()
 #elif defined(__APPLE__)
     accent = pal.color(QPalette::Active, QPalette::Accent);
 #else
-    // Linux: the desktop accent lands in Highlight, NOT in Accent. Measured on
-    // Ubuntu 26.04 / GNOME (Fusion style): with the desktop accent set to teal,
-    // Highlight = #308280 (the chosen colour) while Accent stayed at Qt's
-    // built-in default #308cc6 blue. That default is a VALID colour, so the
-    // isValid() fallback below never fired and every desktop accent rendered as
-    // that blue. Read Highlight directly here; CB's own write-back is handled by
-    // the g_writtenAccent check below (which keeps the last real system value).
-    accent = pal.color(QPalette::Active, QPalette::Highlight);
+    // Linux: ask the xdg-desktop-portal first -- the interface the desktop
+    // publishes its accent on (see QtDesktopTheme.h). The palette is only a
+    // fallback here, and a poor one for the static build: the accent reaches
+    // QPalette::Highlight through the gtk3 platform-theme plugin, which a static
+    // Qt without GTK does not have, so it stays at Qt's default #308cc6 blue --
+    // exactly what CB turned after the static-Qt switch (measured 2026-07-22).
+    // With the distro (dynamic) Qt the palette does carry it, hence the fallback.
+    accent = Cb_PortalAccent();
+    if (!accent.isValid())
+        accent = pal.color(QPalette::Active, QPalette::Highlight);
 #endif
 
     // Reading back CB's own write is not a fetch: keep the last real system
@@ -516,6 +519,17 @@ void Cb_OnAppPaletteChanged()
         }
     }
 }
+
+// Trampoline for the portal watch, which takes a plain function pointer. Routes
+// into the SAME re-derive the palette watcher below uses, so a theme change has
+// one reaction point however it was noticed.
+// NOTE: the ICON theme is deliberately NOT refreshed here. It does move with the
+// accent on Ubuntu (Yaru-prussiangreen <-> Yaru-orange), but the portal fires
+// this signal BEFORE GNOME has written the new icon theme to dconf, so reading
+// it here left CB exactly one change behind (observed). It is read when a file
+// dialog is about to be built instead -- by then the value has landed, and only
+// a handful of dialogs care (JV's suggestion, 2026-07-22).
+void Cb_AccentChangedFromPortal() { Cb_OnAppPaletteChanged(); }
 
 // Watches the one event that announces a desktop accent/theme change --
 // QEvent::ApplicationPaletteChange, delivered to qApp. Installed on qApp so it
@@ -796,6 +810,17 @@ void Qt_EnsureApplication()
     // changes while CB is open (no restart, no mixed colours). Cross-platform;
     // a no-op in practice on macOS (its accent is pinned) but harmless there.
     qApp->installEventFilter(new CbAccentWatcher(qApp));
+
+    // Linux: the portal SIGNALS accent changes -- the trigger Qt never gives us
+    // (measured on Ubuntu/GNOME and reported on the Pi: switching the accent
+    // delivers no ApplicationPaletteChange at all, so the filter above can never
+    // fire there). No-op where there is no portal.
+    Cb_StartPortalAccentWatch(&Cb_AccentChangedFromPortal);
+
+    // ... and the icon theme, which the portal does NOT publish: without it Qt
+    // keeps its own Adwaita default and the file dialogs show blue folders next
+    // to CB's accent-coloured UI (JV 2026-07-22).
+    Cb_ApplyDesktopIconTheme();
 
     // Multi-line input fields get the SINGLE-line field's frame, so both read as
     // one kind of control -- focus marking included. Must come after the app

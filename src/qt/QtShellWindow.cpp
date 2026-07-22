@@ -5,6 +5,7 @@
 #include "QtShell.h"
 #include "QtApp.h"            // Qt_EnsureApplication
 #include "QtSoftSelection.h"  // Qt_ThemeLineColor (the one hairline grey)
+#include "QtDesktopTheme.h"   // Cb_ApplyDesktopIconTheme (folders in file dialogs)
 #include "QtModelText.h"      // toQ
 #include "MainTreeQtView.h"
 #include "QtAbout.h"          // Qt_ShowAboutDialog
@@ -676,10 +677,6 @@ void QtShellWindow::emergencySaveAll()
 //  * macOS' native panel shows nothing behind QFileDialog's static helpers in
 //    this app anyway, so Qt's dialog is the only one that works there.
 // CB is not sandboxed, so losing the native/portal chooser costs nothing.
-static QFileDialog::Options cbFileDialogOpts()
-{
-    return QFileDialog::DontUseNativeDialog;
-}
 
 void QtShellWindow::buildMenus()
 {
@@ -691,7 +688,7 @@ void QtShellWindow::buildMenus()
     file->addAction("&Open...", QKeySequence::Open, this, [this] {
         const QString path = QFileDialog::getOpenFileName(
             this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-            nullptr, cbFileDialogOpts());
+            nullptr, Cb_FileDialogOptions());
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -866,7 +863,7 @@ void QtShellWindow::buildToolBar()
                             "Open", this, [this] {
         const QString path = QFileDialog::getOpenFileName(
             this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-            nullptr, cbFileDialogOpts());
+            nullptr, Cb_FileDialogOptions());
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -1649,7 +1646,7 @@ bool QtShellWindow::saveDocumentAs()
     QString initial = toQ(doc->GetPathName());
     QString path = QFileDialog::getSaveFileName(
         this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-        nullptr, cbFileDialogOpts());
+        nullptr, Cb_FileDialogOptions());
     if (path.isEmpty())
         return false;
     if (!path.endsWith(".cbz", Qt::CaseInsensitive))

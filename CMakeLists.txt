@@ -130,6 +130,25 @@ if(WIN32)
 else()
     target_link_libraries(ClassBuilderQt PUBLIC Qt6::Widgets Qt6::Network)
 endif()
+# Linux: the desktop accent is read from the xdg-desktop-portal over D-Bus
+# (QtPortalAccent). It is NOT available through the palette here the way it is on
+# Windows (DWM registry) and macOS (Cocoa, inside the platform plugin): on Linux
+# that colour arrives via a separate gtk3 platform-theme plugin, which a static
+# Qt built without GTK simply does not have -- every accent then read back as
+# Qt's default blue. Asking the portal keeps GTK3 out of the runtime deps and
+# gets change SIGNALS for free. Optional: without QtDBus the code compiles to a
+# no-op and CB falls back to the palette.
+if(UNIX AND NOT APPLE)
+    find_package(Qt6 QUIET OPTIONAL_COMPONENTS DBus)
+    if(TARGET Qt6::DBus)
+        target_link_libraries(ClassBuilderQt PUBLIC Qt6::DBus)
+        target_compile_definitions(ClassBuilderQt PRIVATE CB_HAVE_DBUS)
+        message(STATUS "Qt: DBus found -- desktop accent read from the portal")
+    else()
+        message(STATUS "Qt: no DBus -- desktop accent falls back to the palette")
+    endif()
+endif()
+
 target_include_directories(ClassBuilderQt PRIVATE ${CB_INCLUDE_DIRS}
     "${CMAKE_CURRENT_SOURCE_DIR}/src/qt")   # AUTOUIC ui_*.h include bare "CodeEditor.h"
 

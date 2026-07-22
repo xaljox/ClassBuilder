@@ -10,7 +10,8 @@
 
 #include "QtClassDiagramView.h"   // bridge declaration
 #include "QtApp.h"                // Qt_EnsureApplication / Qt_ShowModeless
-#include "QtMenuStyle.h"          // Qt_ApplyCompactMenuStyle (consistent menus)
+#include "QtMenuStyle.h"
+#include "QtDesktopTheme.h"   // Cb_FileDialogOptions          // Qt_ApplyCompactMenuStyle (consistent menus)
 #include "QtModelText.h"          // toQ
 #include "QtRelationDiagramOnlyDialog.h"  // Qt_CreateRelationDiagramOnlyDialog
 #include "QtDependencyDialog.h"           // Qt_CreateDependencyDialog
@@ -4265,12 +4266,11 @@ void ClassDiagramQtView::exportSvg()
     if (def.isEmpty())
         def = "classdiagram";
     // Qt's own file dialog on every platform -- consistent with the File
-    // Open/Save panels (see QtShellWindow's cbFileDialogOpts): follows CB's
-    // software UI-scale and matches everywhere.
-    const QFileDialog::Options svgOpts = QFileDialog::DontUseNativeDialog;
+    // One door for every CB file dialog (Cb_FileDialogOptions): it picks the
+    // backend AND refreshes the icon theme -- see QtDesktopTheme.h.
     QString path = QFileDialog::getSaveFileName(
         this, "Export Diagram as SVG", def + ".svg", "SVG files (*.svg)",
-        nullptr, svgOpts);
+        nullptr, Cb_FileDialogOptions());
     if (path.isEmpty())
         return;
     if (!path.endsWith(".svg", Qt::CaseInsensitive))
