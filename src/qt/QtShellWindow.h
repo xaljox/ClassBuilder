@@ -88,6 +88,8 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* e) override;
+    // First show -> check the restored geometry is actually reachable (see .cpp).
+    void showEvent(QShowEvent* e) override;
 
     // Neutralizes the PHANTOM dock separator (the immovable boundary against
     // the zero-size central placeholder; its painting is suppressed by
@@ -178,6 +180,10 @@ private:
     QAction* _actSettings     = nullptr;
     QAction* _actAddSerialize = nullptr;
     QAction* _actRefreshIds   = nullptr;
+
+    // ensureOnScreen() runs once, on the first show.
+    void ensureOnScreen();
+    bool _placementChecked = false;
 
     // App toolbar twins (enable-managed in updateToolBarEnables).
     QAction* _tbNew         = nullptr;

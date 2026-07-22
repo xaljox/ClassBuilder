@@ -21,6 +21,8 @@
 #include <QMetaObject>
 #include <QTimer>
 #include <QFileDialog>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QFileInfo>
 #include <QLabel>
 #include <QMenu>
@@ -611,6 +613,11 @@ QtShellWindow::QtShellWindow()
     if (!restored || width() < 700 || height() < 500)
         resize(1100, 750);
 
+    // The POSITION is checked separately, and only once the window is on screen
+    // -- see ensureOnScreen(), called from showEvent(). Not here: in the
+    // constructor there is no platform window yet, so the frame is unknown and
+    // any move() we make is overwritten when the window is actually shown.
+
     buildMenus();
     buildToolBar();
     buildStatusBar();
@@ -686,9 +693,8 @@ void QtShellWindow::buildMenus()
         newDocument();
     });
     file->addAction("&Open...", QKeySequence::Open, this, [this] {
-        const QString path = QFileDialog::getOpenFileName(
-            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-            nullptr, Cb_FileDialogOptions());
+        const QString path = Cb_OpenFileName(
+            this, "Open Model", "ClassBuilder CBZ Files (*.cbz *.CBZ)");
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -861,9 +867,8 @@ void QtShellWindow::buildToolBar()
     });
     _tbOpen = tb->addAction(QIcon::fromTheme(QStringLiteral("document-open"), Qt_ToolBarIcon(TG_FILE_OPEN)),
                             "Open", this, [this] {
-        const QString path = QFileDialog::getOpenFileName(
-            this, "Open Model", QString(), "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-            nullptr, Cb_FileDialogOptions());
+        const QString path = Cb_OpenFileName(
+            this, "Open Model", "ClassBuilder CBZ Files (*.cbz *.CBZ)");
         if (!path.isEmpty())
             openDocument(path);
     });
@@ -1644,9 +1649,8 @@ bool QtShellWindow::saveDocumentAs()
     if (!doc)
         return false;
     QString initial = toQ(doc->GetPathName());
-    QString path = QFileDialog::getSaveFileName(
-        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz *.CBZ)",
-        nullptr, Cb_FileDialogOptions());
+    QString path = Cb_SaveFileName(
+        this, "Save Model As", initial, "ClassBuilder CBZ Files (*.cbz *.CBZ)");
     if (path.isEmpty())
         return false;
     if (!path.endsWith(".cbz", Qt::CaseInsensitive))
@@ -1783,6 +1787,46 @@ void QtShellWindow::checkSourceFreshness()
     }
     sinceLast.restart();   // stamp after the (possibly modal) checks finish
     checking = false;
+}
+
+// A restored geometry can put the window where the user cannot reach it: saved
+// on a monitor that is no longer attached, or at coordinates that no longer
+// exist. Qt restores such a rect happily -- you get a taskbar button and nothing
+// else, and a window you cannot see is a window you cannot drag back
+// (JV 2026-07-22). Only the app can judge this, and only AFTER the window is up:
+// in the constructor there is no platform window yet, so the frame is unknown
+// and a move() there is undone by the real placement on show.
+//
+// Require a genuinely grabbable piece -- title bar plus some width -- to land on
+// SOME available screen; otherwise centre on the primary one. Deliberately not a
+// full-containment test: a window the user parked half over an edge stays put.
+void QtShellWindow::ensureOnScreen()
+{
+    if (isMaximized() || isFullScreen())
+        return;                       // cannot be stranded; the WM owns the rect
+
+    const QRect frame = frameGeometry();
+    for (const QScreen* screen : QGuiApplication::screens())
+    {
+        const QRect on = screen->availableGeometry().intersected(frame);
+        if (on.width() >= 120 && on.height() >= 40)
+            return;
+    }
+
+    const QRect avail = QGuiApplication::primaryScreen()->availableGeometry();
+    resize(qMin(width(), avail.width() - 80), qMin(height(), avail.height() - 80));
+    move(avail.center() - QPoint(width() / 2, height() / 2));
+}
+
+void QtShellWindow::showEvent(QShowEvent* e)
+{
+    QMainWindow::showEvent(e);
+    if (_placementChecked)
+        return;
+    _placementChecked = true;
+    // Deferred: the platform window has its final geometry only after this
+    // event has been handled.
+    QTimer::singleShot(0, this, [this] { ensureOnScreen(); });
 }
 
 void QtShellWindow::closeEvent(QCloseEvent* e)
