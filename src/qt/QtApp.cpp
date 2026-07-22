@@ -699,47 +699,29 @@ static void Cb_ApplyAppStyleSheet()
         "  padding: 0 3px;"
         "}";
 #endif
-    // MULTI-LINE edit fields -- macOS + Linux only, NOT Windows (JV 2026-07-21).
+    // Edit fields are deliberately NOT styled here -- but this is where one
+    // would look, so: a stylesheet can only APPROXIMATE the control frame. It
+    // reproduced the outline but not the inner contrast row the panel primitive
+    // paints, so a focused note field stayed visibly thinner than the text field
+    // beside it however the colour was tuned. Qt_InstallFieldFrameStyle() uses
+    // that primitive itself instead (QtFieldStyle.h) -- identical by
+    // construction, and it needs no colour of ours at all.
     //
-    // The gap this fills is narrow: a multi-line editor gets NO focus marking
-    // from Fusion at all, and on macOS the native hairline is a near-invisible
-    // grey on the derived panel colour with no halo surviving CB's styling -- so
-    // a focused note field was marked by nothing but the caret. Single-line
-    // fields are NOT styled: they already get a 1px focus frame natively, and
-    // adding ours only made them differ in WIDTH from the untouched controls
-    // beside them -- and chasing every remaining control to match is not worth it
-    // (JV 2026-07-21).
+    // Where the focus mark comes from now, per platform:
+    //   * Linux / Windows -- the native panel. Single-line fields are untouched;
+    //     the multi-line frame is routed PE_Frame -> PE_PanelLineEdit, so the
+    //     style draws both, in ITS colour (Fusion: highlight.darker(125)).
+    //   * macOS -- CB draws the ring for BOTH field kinds itself: once qApp has
+    //     any stylesheet, Qt wraps every widget in QStyleSheetStyle and the
+    //     native AppKit focus halo is dropped. That ring reads QPalette::
+    //     Highlight directly (QtFieldStyle.cpp).
     //
-    // Windows is out entirely: the Windows 11 style marks focus on the whole
-    // field family -- line edits, combo boxes, spin boxes -- with its accent
-    // underline, so styling only some of them put two field languages in one
-    // dialog. Extending the rule to combos is worse, not better: with a box rule
-    // and no ::drop-down rule QStyleSheetStyle falls back to the BASE style for
-    // the arrow (qstylesheetstyle.cpp, CC_ComboBox -> SC_ComboBoxArrow), so a
-    // classic triangle lands next to Fluent chevrons. Consistency INSIDE a dialog
-    // beats consistency across platforms here.
-    //
-    // The frame: the hairline grey (Qt_ThemeLineColor, same as the group boxes)
-    // 1px, and the ACCENT on focus -- also 1px, the width the native single-line
-    // frames use, so nothing thickens on focus and no padding compensation is
-    // needed (2px read as too heavy next to the untouched combo boxes).
-    //
-    // The focus accent is Qt_ChromeAccent(), NOT the raw palette(highlight):
-    // Fusion draws a focused single-line frame in highlight.darker(125) -- for a
-    // teal accent #266866 -- so the raw accent (#308280) put a visibly
-    // lighter/thinner line around the note field than around the text field
-    // beside it. Qt_ChromeAccent's lightness clamp lands on the same colour, so
-    // one derivation now serves both the tree glyphs and this ring. It is
-    // computed, not a palette() ref, so it only follows a live accent change
-    // because Cb_ApplyAppStyleSheet is re-run by the palette watcher.
-    // NOTE: the multi-line fields are NOT styled here any more. A stylesheet can
-    // only approximate the control frame -- it reproduced the outline but not
-    // the inner contrast row the panel primitive paints, so a focused note field
-    // stayed visibly thinner than the text field beside it however the colour
-    // was tuned. Qt_InstallFieldFrameStyle() routes their frame through that
-    // primitive instead (see QtFieldStyle.h), which is identical BY CONSTRUCTION
-    // and needs no colour of ours at all -- the disabled look comes back from
-    // the native style too.
+    // NONE of those use Qt_ChromeAccent(): its lightness clamp exists for the
+    // small tree glyphs only, so changing that clamp moves no field frame. (The
+    // clamp was briefly set to land exactly on Fusion's focused-field colour, and
+    // the comment claiming the ring keys off it outlived the QSS rule that did --
+    // it cost two people an afternoon of looking in the wrong place, JV
+    // 2026-07-22.)
     // Tooltips in the classic soft info-yellow (the Win32 look) on every
     // platform -- Qt's own tooltip colour is white-ish. Scoped to QToolTip,
     // so nothing else is touched.
