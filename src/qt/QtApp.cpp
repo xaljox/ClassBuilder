@@ -19,6 +19,10 @@
 #include <QIcon>
 #include <QScreen>
 #include <QSettings>
+#include <QTimer>
+#ifdef _WIN32
+#include <QAbstractNativeEventFilter>
+#endif
 #include <QString>
 #include <QWidget>
 #include <QAbstractItemView>
@@ -350,14 +354,29 @@ QColor Cb_SystemAccent()
     const QPalette pal = qApp->palette();
     QColor accent;
 #ifdef _WIN32
-    const QSettings dwm("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\DWM",
-                        QSettings::NativeFormat);
-    const QVariant v = dwm.value("AccentColor");
-    if (v.isValid())
+    // AccentColorMenu FIRST, DWM's AccentColor only as a fallback. Both hold the
+    // accent as 0xAABBGGRR, but they answer different questions: AccentColorMenu
+    // (== AccentPalette entry 4, what Settings shows as the chosen colour) is the
+    // accent for application UI, while DWM's AccentColor belongs to "show accent
+    // colour on title bars and window borders" -- a setting that can be OFF
+    // (ColorPrevalence=0, as here), leaving that value to lag behind what the
+    // rest of Windows already paints. CB reading it was why a fresh accent
+    // sometimes did not arrive (JV 2026-07-22).
+    for (const char* key : {
+             "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion"
+             "\\Explorer\\Accent/AccentColorMenu",
+             "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\DWM/AccentColor" })
     {
-        const uint abgr = v.toUInt();          // 0xAABBGGRR
-        accent = QColor(int(abgr & 0xFF), int((abgr >> 8) & 0xFF),
-                        int((abgr >> 16) & 0xFF));
+        const QVariant v = QSettings(QString::fromLatin1(key).section('/', 0, 0),
+                                     QSettings::NativeFormat)
+                               .value(QString::fromLatin1(key).section('/', 1));
+        if (v.isValid())
+        {
+            const uint abgr = v.toUInt();      // 0xAABBGGRR
+            accent = QColor(int(abgr & 0xFF), int((abgr >> 8) & 0xFF),
+                            int((abgr >> 16) & 0xFF));
+            break;
+        }
     }
 #elif defined(__APPLE__)
     accent = pal.color(QPalette::Active, QPalette::Accent);
@@ -531,9 +550,45 @@ void Cb_OnAppPaletteChanged()
 // a handful of dialogs care (JV's suggestion, 2026-07-22).
 void Cb_AccentChangedFromPortal() { Cb_OnAppPaletteChanged(); }
 
-// Watches the one event that announces a desktop accent/theme change --
+// Re-derive ONLY when the accent actually moved. The full re-derive walks every
+// widget, so it must not run on each activation; the fetch is a registry read
+// (Windows) or a palette read, which is cheap enough to do often.
+void Cb_ReDeriveIfAccentChanged()
+{
+    if (!qEnvironmentVariableIsEmpty("CB_FORCE_ACCENT"))
+        return;                       // the dev hook owns the accent this run
+    if (Cb_SystemAccent() != g_writtenAccent)
+        Cb_OnAppPaletteChanged();
+}
+
+// Coalesce a burst of notifications, and give the system a moment: Windows
+// broadcasts its colour messages BEFORE the new value is readable, so an
+// immediate registry read returns the OLD accent and CB would conclude nothing
+// changed.
+void Cb_ScheduleAccentRecheck()
+{
+    static bool pending = false;
+    if (pending)
+        return;
+    pending = true;
+    QTimer::singleShot(250, qApp, [] {
+        pending = false;
+        Cb_ReDeriveIfAccentChanged();
+    });
+}
+
+// Watches the event that ANNOUNCES a desktop accent/theme change --
 // QEvent::ApplicationPaletteChange, delivered to qApp. Installed on qApp so it
 // works on every platform without touching the per-platform CbApplication.
+//
+// It is not enough on its own: on Windows that event does not arrive reliably
+// for an accent change (CB sets an explicit application palette, which is
+// exactly the case where Qt stops propagating theme palette updates), so the
+// new colour was picked up only sometimes -- switching to another colour and
+// back usually shook it loose (JV 2026-07-22). Hence the two extra triggers:
+// the native colour messages (CbWinAccentFilter below) and a re-check whenever
+// CB becomes the active application, which covers the normal flow of changing
+// the colour in Settings and clicking back into CB.
 class CbAccentWatcher : public QObject
 {
 public:
@@ -543,9 +598,41 @@ protected:
     {
         if (e->type() == QEvent::ApplicationPaletteChange)
             Cb_OnAppPaletteChanged();
+        else if (e->type() == QEvent::ApplicationStateChange &&
+                 QApplication::applicationState() == Qt::ApplicationActive)
+            Cb_ScheduleAccentRecheck();
         return QObject::eventFilter(obj, e);
     }
 };
+
+#ifdef _WIN32
+// The messages Windows really sends when the accent changes. Qt may or may not
+// turn these into a palette change for us; reading them ourselves makes the
+// pick-up deterministic instead of "usually".
+class CbWinAccentFilter : public QAbstractNativeEventFilter
+{
+public:
+    bool nativeEventFilter(const QByteArray& type, void* message,
+                           qintptr*) override
+    {
+        if (type != "windows_generic_MSG" || !message)
+            return false;                     // not ours; never consume
+        const MSG* msg = static_cast<const MSG*>(message);
+        if (msg->message == WM_DWMCOLORIZATIONCOLORCHANGED)
+            Cb_ScheduleAccentRecheck();
+        else if (msg->message == WM_SETTINGCHANGE && msg->lParam)
+        {
+            // The accent lives behind the "ImmersiveColorSet" broadcast; other
+            // WM_SETTINGCHANGEs carry unrelated (or non-string) lParams.
+            const wchar_t* what = reinterpret_cast<const wchar_t*>(msg->lParam);
+            if (::IsBadStringPtrW(what, 64) == FALSE &&
+                ::lstrcmpiW(what, L"ImmersiveColorSet") == 0)
+                Cb_ScheduleAccentRecheck();
+        }
+        return false;
+    }
+};
+#endif
 
 } // namespace
 
@@ -810,6 +897,12 @@ void Qt_EnsureApplication()
     // changes while CB is open (no restart, no mixed colours). Cross-platform;
     // a no-op in practice on macOS (its accent is pinned) but harmless there.
     qApp->installEventFilter(new CbAccentWatcher(qApp));
+
+#ifdef _WIN32
+    // ... plus the native colour messages, because that Qt event does not
+    // arrive reliably for a Windows accent change (see CbWinAccentFilter).
+    qApp->installNativeEventFilter(new CbWinAccentFilter);
+#endif
 
     // Linux: the portal SIGNALS accent changes -- the trigger Qt never gives us
     // (measured on Ubuntu/GNOME and reported on the Pi: switching the accent
