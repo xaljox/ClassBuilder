@@ -13,7 +13,6 @@
 #include "QtModelText.h"             // toQ
 #include "CbPainter_QPainter.h"
 #include "QtHandleMetrics.h"         // QtHandle::grabToleranceModel
-#include "QtDiagramZoom.h"           // Zoom-toolbar routing registry
 #include "QtToolBarIcons.h"          // Qt_ToolBarIcon (real MFC toolbar glyphs)
 #include "CbPainter_QFontMetrics.h"  // headless text measurement for hit-test
 
@@ -3944,15 +3943,6 @@ void SequenceDiagramQtView::refreshUndoRedoEnables()
 }
 
 SequenceDiagramQtView::~SequenceDiagramQtView() = default;
-
-bool SequenceDiagramQtView::event(QEvent* e)
-{
-    if (e->type() == QEvent::WindowActivate)
-        Qt_SetActiveDiagramZoom(_canvas, [](QWidget* w, int op) {
-            static_cast<SequenceDiagramCanvas*>(w)->applyToolbarZoom(op);
-        });
-    return QDialog::event(e);
-}
 
 void SequenceDiagramQtView::exportSvg()
 {

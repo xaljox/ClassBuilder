@@ -846,21 +846,21 @@ void CodeEditor::keyPressEvent(QKeyEvent* event)
         const QString t = event->text();
         if (key == Qt::Key_0 || t == "0")
         {
-            applySharedZoom(_basePt);
+            zoomReset();
             event->accept();
             return;
         }
         if (key == Qt::Key_Plus || key == Qt::Key_Equal ||
             t == "+" || t == "=")
         {
-            applySharedZoom(_zoomPt + 1);
+            zoomStep(+1);
             event->accept();
             return;
         }
         if (key == Qt::Key_Minus || key == Qt::Key_Underscore ||
             t == "-" || t == "_")
         {
-            applySharedZoom(_zoomPt - 1);
+            zoomStep(-1);
             event->accept();
             return;
         }
@@ -1085,6 +1085,16 @@ CodeEditor::~CodeEditor()
 // Store the new zoom level and apply it to EVERY live editor, so all panes of
 // one logical edit (constructor init + body, the User Sections editors, ...)
 // scale together instead of independently. Bounds match applyEditorFont().
+void CodeEditor::zoomStep(int delta)
+{
+    applySharedZoom(_zoomPt + delta);
+}
+
+void CodeEditor::zoomReset()
+{
+    applySharedZoom(_basePt);
+}
+
 void CodeEditor::applySharedZoom(int pt)
 {
     s_zoomPt = qBound(6, pt, 32);

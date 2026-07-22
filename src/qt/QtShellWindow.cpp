@@ -7,7 +7,6 @@
 #include "QtSoftSelection.h"  // Qt_ThemeLineColor (the one hairline grey)
 #include "QtModelText.h"      // toQ
 #include "MainTreeQtView.h"
-#include "QtDiagramZoom.h"
 #include "QtAbout.h"          // Qt_ShowAboutDialog
 #include "QtCommandServer.h"  // QTcpServer-based command transport
 #include "QtToolBarIcons.h"   // CB_TOOLBAR_ICON_PX (shared toolbar icon size)
@@ -783,15 +782,16 @@ void QtShellWindow::buildMenus()
     });
     view->addSeparator();
 
-    _actZoomIn   = view->addAction("Zoom &In",   QKeySequence("Ctrl++"), [] { Qt_DiagramZoom(+1); });
-    _actZoomOut  = view->addAction("Zoom &Out",  QKeySequence("Ctrl+-"), [] { Qt_DiagramZoom(-1); });
-    _actZoomFull = view->addAction("Zoom &Full", [] { Qt_DiagramZoom(0); });
-    connect(view, &QMenu::aboutToShow, this, [this, actNewWindow] {
+    // NO Zoom items here. Zoom belongs to the view that owns it: the diagrams
+    // carry Zoom In/Out/Fit on their own toolbar, the code editors in their own
+    // View menu. Shell-level items could only guess a target -- they routed
+    // through a registry holding the last-ACTIVATED diagram canvas, so with a
+    // code editor in front they stayed enabled and zoomed a diagram that was
+    // not even visible (JV 2026-07-22). The registry existed because MFC could
+    // not reach the Qt views; with the shell items gone it had no callers left
+    // and is deleted.
+    connect(view, &QMenu::aboutToShow, this, [actNewWindow, this] {
         actNewWindow->setEnabled(activeDoc() != nullptr);
-        const bool on = Qt_DiagramZoomAvailable();
-        _actZoomIn->setEnabled(on);
-        _actZoomOut->setEnabled(on);
-        _actZoomFull->setEnabled(on);
     });
 
     // UI Scale: whole-app Qt scale factor (QT_SCALE_FACTOR, applied in

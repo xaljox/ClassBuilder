@@ -542,6 +542,30 @@ void MethodCodeDialog::buildMenu()
     ins->addAction("f&or (; ; ) {}", QKeySequence("Ctrl+Shift+F"), this, [ed]
         { insertControl(ed, "for (; ; )\n{\n}", 5); });
 
+    // --- View ----------------------------------------------------------
+    // Font zoom lives on the view that owns it. It used to sit in the SHELL's
+    // View menu, routed through a registry holding the last-ACTIVATED diagram
+    // canvas -- so with a code editor in front those items stayed enabled and
+    // silently zoomed a diagram that was not even visible (JV 2026-07-22).
+    // Diagrams carry the same three commands on their own toolbar.
+    //
+    // Hints only, no QKeySequence: the keys are handled by CodeEditor itself
+    // (keyPressEvent, which also covers Ctrl+wheel and the +/- shift asymmetry
+    // across layouts). Registering them here would route them through the
+    // dialog's cbMenuKey filter instead -- one dispatch path is enough, and it
+    // is the one that already works.
+    QMenu* viewMenu = bar->addMenu("&View");
+    const auto zoomHint = [](const char* keys) {
+        return QString("\t") +
+               QKeySequence(keys).toString(QKeySequence::NativeText);
+    };
+    viewMenu->addAction("Zoom &In" + zoomHint("Ctrl++"),
+                        ed, [ed] { ed->zoomStep(+1); });
+    viewMenu->addAction("Zoom &Out" + zoomHint("Ctrl+-"),
+                        ed, [ed] { ed->zoomStep(-1); });
+    viewMenu->addAction("&Reset Zoom" + zoomHint("Ctrl+0"),
+                        ed, [ed] { ed->zoomReset(); });
+
     _editMenu   = edit;
     _addMenu    = add;
     _insertMenu = ins;

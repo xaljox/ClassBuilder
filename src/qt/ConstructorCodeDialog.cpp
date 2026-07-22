@@ -578,6 +578,24 @@ void ConstructorCodeDialog::buildMenu()
     ins->addAction("f&or (; ; ) {}", QKeySequence("Ctrl+Shift+F"), this, [code]
         { insertControl(code, "for (; ; )\n{\n}", 5); });
 
+    // --- View ----------------------------------------------------------
+    // Font zoom on the view that owns it -- see MethodCodeDialog::buildMenu for
+    // why it moved off the shell's View menu. The zoom level is shared by every
+    // open editor (CodeEditor::applySharedZoom), so this dialog's two panes --
+    // init list and body -- always scale together whichever one has focus.
+    // Hints only, no QKeySequence: CodeEditor handles the keys itself.
+    QMenu* viewMenu = bar->addMenu("&View");
+    const auto zoomHint = [](const char* keys) {
+        return QString("\t") +
+               QKeySequence(keys).toString(QKeySequence::NativeText);
+    };
+    viewMenu->addAction("Zoom &In" + zoomHint("Ctrl++"),
+                        this, [this] { _focusEdit->zoomStep(+1); });
+    viewMenu->addAction("Zoom &Out" + zoomHint("Ctrl+-"),
+                        this, [this] { _focusEdit->zoomStep(-1); });
+    viewMenu->addAction("&Reset Zoom" + zoomHint("Ctrl+0"),
+                        this, [this] { _focusEdit->zoomReset(); });
+
     _editMenu   = edit;
     _addMenu    = add;
     _insertMenu = ins;

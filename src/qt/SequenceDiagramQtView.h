@@ -69,7 +69,7 @@ public:
     bool showDropGhost(Gti* pGti, QPoint globalPos) override;
     void clearDropGhost() override;
 
-    // Toolbar-driven zoom (the QtDiagramZoom bridge): +1 step in / -1 step out
+    // Toolbar-driven zoom: +1 step in / -1 step out
     // anchored at the widget centre, 0 = reset to fit-to-window. Same 1.15 step
     // as the keyboard/wheel zoom.
     void applyToolbarZoom(int op);
@@ -505,11 +505,6 @@ public slots:
     // by name on every open view when any view broadcasts a state change, so all
     // views of a model agree on undo/redo availability (see MainTreeQtView).
     void refreshUndoRedoEnables();
-
-protected:
-    // Registers the canvas as the Zoom-toolbar target on window activation
-    // (see qt/QtDiagramZoom.h).
-    bool event(QEvent* e) override;
 
 private:
     void exportSvg();           // file dialog + canvas->exportSvg

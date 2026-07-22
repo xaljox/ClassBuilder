@@ -21,7 +21,6 @@
 #include "QtInheritTreeDialog.h"          // Qt_ShowInheritsFromDialog / ...InheritedBy
 #include "QtUserSectionsDialog.h"         // Qt_ShowUserSectionsDialog (Edit User Sections)
 #include "QtHandleMetrics.h"              // QtHandle::grabToleranceModel
-#include "QtDiagramZoom.h"                // Zoom-toolbar routing registry
 #include "QtModelIcons.h"                 // Qt_ModelIcon
 #include "QtToolBarIcons.h"               // Qt_ToolBarIcon (real MFC toolbar glyphs)
 #include "CbPainter_QPainter.h"
@@ -4308,15 +4307,6 @@ void ClassDiagramQtView::refreshUndoRedoEnables()
 
 ClassDiagramQtView::~ClassDiagramQtView()
 {
-}
-
-bool ClassDiagramQtView::event(QEvent* e)
-{
-    if (e->type() == QEvent::WindowActivate)
-        Qt_SetActiveDiagramZoom(_canvas, [](QWidget* w, int op) {
-            static_cast<ClassDiagramCanvas*>(w)->applyToolbarZoom(op);
-        });
-    return QDialog::event(e);
 }
 
 // ---------------------------------------------------------------------------

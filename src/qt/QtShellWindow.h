@@ -178,9 +178,6 @@ private:
     QAction* _actSettings     = nullptr;
     QAction* _actAddSerialize = nullptr;
     QAction* _actRefreshIds   = nullptr;
-    QAction* _actZoomIn       = nullptr;
-    QAction* _actZoomOut      = nullptr;
-    QAction* _actZoomFull     = nullptr;
 
     // App toolbar twins (enable-managed in updateToolBarEnables).
     QAction* _tbNew         = nullptr;

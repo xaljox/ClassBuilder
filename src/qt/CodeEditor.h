@@ -110,6 +110,13 @@ public:
     void setIndentSize(int spaces);
     int  indentSize() const { return _indentSize; }
 
+    // Font zoom as commands, so the hosting dialog's View menu drives the same
+    // path as Ctrl+= / Ctrl+- / Ctrl+0 and Ctrl+wheel. The level is SHARED by
+    // every open editor (applySharedZoom), so the panes of one logical edit
+    // scale together whichever one is zoomed.
+    void zoomStep(int delta);      // +1 in, -1 out
+    void zoomReset();              // back to the code font's own size
+
     // Fixed marker bands drawn *inside* the editor frame -- a header pinned
     // to the top, a footer pinned to the bottom. The code scrolls in the
     // region between them; the bands never scroll and are not editable.
