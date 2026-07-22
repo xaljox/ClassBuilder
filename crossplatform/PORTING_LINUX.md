@@ -4,14 +4,22 @@ Companion to [PORTING_MAC.md](PORTING_MAC.md). Covers building the committed
 sources on Linux. The committed `linux-x64` preset name is cosmetic; it builds
 native for whatever arch it runs on. On arm64 use arm64 apt packages (not amd64).
 
-**Verified environments:**
+**Verified environments** — all three have run the option-B static recipe; see
+"Measured build times" below, which records a full run on each:
 
 | Arch | Distro | Host | Notes |
 |------|--------|------|-------|
-| x86_64 | Ubuntu 24.04 | WSL | First green Linux build, commit `ec86adf` |
-| x86_64 | Ubuntu 26.04 | native box | Native hardware build (not WSL) — the current dev environment |
+| x86_64 | Ubuntu 26.04 | **VMware** VM on Win 11 (Asus ProArt 16) | The current dev environment — same machine as the x64 row in "Measured build times" |
 | arm64 | Ubuntu 24.04 → **26.04** | Parallels on Apple Silicon | Upgraded to 26.04 for the scaling fix — see "GNOME ≥ 47 scaling" below |
 | arm64 | Raspberry Pi OS (Debian-based) | Pi 500+ | Default distro; distinct arm64 target from the Parallels VM (Broadcom GPU, Pi's Qt apt version) |
+
+> **WSL is NOT a usable target — dropped 2026-07-22.** The first green Linux
+> build (commit `ec86adf`) was made under WSL, but that route is a dead end for
+> actually *running* CB: WSLg puts the app on **Wayland**, where CB's floating
+> dock windows cannot be moved. Elsewhere that is survivable because xcb is the
+> daily driver (see "Running" — GNOME/Mutter has the same client-side-decoration
+> drag problem, and CB defaults to X11/XWayland to dodge it); under WSLg that
+> escape hatch isn't there. Build and run on a real Linux box or a VM.
 
 ## Two Qt options
 
@@ -60,7 +68,7 @@ sudo apt install -y build-essential ninja-build cmake libgl1-mesa-dev \
   libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync-dev libxcb-xfixes0-dev \
   libxcb-shape0-dev libxcb-randr0-dev libxcb-render-util0-dev \
   libxcb-util-dev libxcb-xinerama0-dev libxcb-xkb-dev \
-  libxkbcommon-dev libxkbcommon-x11-dev
+  libxkbcommon-dev libxkbcommon-x11-dev libdbus-1-dev
 ```
 
 Then build qtbase + qtsvg static into `~/Qt-6.11.1-static` and point CB at it:
@@ -72,7 +80,7 @@ cmake -S qtbase-everywhere-src-6.11.1 -B build-qtbase -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
   -DCMAKE_INSTALL_PREFIX=$HOME/Qt-6.11.1-static \
   -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF \
-  -DFEATURE_sql=OFF -DFEATURE_dbus=OFF \
+  -DFEATURE_sql=OFF -DFEATURE_dbus=ON \
   -DFEATURE_xcb=ON -DFEATURE_xcb_xlib=ON \
   -DFEATURE_xkbcommon=ON -DFEATURE_xkbcommon_x11=ON -DFEATURE_fontconfig=ON
 cmake --build build-qtbase --parallel && cmake --install build-qtbase
@@ -93,6 +101,38 @@ above is missing, configure errors in seconds (naming the missing `TEST_*`/
 on the Pi. With static Qt, CB's `find_package(Qt6 ... Svg)` links the SVG icons
 in and the Qt plugins (the xcb platform plugin) are imported into the exe by
 Qt's own CMake finalizer — no `platforms/` dir to ship.
+
+### A static Qt has NO platform theme — and why D-Bus is not optional
+
+`-DFEATURE_dbus=ON` above is **load-bearing**, do not "tidy it away". The desktop
+theme reaches Qt on Linux through a *separate* platform-theme plugin (gtk3), and
+a static Qt built without GTK simply has none — Qt then falls back to its own
+defaults. Measured 2026-07-22, and both were plainly visible:
+
+| | with a platform theme | static Qt without one |
+|---|---|---|
+| accent | the desktop's (e.g. `#308280` teal) | `#308cc6`, Qt's built-in blue |
+| icon theme | `Yaru-prussiangreen` | `Adwaita` (blue folders) |
+
+That is unique to Linux: Windows reads the accent from the DWM registry and
+macOS gets it from the Cocoa integration *inside the platform plugin*, so both
+already have it in what they link. With `FEATURE_dbus=ON` Qt builds the
+`xdgdesktopportal` theme plugin, and — more to the point — CB can talk to the
+portal itself, which is what `src/qt/QtDesktopTheme.cpp` does: it reads
+`org.freedesktop.appearance`/`accent-color` over D-Bus, and subscribes to the
+portal's `SettingChanged` so a live accent switch re-colours CB immediately.
+(Qt delivers no `ApplicationPaletteChange` for an accent change on any desktop
+tested, so that signal is the only live trigger there is.) The icon theme is not
+published by the portal, so CB reads it from `gsettings` — lazily, just before a
+file dialog is built, because GNOME writes it a moment *after* the accent signal.
+
+**Building the gtk3 plugin instead was considered and rejected**, measured:
+it cannot be linked statically (no `libgtk-3.a` exists — `libgtk-3-dev` ships
+only `.so`), that one plugin pulls in **83 shared libraries** transitively
+(gtk, gdk, glib, pango, cairo, atk, harfbuzz, …) which is exactly the external
+versioned dependency this whole option exists to remove, GTK is LGPL so static
+linking would carry a relink obligation, and CB would stop starting on a box
+without GTK3.
 
 ### How to verify it really went static
 
