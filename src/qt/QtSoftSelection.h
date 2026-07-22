@@ -60,15 +60,18 @@ inline QColor Qt_ChromeAccent()
 {
     QColor c = QApplication::palette().color(QPalette::Active,
                                              QPalette::Highlight);
-    // The clamp is 0.28 because that is where the NATIVE focus outline sits:
-    // Fusion draws a focused QLineEdit's frame in highlight.darker(125), which
-    // for a teal accent measures #266866 (L=0.279) -- while the raw accent is
-    // #308280 (L=0.349) and read visibly lighter/thinner next to it. Clamping
-    // here to 0.28 yields #276867, i.e. the same colour, so the tree glyphs and
-    // the field focus ring are ONE derivation that also matches what the
-    // platform draws for the single-line fields we do not style (JV 2026-07-21).
-    if (c.lightnessF() > 0.28f)
-        c.setHslF(qMax(0.0f, c.hslHueF()), c.hslSaturationF(), 0.28f);
+    // The clamp is 0.34, midway between the 0.40 it started at and the 0.28 it
+    // was tightened to. 0.28 was chosen to land exactly on Fusion's focused-field
+    // frame (highlight.darker(125), which for a teal accent measures #266866,
+    // L=0.279), so glyphs and focus ring would be one derivation -- but at that
+    // depth the HUE stops registering: a blue and a teal accent came out nearly
+    // indistinguishable and the glyphs read as dark grey, with only a strongly
+    // saturated hue like orange still showing through (JV 2026-07-22). Carrying
+    // the accent's identity matters more here than matching a frame the eye never
+    // sees side by side, so: darker than the raw light accent, light enough to
+    // stay recognisably the user's colour.
+    if (c.lightnessF() > 0.34f)
+        c.setHslF(qMax(0.0f, c.hslHueF()), c.hslSaturationF(), 0.34f);
     return c;
 }
 // The soft selection/hover tint, derived PURELY from the live theme accent
