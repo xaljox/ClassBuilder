@@ -24,9 +24,9 @@ platform gap in a `WIN32`/`__APPLE__` branch → push the note back here → rep
 | File | What |
 |------|------|
 | [PORTING_MAC.md](PORTING_MAC.md) | Getting-started report: Mac prerequisites, what's already cross-platform, and the file-by-file Win32/MSVC punch-list. **Start here.** |
-| [PORTING_LINUX.md](PORTING_LINUX.md) | Building on Linux (Ubuntu 24.04): distro Qt vs from-source patched Qt (+ the "install Wayland libs before qtbase" gotcha), xcb-as-daily-driver, and the Parallels crispness fix. |
+| [PORTING_LINUX.md](PORTING_LINUX.md) | Building on Linux: **distro (apt) Qt vs STATIC Qt 6.11.1 from source** (self-contained, the intended build — full apt build-deps + recipe; no patch), xcb-as-daily-driver, Wayland build-order gotcha, and the Parallels crispness fix. |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Parked cross-platform CB bugs with root cause + the *safe* fix approach (phantom dock split-bar; XWayland clipboard UAF). Read before re-fixing dock/separator code. |
-| [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md) | The TWO Qt 6.11.1 dock bugs (float-group "2→1 tear-off" crash + post-tear-off layout freeze QTBUG-147209) and how to apply the patches per platform. **Both patches required on every platform's Qt 6.11.1.** |
+| [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md) | The TWO Qt 6.11.1 dock bugs (float-group "2→1 tear-off" crash + post-tear-off layout freeze QTBUG-147209). **Superseded 2026-07-21:** the trigger path is now disabled in CB, so the Linux static build is stock/unpatched; kept as history + for the Win/Mac patched builds. |
 | [qt-patches/](qt-patches/) | Verbatim third-party patches that must be applied to the platform's Qt build. |
 | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Shared Claude Code config: the tracked-vs-local permission split and each platform's build/launch path. Read before touching `.claude/` permissions. |
 

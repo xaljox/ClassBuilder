@@ -1,5 +1,14 @@
 # Qt dock bugs — required Qt patches (Windows, macOS **and** Linux)
 
+> ⚠️ **SUPERSEDED for the Linux static build (2026-07-21) — these patches are no
+> longer applied there.** CB has since disabled the dock feature path that
+> triggered the tear-off crash/freeze, so the bugs can't be hit. The proof: the
+> stock **dynamic** apt Qt (unpatched) runs CB fine. The Linux static Qt is
+> therefore built **stock 6.11.1, no patch** (see
+> [PORTING_LINUX.md](PORTING_LINUX.md) option B). This doc stays as history and
+> for Windows/macOS, whose patched builds are unchanged; drop the patch on the
+> other platforms too whenever their Qt is next rebuilt.
+
 **TL;DR:** Qt **6.11.1** has TWO platform-independent dock bugs in qtbase, both
 from the same 6.11 dock rework, both **not** in ClassBuilder, both fixed by
 tiny verbatim backports of the upstream fixes. The diffs are committed here:

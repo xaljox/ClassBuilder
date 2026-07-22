@@ -37,10 +37,13 @@
     {
       "name": "linux-x64",
       "displayName": "Linux - Ninja/GCC (x86_64)",
-      "description": "Linux build. Ninja + GCC, distro (apt) Qt 6 + system static libzstd. For an aqt/source Qt 6.11 pass -DCMAKE_PREFIX_PATH=<qt-dir> on configure.",
+      "description": "Linux build. Ninja + GCC, STATIC Qt 6.11.1 at ~/Qt-6.11.1-static (self-contained, no apt-Qt dependency) + system static libzstd. Build that Qt first per crossplatform/PORTING_LINUX.md (option B). For the distro shared Qt instead, override -DCMAKE_PREFIX_PATH= (empty) on configure.",
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{HOME}/Qt-6.11.1-static"
+      }
     }
   ],
   "buildPresets": [

@@ -19,7 +19,9 @@ native for whatever arch it runs on. On arm64 use arm64 apt packages (not amd64)
 committed Linux-port sources build against it. The port commit (`ec86adf`)
 deliberately kept the code 6.4-compatible (e.g. freedesktop icon-theme *string*
 names instead of the Qt-6.7+ `QIcon::ThemeIcon` enum). This is the realistic
-target for how Linux users get Qt.
+target for how Linux users get Qt. **Downside: the exe then depends on the
+distro's Qt6 `.so`s** — an apt upgrade or a different machine's Qt version is the
+usual source of "it broke". Use option B to get Qt out of that equation.
 
 ```bash
 sudo apt install -y build-essential cmake ninja-build pkg-config git gh \
@@ -29,13 +31,72 @@ cmake --build --preset linux-debug
 ```
 Exe: `out/build/linux-x64/bin/Debug/ClassBuilder`.
 
-**B. From-source patched Qt 6.11.1 (parity with Win/Mac + native Wayland).** Needed
-only if you want version parity, the dock tear-off fix, or native Wayland. Build
-recipe mirrors [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md) (the patch is
-platform-independent). Install to `~/Qt-6.11.1-patched`, then
-`cmake --preset linux-x64 -DCMAKE_PREFIX_PATH=$HOME/Qt-6.11.1-patched`.
+**B. STATIC Qt 6.11.1 from source (self-contained, the intended Linux build).**
+Bakes Qt *itself* into the exe so the build no longer depends on the apt Qt6 —
+parity with the Windows `C:/Qt-static/6.11.1` build. **No patch** (see below).
 
-> **CRITICAL build-order gotcha:** install the Wayland dev libs
+> **Reality check — "static" on Linux ≠ the Windows single-exe.** A static Qt
+> still links the platform integration (xcb/X11, xkbcommon, fontconfig, freetype,
+> GL, glibc) against **system** libs; that's unavoidable on Linux. What static
+> buys you is that Qt is no longer an *external, versioned* dependency — only the
+> bog-standard desktop libs remain, and those are on every Linux GUI box already.
+> "Zero dependencies" like Windows is not achievable here.
+
+> **No dock tear-off patch needed (dropped 2026-07-21).** Option B originally
+> mirrored [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md). It is **no longer
+> required**: CB has since disabled the feature path that triggered the tear-off
+> crash, and the stock **dynamic** apt build (unpatched Qt) runs fine — that is
+> the proof the patch is unnecessary. Build **stock** 6.11.1.
+
+Build-time deps (headers only — the *runtime* libs are already on any desktop;
+this set is exactly what qtbase-configure demands for a working xcb GUI, proven
+by its `TEST_xcb_syslibs` / `XKB_FOUND` / `Fontconfig_FOUND` feature gates):
+
+```bash
+sudo apt install -y build-essential ninja-build cmake libgl1-mesa-dev \
+  libfontconfig1-dev libfreetype-dev libx11-dev libx11-xcb-dev \
+  libxext-dev libxfixes-dev libxi-dev libxrender-dev libxcb1-dev \
+  libxcb-cursor-dev libxcb-glx0-dev libxcb-keysyms1-dev libxcb-image0-dev \
+  libxcb-shm0-dev libxcb-icccm4-dev libxcb-sync-dev libxcb-xfixes0-dev \
+  libxcb-shape0-dev libxcb-randr0-dev libxcb-render-util0-dev \
+  libxcb-util-dev libxcb-xinerama0-dev libxcb-xkb-dev \
+  libxkbcommon-dev libxkbcommon-x11-dev
+```
+
+Then build qtbase + qtsvg static into `~/Qt-6.11.1-static` and point CB at it:
+
+```bash
+# Source: https://download.qt.io/official_releases/qt/6.11/6.11.1/submodules
+#         qtbase-everywhere-src-6.11.1.tar.xz + qtsvg-everywhere-src-6.11.1.tar.xz
+cmake -S qtbase-everywhere-src-6.11.1 -B build-qtbase -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_INSTALL_PREFIX=$HOME/Qt-6.11.1-static \
+  -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF \
+  -DFEATURE_sql=OFF -DFEATURE_dbus=OFF \
+  -DFEATURE_xcb=ON -DFEATURE_xcb_xlib=ON \
+  -DFEATURE_xkbcommon=ON -DFEATURE_xkbcommon_x11=ON -DFEATURE_fontconfig=ON
+cmake --build build-qtbase --parallel && cmake --install build-qtbase
+cmake -S qtsvg-everywhere-src-6.11.1 -B build-qtsvg -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_PREFIX_PATH=$HOME/Qt-6.11.1-static \
+  -DCMAKE_INSTALL_PREFIX=$HOME/Qt-6.11.1-static
+cmake --build build-qtsvg --parallel && cmake --install build-qtsvg
+
+cmake --preset linux-x64 -DCMAKE_PREFIX_PATH=$HOME/Qt-6.11.1-static
+cmake --build --preset linux-release
+```
+
+The `-DFEATURE_*=ON` flags are a deliberate **fail-fast gate**: if a dev lib
+above is missing, configure errors in seconds (naming the missing `TEST_*`/
+`*_FOUND`) instead of building a GUI-less Qt. A ready-to-run copy of this recipe
+(with the full apt line in its header) is kept at `~/qt-build/build-static-qt.sh`
+on the Pi. With static Qt, CB's `find_package(Qt6 ... Svg)` links the SVG icons
+in and the Qt plugins (the xcb platform plugin) are imported into the exe by
+Qt's own CMake finalizer — no `platforms/` dir to ship.
+
+> **Optional: native Wayland** (not needed — xcb is the daily driver, see
+> "Running"). To also build the Wayland client, add the Wayland dev libs and the
+> `qtwayland` submodule. **CRITICAL build-order gotcha:** install the Wayland dev libs
 > (`libwayland-dev wayland-protocols` + the `libxcb-*-dev` set) **before**
 > configuring qtbase. Qt bakes `QT_FEATURE_wayland` at qtbase-configure time; if
 > the libs aren't present, it's baked **OFF** and **qtwayland then silently builds

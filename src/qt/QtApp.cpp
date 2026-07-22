@@ -57,6 +57,11 @@ Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
 Q_IMPORT_PLUGIN(QModernWindowsStylePlugin)
 #elif defined(__APPLE__)
 Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
+#elif defined(__linux__)
+// xcb is the daily-driver platform on Linux (X11/XWayland; see
+// crossplatform/PORTING_LINUX.md). Matches Qt6::QXcbIntegrationPlugin linked in
+// CMakeLists. (Add QWaylandIntegrationPlugin here + in CMake for native Wayland.)
+Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
 #endif
 // The SVG image-format + icon-engine plugins -- only when this Qt has the Svg
 // module (CB_HAVE_SVG); a static Qt does not self-load plugins. Lets
