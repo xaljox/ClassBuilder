@@ -30,6 +30,33 @@ platform gap in a `WIN32`/`__APPLE__` branch → push the note back here → rep
 | [qt-patches/](qt-patches/) | Verbatim third-party patches that must be applied to the platform's Qt build. |
 | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Shared Claude Code config: the tracked-vs-local permission split and each platform's build/launch path. Read before touching `.claude/` permissions. |
 
+## Build speed across the three platforms
+
+Measured 2026-07-22 on the static-Qt recipe (numbers + the per-phase split live
+in [PORTING_LINUX.md](PORTING_LINUX.md#measured-build-times-2026-07-22)):
+Pi ~29 min, ProArt 16 (Ubuntu VM on Win 11) ~13 min, M3 Max (Ubuntu VM,
+8 of 16 cores) **4 min 21 s**.
+
+The Mac/Windows gap is **real and reproducible** — it persists on the ProArt's
+own adapter (the borrowed-charger throttling only widened it). A full build with
+every accumulated change on the Mac finishes sooner than several *incremental*
+builds did on Windows. Compilers are memory-latency bound, so Apple Silicon's
+unified memory bandwidth and wide cores land squarely on this workload.
+
+**But a big slice of it is Windows itself, not the CPU — and that part is
+fixable.** Worth doing on the Windows box before concluding it needs hardware:
+
+- **Exclude the build tree from Windows Defender.** Real-time protection scans
+  every `.obj` the compiler writes; across thousands of files this is the single
+  largest and most-overlooked drag. *Settings → Privacy & security → Windows
+  Security → Virus & threat protection → Exclusions* — add `out\build\` and
+  `.git\`. Commonly worth 30-50%.
+- **Process-spawn cost.** A build spawns thousands of compiler processes and
+  `CreateProcess` is far heavier than Unix `fork`/`exec` — an inherent
+  per-file tax that grows with file count.
+- **NTFS metadata** is slower than APFS/ext4 on many-small-file workloads,
+  which is precisely a build.
+
 ## Conventions for this directory
 
 - One topic per file; link them from this README's table.

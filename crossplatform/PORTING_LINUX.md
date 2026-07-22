@@ -94,6 +94,57 @@ on the Pi. With static Qt, CB's `find_package(Qt6 ... Svg)` links the SVG icons
 in and the Qt plugins (the xcb platform plugin) are imported into the exe by
 Qt's own CMake finalizer — no `platforms/` dir to ship.
 
+### How to verify it really went static
+
+Three checks — all three must hold, otherwise CB silently linked the *dynamic*
+Qt that is probably still installed alongside:
+
+```bash
+ls ~/Qt-6.11.1-static/lib/libQt6{Core,Gui,Widgets,Svg}.a   # static archives exist
+ls ~/Qt-6.11.1-static/plugins/platforms/libqxcb.a          # xcb plugin as .a
+ldd <cb-binary> | grep -i qt6                              # MUST be empty
+```
+
+The exe grows from ~6 MB (dynamic) to ~37 MB, and ~43 plain system `.so`s
+remain (glibc, X11/xcb, fontconfig, GL) — that is the expected floor, see the
+"static ≠ Windows single-exe" note above.
+
+### Measured build times (2026-07-22)
+
+Whole recipe, from unpacked sources to a linked CB, `--parallel` = all cores:
+
+| Machine | Cores / RAM | Total |
+|---------|-------------|-------|
+| Raspberry Pi 500+ | — | **~29 min** |
+| Asus ProArt 16, Ubuntu x64 VM on Win 11 | — | **~13 min** *(on an under-spec PSU — see below; a real figure needs the proper adapter)* |
+| M3 Max, Ubuntu arm64 VM (Parallels) | 8 of 16 cores / 16 GB | **4 min 21 s** |
+
+Per-phase on the M3 Max run — note how lopsided it is:
+
+| Phase | Time |
+|-------|------|
+| qtbase configure | 5 s |
+| **qtbase build** | **210 s** |
+| qtsvg configure + build | 19 s |
+| CB configure | 2 s |
+| CB build (release, full) | 25 s |
+| **Total** | **261 s** |
+
+**qtbase is ~80% of the whole thing**; CB itself is noise. So this is a
+one-off cost — you only pay it again on a Qt version bump or a distro upgrade
+that breaks the ABI (see KNOWN_ISSUES item 6).
+
+**Two traps when comparing machines**, both hit during this measurement:
+
+- **Laptop PSU throttling.** The ProArt figure was taken on a Mac charger
+  (96/140 W) instead of its own 200 W+ adapter. A sustained all-core build is
+  exactly where the firmware clamps the CPU power budget, so that 13 min is a
+  *floor*, not the machine's capability.
+- **Give the VM cores AND RAM.** First attempt here had 2 cores / 965 MB free
+  and sat in swap. 8 cores / 16 GB turned it into the 4-minute run above. On
+  Apple Silicon do **not** hand the VM all 16 cores: 4 of them are efficiency
+  cores and the host still needs headroom — 8 (of 12 P-cores) is the sweet spot.
+
 > **Optional: native Wayland** (not needed — xcb is the daily driver, see
 > "Running"). To also build the Wayland client, add the Wayland dev libs and the
 > `qtwayland` submodule. **CRITICAL build-order gotcha:** install the Wayland dev libs
