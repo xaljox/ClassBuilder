@@ -55,3 +55,14 @@ void Cb_ApplyDesktopIconTheme();
 // missed the refresh and showed whatever theme the last Open dialog had left
 // behind (JV 2026-07-22). Use this instead of QFileDialog::Options directly.
 QFileDialog::Options Cb_FileDialogOptions();
+
+// CB's file dialogs. Use these, not QFileDialog's static helpers: the statics
+// return a path but keep the dialog itself out of reach, so its file list ends
+// up painting selection the platform style's way -- with the file-name field
+// focused, that is the flat GREY unfocused selection instead of CB's accent
+// tint (JV 2026-07-22). These build the dialog, apply the shared options + the
+// selection look, and hand back the chosen path ("" when cancelled).
+QString Cb_OpenFileName(QWidget* parent, const QString& caption,
+                        const QString& filter);
+QString Cb_SaveFileName(QWidget* parent, const QString& caption,
+                        const QString& initial, const QString& filter);

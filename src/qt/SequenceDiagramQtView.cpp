@@ -3950,12 +3950,11 @@ void SequenceDiagramQtView::exportSvg()
     QString def = _canvas->diagramName();
     if (def.isEmpty())
         def = "sequencediagram";
-    // Qt's own file dialog on every platform -- consistent with the File
-    // One door for every CB file dialog (Cb_FileDialogOptions): it picks the
-    // backend AND refreshes the icon theme -- see QtDesktopTheme.h.
-    QString path = QFileDialog::getSaveFileName(
-        this, "Export Diagram as SVG", def + ".svg", "SVG files (*.svg)",
-        nullptr, Cb_FileDialogOptions());
+    // One door for every CB file dialog (Cb_SaveFileName): it picks the backend,
+    // refreshes the icon theme AND gives the dialog CB's selection look -- see
+    // QtDesktopTheme.h.
+    QString path = Cb_SaveFileName(
+        this, "Export Diagram as SVG", def + ".svg", "SVG files (*.svg)");
     if (path.isEmpty())
         return;
     if (!path.endsWith(".svg", Qt::CaseInsensitive))

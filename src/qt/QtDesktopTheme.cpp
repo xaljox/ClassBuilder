@@ -2,6 +2,12 @@
 
 #include "QtDesktopTheme.h"
 
+#include "QtSoftSelection.h"   // Qt_ApplySoftSelection (the accent selection tint)
+
+#include <QAbstractItemView>
+#include <QStringList>
+#include <QWidget>
+
 #ifdef __linux__
 #include <QDir>
 #include <QIcon>
@@ -175,18 +181,64 @@ QFileDialog::Options Cb_FileDialogOptions()
     // signal, which left CB one change behind.
     Cb_ApplyDesktopIconTheme();
 
-#ifdef _WIN32
-    // Windows keeps its NATIVE panel: it scales and filters correctly there.
-    return QFileDialog::Options();
-#else
-    // macOS + Linux use Qt's OWN dialog. macOS: the native NSOpenPanel/NSSavePanel
-    // behind QFileDialog's static helpers shows nothing in this app. Linux: the
-    // native GTK/portal chooser ignores QT_SCALE_FACTOR (so it renders tiny under
-    // a non-1.0 View > UI Scale) and shows ALL files with the non-matching ones
-    // greyed out, so a full directory needs scrolling to reach the .cbz. Qt's own
-    // dialog scales with the rest of CB and hides non-matching files.
+    // Qt's OWN dialog on EVERY platform -- no #ifdef. Each OS's native chooser
+    // fails CB in its own way, and Windows is no exception, which is why it was
+    // switched over on 2026-07-19 (6088ea5) and must not drift back:
+    //   * Windows -- the shell panel sizes itself from the SYSTEM DPI and knows
+    //     nothing about View > UI Scale, so at any scale other than 1.0 it opens
+    //     visibly out of step with the rest of CB.
+    //   * macOS -- the native NSOpenPanel/NSSavePanel behind QFileDialog's static
+    //     helpers shows nothing at all in this app.
+    //   * Linux -- the GTK/portal chooser ignores QT_SCALE_FACTOR too, and lists
+    //     ALL files with the non-matching ones merely greyed out, so a full
+    //     directory needs scrolling to reach the .cbz.
+    // Qt's dialog scales with the rest of CB and hides non-matching files.
+    // CB is not sandboxed, so losing the native/portal chooser costs nothing.
     return QFileDialog::DontUseNativeDialog;
-#endif
+}
+
+namespace {
+// Build and run CB's file dialog. Not QFileDialog's STATIC helpers: those hand
+// back only a path, so the dialog they build cannot be reached -- and its file
+// list then paints selection the platform style's way. With the file-name field
+// holding the focus, that is the UNFOCUSED selection: a flat grey, where every
+// other list in CB shows the accent tint (JV 2026-07-22). Owning the instance
+// lets Qt_ApplySoftSelection reach the views inside it (the file list and the
+// sidebar), so the dialog matches the tree and the popups.
+QString runFileDialog(QWidget* parent, const QString& caption,
+                      const QString& initial, const QString& filter,
+                      QFileDialog::AcceptMode mode)
+{
+    QFileDialog dlg(parent, caption, QString(), filter);
+    dlg.setOptions(Cb_FileDialogOptions());   // + the icon-theme refresh
+    dlg.setAcceptMode(mode);
+    dlg.setFileMode(mode == QFileDialog::AcceptSave ? QFileDialog::AnyFile
+                                                    : QFileDialog::ExistingFile);
+    if (!initial.isEmpty())
+        dlg.selectFile(initial);              // path or bare name, both work
+
+    for (QAbstractItemView* view : dlg.findChildren<QAbstractItemView*>())
+        Qt_ApplySoftSelection(view);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return QString();
+    const QStringList chosen = dlg.selectedFiles();
+    return chosen.isEmpty() ? QString() : chosen.first();
+}
+}
+
+QString Cb_OpenFileName(QWidget* parent, const QString& caption,
+                        const QString& filter)
+{
+    return runFileDialog(parent, caption, QString(), filter,
+                         QFileDialog::AcceptOpen);
+}
+
+QString Cb_SaveFileName(QWidget* parent, const QString& caption,
+                        const QString& initial, const QString& filter)
+{
+    return runFileDialog(parent, caption, initial, filter,
+                         QFileDialog::AcceptSave);
 }
 
 #ifdef CB_PORTAL_ACCENT
