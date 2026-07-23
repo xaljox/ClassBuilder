@@ -28,6 +28,15 @@
 // callers then fall back to the palette.
 QColor Cb_PortalAccent();
 
+// Fallback accent for desktops whose portal publishes NO accent-color -- labwc /
+// Pi OS on wlroots only exposes color-scheme + contrast, not accent-color. There
+// the chosen Qt palette lives in the active qt5ct/qt6ct colour scheme (what a
+// DYNAMIC Qt would have loaded through the qt5ct/qt6ct platform-theme plugin; a
+// static Qt has no such plugin). This reads that scheme's Highlight straight from
+// the file -- QtCore only, no extra module or plugin, no D-Bus. Invalid QColor
+// when there is no qt5ct/qt6ct custom palette to read.
+QColor Cb_PlatformThemeAccent();
+
 // Watch the portal for accent changes; `onChanged` runs on each one. Call once,
 // after the QApplication exists. This is also the only live trigger there is:
 // Qt delivers no ApplicationPaletteChange for an accent switch on any desktop

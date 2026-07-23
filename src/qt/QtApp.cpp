@@ -390,6 +390,11 @@ QColor Cb_SystemAccent()
     // With the distro (dynamic) Qt the palette does carry it, hence the fallback.
     accent = Cb_PortalAccent();
     if (!accent.isValid())
+        // No portal accent-color (labwc/Pi OS on wlroots publishes none): read the
+        // active qt5ct/qt6ct colour scheme's Highlight -- what the dynamic-Qt
+        // platform-theme plugin would have supplied. Pure file read, no plugin.
+        accent = Cb_PlatformThemeAccent();
+    if (!accent.isValid())
         accent = pal.color(QPalette::Active, QPalette::Highlight);
 #endif
 
@@ -505,6 +510,9 @@ void Cb_ApplyAccentPalette()
     want.setColor(QPalette::Inactive, QPalette::Highlight, accent);
     want.setColor(QPalette::Active,   QPalette::HighlightedText, onAccent);
     want.setColor(QPalette::Inactive, QPalette::HighlightedText, onAccent);
+    // Note: QPalette::Accent is deliberately NOT written -- Fusion paints focus and
+    // selection from Highlight, so setting the accent there covers the whole UI
+    // (A/B-tested on this Pi's static Qt, 2026-07-23).
     if (want != qApp->palette())
         qApp->setPalette(want);
     g_writtenAccent = accent;

@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QIcon>
 #include <QProcess>
+#include <QSettings>
 #include <QString>
 #include <QStringList>
 #endif
@@ -110,6 +111,55 @@ QColor Cb_PortalAccent()
             !reply.arguments().isEmpty())
         {
             const QColor c = colourFromReply(reply.arguments().constFirst());
+            if (c.isValid())
+                return c;
+        }
+    }
+#endif
+    return QColor();
+}
+
+QColor Cb_PlatformThemeAccent()
+{
+#ifdef __linux__
+    const QString home = QDir::homePath();
+    // Honour QT_QPA_PLATFORMTHEME first (the tool actually in force -- qt5ct on
+    // this Pi), then try both configs. Pi OS writes the same scheme to both.
+    QStringList tools;
+    const QString env = qEnvironmentVariable("QT_QPA_PLATFORMTHEME");
+    if (env == QLatin1String("qt6ct") || env == QLatin1String("qt5ct"))
+        tools << env;
+    tools << QStringLiteral("qt6ct") << QStringLiteral("qt5ct");
+    tools.removeDuplicates();
+
+    for (const QString& t : tools)
+    {
+        const QString cfg = home + QStringLiteral("/.config/") + t
+                          + QLatin1Char('/') + t + QStringLiteral(".conf");
+        // The tool's own conf keeps these under [Appearance]; only the separate
+        // colour-scheme file (below) uses [ColorScheme].
+        QSettings s(cfg, QSettings::IniFormat);
+        if (!s.value(QStringLiteral("Appearance/custom_palette")).toBool())
+            continue;
+        QString path = s.value(QStringLiteral("Appearance/color_scheme_path"))
+                           .toString();
+        if (path.isEmpty())
+            continue;
+        if (path.startsWith(QLatin1Char('~')))
+            path = home + path.mid(1);
+
+        // active_colors is the QPalette roles in serialization order; index 12 is
+        // QPalette::Highlight -- the same slot CB reads the accent from elsewhere.
+        // QSettings splits the comma list for us; fall back to a manual split if a
+        // build quotes it as one string.
+        QSettings cs(path, QSettings::IniFormat);
+        QStringList cols =
+            cs.value(QStringLiteral("ColorScheme/active_colors")).toStringList();
+        if (cols.size() == 1)
+            cols = cols.first().split(QLatin1Char(','));
+        if (cols.size() > 12)
+        {
+            const QColor c(cols.at(12).trimmed());   // #AARRGGBB
             if (c.isValid())
                 return c;
         }
