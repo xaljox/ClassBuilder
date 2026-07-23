@@ -1778,13 +1778,31 @@ void QtShellWindow::checkSourceFreshness()
 
     checking = true;
     const QList<DocEntry*> entries = _entries;   // prompts can close models
+    DocEntry* reloaded = nullptr;
     for (DocEntry* entry : entries)
     {
         if (!_entries.contains(entry))
             continue;
         if (entry->doc && entry->doc->GetDataModelDoc().GetDataModel())
+        {
+            const bool wasModified = entry->doc->IsModified() != 0;
             entry->doc->GetDataModelDoc().GetDataModel()->CheckUpdates();
+            // The prompt (CheckUpdates) fires for EVERY open model on activation,
+            // not just the active one -- so a "yes, reload" can dirty a model
+            // sitting on a BACKGROUND tab. Remember it: it just became the focus
+            // of the user's attention.
+            if (!wasModified && entry->doc->IsModified())
+                reloaded = entry;
+        }
     }
+    // Activate the reloaded background model. The toolbar Save (and Undo/Redo)
+    // follow the ACTIVE model, so a background reload left them reflecting the
+    // still-active OTHER model -- Save stayed disabled although the reloaded
+    // model was dirty, until a manual tab-switch (JV 2026-07-23). The user just
+    // approved this reload, so making it active matches their intent and shows
+    // the model they changed.
+    if (reloaded && _entries.contains(reloaded) && reloaded != _active)
+        setActiveEntry(reloaded);
     sinceLast.restart();   // stamp after the (possibly modal) checks finish
     checking = false;
 }
