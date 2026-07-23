@@ -612,35 +612,8 @@ inline CbString WrapArguments(CbString line, int maxLen = 80)
     return result;
 }
 
-inline CbRect& operator *=(CbRect& rect, const CbRect& otherRect)
-{
-    // Allow an initial point rectangle, do not take that into acount
-    if (rect.BottomRight() == rect.TopLeft())
-    {
-        rect = otherRect;
-    }
-    else
-    {
-        if (rect.top > otherRect.top)
-        {
-            rect.top = otherRect.top;
-        }
-        if (rect.bottom < otherRect.bottom)
-        {
-            rect.bottom = otherRect.bottom;
-        }
-        if (rect.left > otherRect.left)
-        {
-            rect.left = otherRect.left;
-        }
-        if (rect.right < otherRect.right)
-        {
-            rect.right = otherRect.right;
-        }
-    }
-
-    return rect;
-}
+// CbRect's bounding-union operator *= moved to value/CbGeometry.h, to sit with
+// the other CbRect operators as a member (JV 2026-07-23).
 
 // (The MFC dialog helpers -- GETBUTTON/GETCOMBOBOX/... macros and the
 //  CComboBox SelectString -- were removed with the MFC shell; the Qt dialogs

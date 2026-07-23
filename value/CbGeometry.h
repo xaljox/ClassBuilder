@@ -151,6 +151,24 @@ struct CbRect
     void operator +=(const CbRect& r) { InflateRect(r); }
     void operator -=(const CbRect& r) { DeflateRect(r); }
 
+    // *= grows this rect to the bounding UNION with r (accumulating an extent,
+    // e.g. a diagram's). An initial point-rect (BottomRight == TopLeft) is
+    // REPLACED by r rather than united with it, so a fresh accumulator starts
+    // at the first rect. Moved here from the model's master-include user section
+    // to sit with the other CbRect operators (JV 2026-07-23).
+    void operator *=(const CbRect& r)
+    {
+        if (BottomRight() == TopLeft())      // a point rect -> just take r
+        {
+            *this = r;
+            return;
+        }
+        if (top    > r.top)    top    = r.top;
+        if (bottom < r.bottom) bottom = r.bottom;
+        if (left   > r.left)   left   = r.left;
+        if (right  < r.right)  right  = r.right;
+    }
+
     bool operator ==(const CbRect& r) const
         { return left == r.left && top == r.top && right == r.right && bottom == r.bottom; }
     bool operator !=(const CbRect& r) const
