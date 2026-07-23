@@ -6,6 +6,7 @@
 
 #include "CodeEditor.h"
 #include "CppHighlighter.h"
+#include "QtCodePrint.h"      // Cb_HighlightedLinesHtml (shared with the file print)
 #include "QtSoftSelection.h"
 
 #include <QAbstractItemView>
@@ -278,93 +279,17 @@ void CodeEditor::reapplyThemeAccent()
     viewport()->update();
 }
 
-namespace {
-// Escape the five characters that matter inside HTML text.
-QString htmlEscape(const QString& s)
-{
-    QString o;
-    o.reserve(s.size() + 8);
-    for (const QChar c : s)
-    {
-        if (c == '&')       o += QStringLiteral("&amp;");
-        else if (c == '<')  o += QStringLiteral("&lt;");
-        else if (c == '>')  o += QStringLiteral("&gt;");
-        else                o += c;
-    }
-    return o;
-}
-
-// One text block -> the inner HTML of its <li>: the line's characters wrapped
-// in <span>s that carry the highlighter's colour/bold/italic, with the gaps
-// between ranges left as plain (default black) text.
-QString blockToHtml(const QTextBlock& block)
-{
-    const QString text = block.text();
-    if (text.isEmpty())
-        return QString();
-
-    QList<QTextLayout::FormatRange> fmts;
-    if (block.layout())
-        fmts = block.layout()->formats();
-    std::sort(fmts.begin(), fmts.end(),
-              [](const QTextLayout::FormatRange& a,
-                 const QTextLayout::FormatRange& b) { return a.start < b.start; });
-
-    QString html;
-    int i = 0;
-    const auto emitPlain = [&](int from, int to) {
-        if (to > from)
-            html += htmlEscape(text.mid(from, to - from));
-    };
-    for (const QTextLayout::FormatRange& r : fmts)
-    {
-        const int start = qBound(0, r.start, text.length());
-        const int end   = qBound(start, r.start + r.length, text.length());
-        if (start > i)                 // uncoloured gap before this range
-            emitPlain(i, start);
-        if (end <= i)                  // already past (overlap guard)
-            continue;
-
-        QString style;
-        const QTextCharFormat& f = r.format;
-        if (f.foreground().style() != Qt::NoBrush)
-            style += "color:" + f.foreground().color().name() + ';';
-        if (f.fontWeight() >= QFont::Bold)
-            style += "font-weight:bold;";
-        if (f.fontItalic())
-            style += "font-style:italic;";
-        const QString chunk = htmlEscape(text.mid(i > start ? i : start,
-                                                  end - (i > start ? i : start)));
-        if (style.isEmpty())
-            html += chunk;
-        else
-            html += "<span style=\"" + style + "\">" + chunk + "</span>";
-        i = end;
-    }
-    emitPlain(i, text.length());       // trailing uncoloured run
-    return html;
-}
-} // namespace
-
 QString CodeEditor::toPrintableHtml()
 {
     // Force a full pass first: QPlainTextEdit lays blocks out lazily, so a
     // scrolled-away region may hold no formats until it is highlighted. The
     // bodies here are small, so a rehighlight is cheap and makes the export
-    // independent of what happens to be on screen.
+    // independent of what happens to be on screen. The line-HTML itself is the
+    // shared helper (QtCodePrint) so the editor and the whole-file print colour
+    // identically; no line numbers here (a single body reads better without).
     if (_highlighter)
         _highlighter->rehighlight();
-
-    QString code;
-    bool first = true;
-    for (QTextBlock b = document()->begin(); b.isValid(); b = b.next())
-    {
-        if (!first)
-            code += '\n';
-        first = false;
-        code += blockToHtml(b);        // empty for a blank line -> preserved by \n
-    }
-    return "<pre class=\"code\">" + code + "</pre>";
+    return Cb_HighlightedLinesHtml(document(), /*lineNumbers=*/false);
 }
 
 void CodeEditor::setModelTypes(const QSet<QString>& names)

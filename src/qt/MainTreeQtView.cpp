@@ -17,6 +17,7 @@
 #include "QtUserSectionsDialog.h"    // Qt_ShowUserSectionsDialog (all 6 regions)
 #include "QtUserCodeDialog.h"        // Qt_ShowUserCodeDialog (one region)
 #include "ClassBuilderDoc.h"         // CClassBuilderDoc Undo/Redo/CanUndo (floated-tree toolbar)
+#include "QtCodePrint.h"             // Cb_PrintGeneratedFile (whole-file print)
 // TreeViewModel comes in via ClassBuilderInclude.h below (per-view filter state)
 
 #include <QVBoxLayout>
@@ -1086,6 +1087,58 @@ static void addDeletedCopyOps(Class* pClass)
     pClass->NotifyAddMethod(pAssign);
 }
 
+// The model type + class names, gathered the way the code editors do, so the
+// model's own types read teal in the print (like in the editors).
+static QSet<QString> gatherModelTypes(DataModelDoc* pDmd)
+{
+    QSet<QString> types;
+    if (!pDmd)
+        return types;
+    DataModelDoc::TypeIterator iType(pDmd);
+    while (++iType)
+        if (iType->GetName() != "")
+            types.insert(toQ(iType->GetName()));
+    DataModel::ClassIterator iClass(pDmd->GetDataModel());
+    while (++iClass)
+    {
+        types.insert(toQ(iClass->GetName()));
+        Class::FromRelationIterator iRel(iClass, &Relation::GetMulti);
+        while (++iRel)
+            types.insert(toQ(iRel->GetToName()) + "Iterator");
+    }
+    return types;
+}
+
+// Generate a class's .h or .cpp exactly as Write Source would (into a string,
+// no disk write) and open it in the browser, coloured + line-numbered.
+static void printClassFile(Class* pClass, bool header)
+{
+    if (!pClass)
+        return;
+    CbStringBuilder str;
+    if (header)
+        pClass->WriteHFileBody(str);
+    else
+        pClass->WriteCppFileBody(str);
+    const QString fname = toQ(header ? pClass->GetHFileWithoutPath()
+                                     : pClass->GetCppFileWithoutPath());
+    Cb_PrintGeneratedFile(fname, toQ(str), gatherModelTypes(pClass->GetDataModelDoc()));
+}
+
+// Generate the master include file (e.g. MatrixInclude.h) the same way Write
+// Source does, and print it. (There is no StdAfx.h generator: the StdAfx flag
+// only makes each generated .cpp #include it; StdAfx.h itself is hand-written.)
+static void printMasterInclude(DataModel* pModel)
+{
+    if (!pModel)
+        return;
+    CbStringBuilder str;
+    int startDateTime = 0, endDateTime = 0;
+    pModel->WriteHFile(str, startDateTime, endDateTime);
+    Cb_PrintGeneratedFile(toQ(pModel->GetHFileWithoutPath()), toQ(str),
+                          gatherModelTypes(pModel->GetDataModelDoc()));
+}
+
 void MainTreeQtView::onContextMenu(const QPoint& pos)
 {
     QTreeWidgetItem* item = _tree->itemAt(pos);
@@ -1175,6 +1228,29 @@ void MainTreeQtView::onContextMenu(const QPoint& pos)
         actDeletedCopyOps = addMenu->addAction("Deleted Copy Ctor + operator=");
     }
 
+    // Print the generated .h / .cpp (only on a real Class) -- the file is made
+    // fresh from the model, so it always matches the current state without a
+    // Write Source to disk.
+    QAction* actPrintH      = nullptr;
+    QAction* actPrintCpp    = nullptr;
+    QAction* actPrintMaster = nullptr;
+    if (pGti->IsClass())
+    {
+        menu.addSeparator();
+        QMenu* printMenu = menu.addMenu("Print");
+        actPrintH   = printMenu->addAction("Header  (*.h)");
+        actPrintCpp = printMenu->addAction("Implementation  (*.cpp)");
+    }
+    else if (pGti->IsDataModel())
+    {
+        // At the model root: the master include file (e.g. MatrixInclude.h).
+        menu.addSeparator();
+        QMenu* printMenu = menu.addMenu("Print");
+        actPrintMaster = printMenu->addAction(
+            "Master Include  (" +
+            toQ(static_cast<DataModel*>(pGti)->GetHFileWithoutPath()) + ")");
+    }
+
     menu.addSeparator();
     QMenu* phaseMenu = menu.addMenu("Phase");
     add(phaseMenu, "Analysis",       TreeAction::PhaseAnalysis);
@@ -1203,6 +1279,19 @@ void MainTreeQtView::onContextMenu(const QPoint& pos)
         addDeletedCopyOps(static_cast<Class*>(pGti));
         rebuild();
         updateToolBarEnables();
+        return;
+    }
+
+    // Special (non-TreeAction) items: print the generated file. Read-only, no
+    // model mutation, so no rebuild / undo step.
+    if (chosen == actPrintH || chosen == actPrintCpp)
+    {
+        printClassFile(static_cast<Class*>(pGti), chosen == actPrintH);
+        return;
+    }
+    if (chosen == actPrintMaster)
+    {
+        printMasterInclude(static_cast<DataModel*>(pGti));
         return;
     }
 
