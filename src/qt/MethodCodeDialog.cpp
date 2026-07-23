@@ -13,6 +13,7 @@
 #include "QtMenuStyle.h"             // Qt_CompactMenuStyleSheet
 #include "QtModelText.h"             // toQ / toCb
 #include "CodeEditor.h"
+#include "QtCodePrint.h"
 #include "ModelCompletionProvider.h"
 #include "QtIteratorWizardDialog.h"
 #include "QtWhoCallsMe.h"
@@ -416,6 +417,10 @@ void MethodCodeDialog::buildMenu()
                                      this, [this] { save(); });
     aSave->setEnabled(!fixed);
     file->addAction("&Close", this, [this] { close(); });
+    file->addSeparator();
+    file->addAction("&Print...", QKeySequence::Print, this, [this, ed] {
+        Cb_PrintCodeInBrowser(windowTitle(), { ed });
+    });
     file->addSeparator();
     QAction* aRegen = file->addAction("&Regenerate Code",
                                       this, [this] { regenerateCode(); });

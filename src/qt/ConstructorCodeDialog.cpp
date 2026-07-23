@@ -14,6 +14,7 @@
 #include "QtMenuStyle.h"              // Qt_CompactMenuStyleSheet
 #include "QtModelText.h"              // toQ / toCb
 #include "CodeEditor.h"
+#include "QtCodePrint.h"
 #include "ModelCompletionProvider.h"
 #include "QtIteratorWizardDialog.h"
 #include "QtTypeVariableDialog.h"
@@ -446,6 +447,13 @@ void ConstructorCodeDialog::buildMenu()
     QMenu* file = bar->addMenu("&File");
     file->addAction("&Save", QKeySequence::Save, this, [this] { save(); });
     file->addAction("&Close", this, [this] { close(); });
+    file->addSeparator();
+    file->addAction("&Print...", QKeySequence::Print, this, [this] {
+        // Init editor first (its band is the signature), then the body editor
+        // (its bands are {//@CODE ... }//@CODE) -- stacked, they read as the
+        // whole constructor.
+        Cb_PrintCodeInBrowser(windowTitle(), { _ui->editInit, _ui->editCode });
+    });
     file->addSeparator();
     file->addAction("&Regenerate Code", this, [this] { regenerateCode(); });
     file->addAction("Regenerate &Init", this, [this] { regenerateInit(); });

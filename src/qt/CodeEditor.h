@@ -166,9 +166,12 @@ public:
     // signature strip -- an argument renamed via F2 changes there as well).
     void setHeaderHighlightWord(const QString& word);
 
-    // The header band's text as plain text (setHeaderText's input) -- lets
-    // the dialog count occurrences across editors + signature.
+    // The header/footer band text as plain text (setHeaderText/setFooterText's
+    // input). The header lets the dialog count occurrences across editors +
+    // signature; both let the print reproduce the marker bands ({//@CODE ...
+    // }//@CODE) that frame the body but are not part of the document.
     QString headerPlainText() const { return _headerPlain; }
+    QString footerPlainText() const { return _footerPlain; }
 
     // Global rect of the header band (signature strip); null when there is
     // no visible header. Anchors the who-calls-me popup right under it.
@@ -203,6 +206,12 @@ public:
     // Wrap the selection (or the current line) in a `/* ... */` block
     // comment; unwrap when it already is one. One undo step.
     void toggleBlockComment();
+
+    // A print-ready HTML fragment of this editor's code, carrying the SAME
+    // syntax colouring shown on screen (read from the highlighter, not
+    // re-tokenised). Each source line is one <li> so the browser numbers and
+    // page-breaks it. Drives the File > Print preview (see QtCodePrint.h).
+    QString toPrintableHtml();
 
 signals:
     // The identifier at the caret changed (focused editor only; empty when
@@ -310,6 +319,7 @@ private:
     QLabel* _header = nullptr;       // top marker band, null until first set
     QLabel* _footer = nullptr;       // bottom marker band
     QString _headerPlain;            // header band text before HTML rendering
+    QString _footerPlain;            // footer band text before HTML rendering
     QString _headerWord;             // highlight word inside the header band
     QSet<QString> _argumentNames;    // italic in the header band, like the code
 
