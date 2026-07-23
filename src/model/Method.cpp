@@ -521,7 +521,14 @@ void Method::Drop(bool ctrlKeyDown, Gti* pGtiDrop)
             Method* pNewMethod = new WrapMemberMethod(pDropMember, this);
 
             pNewMethod->Add();
-            pDropClass->NotifyAddMethod(pNewMethod);
+            // The MEMBER's class -- pDropClass is null here by construction:
+            // this branch is only reached when both it and the group were null.
+            // Notifying through it dereferenced a null pointer, and
+            // NotifyAddMethod is virtual, so this crashed on the vtable lookup
+            // whenever a method was ctrl-dropped onto a member. The member's
+            // class is the right one anyway: MemberMethod's constructor passes
+            // exactly pMember->GetBaseClass() as the new method's class.
+            pDropMember->GetBaseClass()->NotifyAddMethod(pNewMethod);
         }
     }
     else
