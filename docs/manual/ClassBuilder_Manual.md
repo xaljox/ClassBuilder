@@ -568,10 +568,11 @@ Right-click any node (an unselected node is selected first). The full menu, top 
 6. **Copy / Paste** (`Ctrl+C` / `Ctrl+V`) — subtree copy, also **across models**: copy a class in one model, paste into another.
 7. **Sort on Name / Sort on Phase** — reorder children.
 8. **Add ▸** — everything addable here: Class Diagram, Sequence Diagram, Group, Class, External Class, Inheritance, Relation, Member, Method, Constructor, Argument, Meta Group, Actor, Virtual Methods, IsClass Methods, Type — plus *Deleted Copy Ctor + operator=* on a class (adds both as `= delete` in one click).
-9. **Phase ▸** — Analysis / Design / Implementation / Test / Complete.
-10. **Base Classes / Derived Classes** — read-only inheritance-hierarchy browsers.
-11. **New Sub Window** — a second, *scoped* tree rooted at this node, as its own dockable view.
-12. **Delete Multiple...** — bulk delete (below).
+9. **Print ▸** — on a **class**, *Header (.h)* or *Implementation (.cpp)*; on the **model** node, the *Master Include*. Prints the freshly generated file — syntax-coloured and line-numbered — through the browser (see *Printing*).
+10. **Phase ▸** — Analysis / Design / Implementation / Test / Complete.
+11. **Base Classes / Derived Classes** — read-only inheritance-hierarchy browsers.
+12. **New Sub Window** — a second, *scoped* tree rooted at this node, as its own dockable view.
+13. **Delete Multiple...** — bulk delete (below).
 
 Which entries are enabled follows from the clicked node — the same gate as the toolbar buttons. Below, the menu on a class, with the Add submenu open:
 
@@ -1108,7 +1109,7 @@ The `Edit Section ▸` submenu jumps straight to one section:
 
 One section in its own editor.
 
-![](images/Code_Editor_Method.png)
+![The method-body editor, syntax-coloured. The caret is on `value`, so every occurrence lights up soft yellow — the exact set the open `F2` *Rename* dialog will change (chapter 10, *The occurrence highlight and Rename*).](images/Code_Editor_Method.png)
 
 The method-body editor edits exactly the text between the `@CODE` markers.
 
@@ -1158,11 +1159,11 @@ The highlighter colours C++ — keywords (blue), built-in types (teal), strings 
 - **Model types** — every named type in the model (classes, extern classes, typedefs) *and* the relation-generated iterator types (`RowIterator`, both bare and as `Matrix::RowIterator`) — take the same teal as the built-in types: one consistent "known type" signal.
 - **Arguments** of the edited method render *italic* — in the code, and in the signature strip above the editor. Renaming or adding an argument updates the italics immediately.
 
-The caret's line carries a faint blue tint; when the caret touches a `{}`, `()` or `[]`, the brace and its match get a soft green box.
+The caret's line carries a faint blue tint; when the caret touches a `{}`, `()` or `[]`, the brace and its match get a soft green box — see the constructor-editor figure below.
 
 ## The occurrence highlight and Rename (F2)
 
-Put the caret in (or double-click) an identifier and every whole-identifier occurrence is highlighted soft yellow — *whole-identifier*, so `row` never lights up inside `rowCount`. The highlight deliberately shows the **full rename set**: it spans the body, the constructor's initializer pane, *and* the signature strip. A single lone hit shows nothing (noise, not information).
+Put the caret in (or double-click) an identifier and every whole-identifier occurrence is highlighted soft yellow — *whole-identifier*, so `row` never lights up inside `rowCount`. The highlight deliberately shows the **full rename set**: it spans the body, the constructor's initializer pane, *and* the signature strip. A single lone hit shows nothing (noise, not information). The method-body editor figure (chapter 9) shows it: `value` under the caret, both occurrences yellow, with the `F2` *Rename* dialog open.
 
 **Rename identifier** (`F2`, `Edit` menu, right-click menu) renames exactly the yellow set. The menu entry is enabled only while something is highlighted and names its target (*Rename 'row'…*). What happens depends on what the identifier is:
 
@@ -1230,7 +1231,7 @@ The `Insert` menu (also on the editor's right-click menu) carries the control-fl
 
 The constructor body opens in a two-pane variant of the editor: a small **initializer-list pane** on top and the **body pane** below, each under its own marker strip. The top pane edits the `//@INIT` initializer list — the `: _x(value)` entries normally derived from the members' *Initial Values*; the bottom pane is the regular `@CODE` body. A **splitter** between the panes divides the space; the initial division is a best guess from how many lines each part has — the init pane fits its content (never below a few lines, never above 70% of the height) and the body takes the rest. Drag the splitter to change it. The menu adds two regenerate actions: *Regenerate Init* re-derives the initializer list from the current members and bases, *Regenerate Code* re-seeds the body scaffold (`ConstructorInclude(...)` + the your-code marker). Completion in the init pane offers the members **not yet initialized** (chapter 9's *Code completion*).
 
-![](images/Constructor_Code_Editor.png)
+![The constructor's two-pane editor — initializer list above, body below — syntax-coloured. The caret sits just after a `}`, so it and its matching `{` a few lines up both show a soft green box.](images/Constructor_Code_Editor.png)
 
 ## Go to definition
 
@@ -1281,6 +1282,13 @@ Everything in this chapter — indent behaviour, snippets, wizards — applies w
 | User Sections (six per class) | the `//@START_USERn` regions of `.h` / `.cpp` |
 | Exception specification | the method's exception clause |
 | Note editors | plain text (no C++ features) |
+
+## Printing
+
+ClassBuilder prints through the **browser**, not a print dialog of its own: the code is written to a small self-contained HTML page — carrying the same syntax colours you see on screen — and opened in your default browser, where `Ctrl/Cmd+P` prints it the normal way (a printer, or *Save as PDF*). There are two starting points:
+
+- **A single body** — in a method or constructor code editor, **File ▸ Print**. It prints the body between its `{//@CODE ... }` markers, the signature and markers included, exactly as the editor shows it; the constructor's initializer list and body print together.
+- **A whole file** — in the tree, right-click a **class** and choose **Print ▸ Header (.h)** or **Implementation (.cpp)**, or right-click the **model** node for **Print ▸ Master Include**. The file is generated fresh from the model — so it always matches the current state, with no *Write Source* to disk needed — syntax-coloured and, unlike a single body, **line-numbered**.
 
 # Code generation in depth
 
