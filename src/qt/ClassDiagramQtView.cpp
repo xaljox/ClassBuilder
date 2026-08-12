@@ -604,8 +604,12 @@ void ClassDiagramCanvas::mousePressEvent(QMouseEvent* e)
 
         if (ctrl || shift)
         {
-            // Additive / toggle. Empty-space click with a modifier is a no-op
-            // (matches MFC: Shift/Ctrl on empty doesn't clear).
+            // Additive / toggle. On a shape: Ctrl removes (toggle), Shift adds.
+            // On empty space: arm an ADDITIVE box-select -- the enclosed shapes
+            // are added to the current selection on release (matches the SD).
+            // A sub-threshold release cancels without clearing, so a
+            // modifier+empty *click* stays a no-op (matches MFC: Shift/Ctrl on
+            // empty doesn't clear).
             if (pHit)
             {
                 if (ClassDiagramViewModelSelection* pSel = findSelection(pHit))
@@ -618,6 +622,13 @@ void ClassDiagramCanvas::mousePressEvent(QMouseEvent* e)
                     (void)new ClassDiagramViewModelSelection(_pViewModel, pHit);
                 }
                 update();
+            }
+            else
+            {
+                _boxSelectPress     = e->position();
+                _boxSelectPotential = true;
+                _boxSelectActive    = false;
+                _boxSelectAdditive  = true;
             }
             e->accept();
             return;
