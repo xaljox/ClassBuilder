@@ -1557,15 +1557,26 @@ and the `.cpp`s add `METHODS_MULTI_OWNED_ACTIVE(...)` (the method bodies) plus `
 For `Row→Cell` (names come from the relation's role names):
 
 ```cpp
-// navigation                          // mutation
-Cell* GetFirstCell() const;            void AddCellFirst(Cell*);   void AddCellLast(Cell*);
-Cell* GetLastCell()  const;            void AddCellBefore(Cell*, Cell* pos);
-Cell* GetNextCell(Cell* pos) const;    void AddCellAfter (Cell*, Cell* pos);
-Cell* GetPrevCell(Cell* pos) const;    void RemoveCell(Cell*);     // unlink (non-owned use)
-int   GetCellCount() const;            void DeleteAllCell();       // owned: delete children
-                                       void ReplaceCell(Cell* old, Cell* nw);
-// ordering                            void MoveCellFirst/Last/Before/After(...);
-void SortCell(int (*cmp)(Cell*, Cell*));       // and MergeSortCell
+// navigation
+Cell* GetFirstCell() const;
+Cell* GetLastCell()  const;
+Cell* GetNextCell(Cell* pos) const;
+Cell* GetPrevCell(Cell* pos) const;
+int   GetCellCount() const;
+
+// mutation
+void AddCellFirst(Cell*);
+void AddCellLast(Cell*);
+void AddCellBefore(Cell*, Cell* pos);
+void AddCellAfter (Cell*, Cell* pos);
+void RemoveCell(Cell*);                 // unlink (non-owned use)
+void DeleteAllCell();                   // owned: delete children
+void ReplaceCell(Cell* old, Cell* nw);
+
+// ordering
+void MoveCellFirst/Last/Before/After(...);
+void SortCell(int (*cmp)(Cell*, Cell*));   // and MergeSortCell
+
 // per-relation iterator class
 Row::CellIterator it(pRow);  while (++it) { it->...; }
 ```
@@ -1716,19 +1727,15 @@ The **Compact Version** button (next to the *Version* field in the DataModel dia
 
 - **Single inheritance** for serialize classes (GUI-enforced): the generated `Serialize` chains base-class `Serialize` calls; a diamond would double-stream members.
 - **Per-member opt-out**: transient members simply untick Serialize.
-- **Object-pointer members** (not just relations) stream as graph references too.
+- **Prefer a (single) relation over a raw object-pointer member.** A modeled relation streams its target as part of the object graph — a shared object is written once and every reference is restored to it — so a link between serialized objects is best modeled as a relation, not a hand-written `Foo*` member.
 - **`SerializeMembersOnly`** on the document: streams only the document's own scalar settings — the graph is skipped via an internal flag. This is the cheap snapshot the undo system uses for document-level changes, and it stays in lockstep with `Serialize` automatically.
 - **Unknown types**: an `OtherType` maps to *None* or *Int* for streaming (type dialog).
 
-## Starting a new serialize model — current scaffolding checklist
+## Building a model that uses serialization
 
-The new-model scaffolding predates recent runtime changes; until it is refreshed, bring a *fresh* serialize model in line once (two minutes, or script it — chapter 16):
+Beyond the generic runtime headers every generated project needs (chapter 3), the only source you add for serialization is **`serialize/CbSerialize.cpp`** — the `CbArchive` implementation your `Serialize` bodies stream through — plus **`serialize/CbZstdStream.cpp`** and the Zstd library (`-lzstd`) when you store to compressed **CBZ** files (a plain, uncompressed archive needs neither). Include **`serialize/CbSerialize.h`**, and put the `serialize/` and `value/` directories on the include path (`-Iserialize -Ivalue`). Chapter 4.9 shows the full compile line on the Matrix model; otherwise there is nothing special — you compile and use a serialize model exactly like that round-trip.
 
-1. Add extern class `CbArchive`; change the `archive` argument of every generated `Serialize`/`SerializeRelations` (and the document's `SerializeMembersOnly`) from `CbObject&` to `CbArchive&`.
-2. The auto-created inheritances of serialize classes are marked **virtual**; recreate them non-virtual (serialize off → add inherit → serialize on). Virtual bases break the generated relation-load casts.
-3. Add the document's `int version` member (serialize on) and initialize it — the generated document `Serialize` expects it.
-
-Models that already build (like ClassBuilder's own) are unaffected.
+**Types you can serialize.** `CbArchive` already defines `<<` / `>>` for the C++ primitives and for a handful of **header-only** value types that ClassBuilder needed for itself — **`CbString`** (`value/CbString.h`), the geometry types **`CbPoint` / `CbRect` / `CbSize`** (`value/CbGeometry.h`), and **`CbTime`** (`value/CbTime.h`). `CbSerialize.h` already pulls all three in and they compile inline — no extra `.cpp` to add — so a member of any of them streams with no extra work. The one to know is **`CbString`**: a string class that serializes, ideal for text members in a model. You are also free to define your own serializable types — supply the type's two `CbArchive` stream operators (chapter 9, *Type*), and members of that type serialize just like a built-in.
 
 # The generated Undo/Redo framework
 
