@@ -1318,7 +1318,7 @@ The caret's line carries a faint blue tint; when the caret touches a `{}`, `()` 
 
 ## The occurrence highlight and Rename (F2)
 
-Put the caret in (or double-click) an identifier and every whole-identifier occurrence is highlighted soft yellow — *whole-identifier*, so `row` never lights up inside `rowCount`. The highlight deliberately shows the **full rename set**: it spans the body, the constructor's initializer pane, *and* the signature strip. A single lone hit shows nothing (noise, not information). The method-body editor figure (chapter 9) shows it: `value` under the caret, both occurrences yellow, with the `F2` *Rename* dialog open.
+Put the caret in (or double-click) an identifier and every whole-identifier occurrence is highlighted soft yellow — *whole-identifier*, so `row` never lights up inside `rowCount`. The highlight deliberately shows the **full rename set**: it spans the body, the constructor's initializer pane, *and* the signature strip. A single lone hit shows nothing (noise, not information). The method-body editor figure (chapter 9, *User Sections / Code dialogs*) shows it: `value` under the caret, both occurrences yellow, with the `F2` *Rename* dialog open.
 
 **Rename identifier** (`F2`, `Edit` menu, right-click menu) renames exactly the yellow set. The menu entry is enabled only while something is highlighted and names its target (*Rename 'row'…*). What happens depends on what the identifier is:
 
@@ -1367,7 +1367,7 @@ Two lightweight companions to completion, both resolved live from the model:
 - **Parameter hints.** While typing inside a call, a hint above the line shows the signature of the method being called — the argument you are on in **bold**, default values included. It appears when you type `(` or `,`, when you accept a completion (the argument list arrives fully inserted then), and on demand with `Ctrl+Shift+Space` when the caret stands in an existing call. It follows the caret and disappears when the call closes with `)`, on `Esc`, or when focus leaves the editor. With overloads, the hint follows the argument count typed so far.
 - **Method-not-found warning.** A call whose receiver resolves to a modeled class that has **no such method** — `pRow->DoesNotExist()` — is drawn with a red wavy underline (refreshed a moment after you stop typing); hovering it shows the warning *"No method 'X' in class Row"*. Deliberately conservative to avoid false alarms: only *qualified* calls (`.`, `->`, `::`) with a hard-resolved receiver are checked, and only real modeled classes — an unresolvable receiver, a bare name (which might be a free function or macro), or a foreign *External Class* is left alone. Base-class methods count as found. Dot-calls on an **iterator variable** are checked against the iterator's own four methods (*"No method 'X' in iterator RowIterator"*).
 
-![Hover documentation over a name — the model's signature and note — with every occurrence of the identifier highlighted soft yellow.](images/Hoover_and_Highlight.png)
+![Hover documentation over a name — the model's signature and note — with every occurrence of the identifier highlighted soft yellow.](images/Hover_and_Highlight.png)
 
 ![A call to a method the receiver's class does not have gets a red wavy underline; completion still offers the real names.](images/Wrong_Method_Name_and_Name_Completion.png)
 
