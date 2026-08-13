@@ -1583,6 +1583,8 @@ Row::CellIterator it(pRow);  while (++it) { it->...; }
 
 On the passive side, `Cell` gets `GetRow()` — the back-pointer. All of these appear in the tree under *Relation methods*, so their exact signatures are always visible.
 
+**`Sort` vs `MergeSort`.** A multi relation generates both, and the choice is about undo. **`Sort<Role>`** is a bubble sort — adjacent compare-and-swap — so each swap is a single list mutation; a comparator that snapshots the moved object (`SaveState`, when the compare returns `> 0`) therefore makes the whole reorder **undoable**, recorded as a sequence of one-pair steps — the only reorder shape the undo framework (chapter 14) can faithfully reverse. It is `O(N²)`, which is fine because CB lists are usually small. **`MergeSort<Role>`** is an `O(N log N)` merge sort for large lists or a one-off sort (for example canonicalising on load); it is **not** undoable, and its comparator must *not* call `SaveState` — the merge moves elements in bulk rather than one adjacent swap at a time, so per-comparison snapshots would not reconstruct a reversible reorder. Rule of thumb: `Sort` when the reorder must undo (a comparator that snapshots per swap), `MergeSort` only when it need not and the list is large.
+
 ## Lifetime semantics — the formal ground rules
 
 Relations *constrain object lifetimes*, and the generated constructors/destructors are where those constraints are enforced. Writing L~A~ for the lifetime of an object and L~R~ for the lifetime of a relation between two objects:
