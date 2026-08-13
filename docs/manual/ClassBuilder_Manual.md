@@ -976,7 +976,7 @@ The **Base Classes / Derived Classes** context-menu items open read-only browser
 
 Chapter 12 is the background; the dialog fields:
 
-- **From / To** — the two classes and their role names (the names appear in all generated identifiers: `GetFirstCell`, `AddCellLast`, `CellIterator`, …).
+- **From / To** — the two classes and their role names (the names appear in all generated identifiers: `GetFirstRow`, `AddRowLast`, `RowIterator`, …).
 - ***Association Type*** — single (one pointer), multi (a list), static multi (one *shared* container across all instances of the from-class).
 - ***Aggregation*** — owned; deleting the parent cascades to the children.
 - ***Critical*** — thread-safe; every operation locks (chapter 12.9).
@@ -1341,6 +1341,8 @@ A method is displayed with its argument **types** — `GetCell(int, int)` — so
 
 Each row carries its **model icon** — the same tree icon per kind (method, member, argument, class, iterator; an iterator shows its relation's icon) — and a muted, right-aligned **detail** column: a method's return type, a variable's type, `class`, or `iterator` / `loop`. So `FindRow(int)` reads `Row*` on the right, a member `_value` reads `CString`, a class reads `class`.
 
+![Code completion: each row carries its model icon and a muted detail column (return type, `class`, or `iterator` / `loop`); the first nine rows show a `Ctrl+1`…`Ctrl+9` direct-pick shortcut at the right edge.](images/Code_Completion.png)
+
 In the constructor's **initializer-list pane** (chapter 10.3), completion works the other way round: at a naming position it offers exactly the members **not yet initialized**, inserting `_x()` with the caret between the parens. Typing `_` opens the popup at once (member names are all `_`-prefixed) — in the body pane too.
 
 Every iterator type also offers a **`… loop`** entry that inserts the complete pattern, correctly indented, caret inside the body:
@@ -1354,6 +1356,8 @@ while (++iRow)
 
 The constructor argument is pre-filled with something of the relation's owning class found in scope — `this` when the edited class is (or derives from) it, else a suitable argument, local or member — and iterator types of *other* classes come scope-qualified: inside a `Matrix` method the Row→Cell iterator is offered as `Row::CellIterator`. This is the Iterator Wizard's knowledge (see *Code-editing helper wizards*, previous chapter), available inline as you type. The inline form takes a best guess — when no receiver is in scope the constructor argument is simply left empty; the Iterator Wizard offers more control over what is inserted, with the candidate receivers presented for you to choose from.
 
+![An iterator type's `… loop` entry inserts the whole `while (++iRow)` pattern, correctly indented, with the caret in the body.](images/Row_Iterator_Loop.png)
+
 ## Hover documentation and parameter hints
 
 Two lightweight companions to completion, both resolved live from the model:
@@ -1362,6 +1366,10 @@ Two lightweight companions to completion, both resolved live from the model:
 - **Iterators** follow the same type-vs-variable split as classes. Hovering an iterator **type** (`ColumnIterator`) shows `class Matrix::ColumnIterator` — an iterator is always defined inside the owning class's scope. Hovering an iterator **variable** (`ColumnIterator iColumn`) shows the iterator's synthesized **constructor signature** — the owner pointer to iterate from, a reference element, and, *only when the relation's filter option is on*, a filter-method argument — so you can see exactly what to supply, just as hovering a `Column cc;` variable shows `Column`'s constructors.
 - **Parameter hints.** While typing inside a call, a hint above the line shows the signature of the method being called — the argument you are on in **bold**, default values included. It appears when you type `(` or `,`, when you accept a completion (the argument list arrives fully inserted then), and on demand with `Ctrl+Shift+Space` when the caret stands in an existing call. It follows the caret and disappears when the call closes with `)`, on `Esc`, or when focus leaves the editor. With overloads, the hint follows the argument count typed so far.
 - **Method-not-found warning.** A call whose receiver resolves to a modeled class that has **no such method** — `pRow->DoesNotExist()` — is drawn with a red wavy underline (refreshed a moment after you stop typing); hovering it shows the warning *"No method 'X' in class Row"*. Deliberately conservative to avoid false alarms: only *qualified* calls (`.`, `->`, `::`) with a hard-resolved receiver are checked, and only real modeled classes — an unresolvable receiver, a bare name (which might be a free function or macro), or a foreign *External Class* is left alone. Base-class methods count as found. Dot-calls on an **iterator variable** are checked against the iterator's own four methods (*"No method 'X' in iterator RowIterator"*).
+
+![Hover documentation over a name — the model's signature and note — with every occurrence of the identifier highlighted soft yellow.](images/Hoover_and_Highlight.png)
+
+![A call to a method the receiver's class does not have gets a red wavy underline; completion still offers the real names.](images/Wrong_Method_Name_and_Name_Completion.png)
 
 ## Code insertion
 
@@ -1410,6 +1418,8 @@ The reverse of *Go to definition*: for the method **being edited**, list every m
 - `Edit ▸ Who calls me`.
 
 Every method body in the model (constructor initializer lists included) is searched for a **call** of the method's name — the name followed by `(`; a bare mention, such as a relation macro's class-name argument, does not count. Each hit is then verified by resolving the call's **receiver**, with the same resolution hover and F12 use, in the caller's own context: a same-named method of an unrelated class is rejected, while a call through a base-class pointer — which can dynamically dispatch to the edited override — stays listed, as does a call whose receiver cannot be typed. The list errs toward showing a possible caller rather than missing a real one. The callers are listed as `Class::method()` with their tree icons, in model order. `Enter` or a double-click selects that caller in the model tree and opens its editor; `Esc` or a click elsewhere dismisses the list.
+
+![Who calls me — every method that calls the edited one, listed as `Class::method()` with its tree icon.](images/Who_Uses_Me.png)
 
 ## Editors as dock windows
 
