@@ -50,7 +50,7 @@ The four screenshots below show what that means in practice: roughly the same si
 
 ## The pieces
 
-| Piece | What it is |
+| **Piece** | **What it is** |
 |----------------|--------------------------------------------------------|
 | `ClassBuilder.exe` | The GUI application (Qt-based; Windows, macOS and Linux). |
 | The model file (`.cbz`) | Your design, stored as a Zstandard-compressed binary archive. |
@@ -68,7 +68,7 @@ The examples use the **Matrix** model — a matrix of cells owned simultaneously
 
 This manual writes every shortcut in **one notation only — the Windows/Linux form** (`Ctrl+S`, `Ctrl+Shift+C`, `F3`, `Alt`+drag). If you work on macOS, translate with this table; it is not repeated elsewhere in the document:
 
-| This manual writes | Windows / Linux | macOS |
+| **This manual writes** | **Windows / Linux** | **macOS** |
 |-----------------------------|--------------------------|--------------------------|
 | `Ctrl+`key (e.g. `Ctrl+S`) | `Ctrl+`key | `⌘`+key |
 | `Ctrl+Shift+`key | `Ctrl+Shift+`key | `⌘⇧`+key |
@@ -129,7 +129,7 @@ Everything else is rewritten on the next **Write Source**. **Read Source** parse
 
 Generated code `#include`s a small, header-only runtime. Ship these directories with your project (or point your include path at them):
 
-| Directory | Contents | Needed |
+| **Directory** | **Contents** | **Needed** |
 |------------|--------------------------------------------------|-----------|
 | `include/` | `CB_Multi.h`, `CB_MultiOwned.h`, `CB_Single.h`, `CB_SingleOwned.h`, tree/static/critical variants, `CB_IteratorMulti.h`, `CB_CriticalSection.h`, ... | always |
 | `value/` | `CbString.h`, `CbTime.h`, `CbColor.h`, `CbGeometry.h` — small value types | when used by your model |
@@ -201,7 +201,7 @@ The model's format **version** needs no member and no code: it is the *Version* 
 
 Right-click `Matrix` ▸ `Add ▸ Relation` (`Ctrl+Shift+R`) and create, all of kind **Multi** with **Aggregation** (owned) checked:
 
-| From | To | Meaning |
+| **From** | **To** | **Meaning** |
 |----------|----------|--------------------------------------------|
 | `Matrix` | `Row` | the matrix owns its rows |
 | `Matrix` | `Column` | the matrix owns its columns |
@@ -426,7 +426,7 @@ Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to
 
 ## Menus
 
-| Menu | Items |
+| **Menu** | **Items** |
 |------------|------------------------------------------------------------------|
 | **File** | New... (`Ctrl+N`) · Open... (`Ctrl+O`) · Close Model (`Ctrl+W`) · Save (`Ctrl+S`) · Save As... · Save Source... · Read Source... · Delete Source · Exit |
 | **Edit** | Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) |
@@ -440,7 +440,7 @@ Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to
 
 ## The main toolbar
 
-| Button | Icon | Enabled when |
+| **Button** | **Icon** | **Enabled when** |
 |-------------------|----------------------------|--------------------------------------|
 | New | new-document glyph | always |
 | Open | open-folder glyph | always |
@@ -482,7 +482,7 @@ The model node at top (with class diagrams, sequence diagrams and top-level clas
 
 Button order, with each button's accelerator (all `Ctrl+Shift+...` on purpose: `Ctrl+Alt` combinations collide with AltGr on European keyboard layouts). A button is enabled exactly when the action is legal on the current selection — the same gate the context menu uses.
 
-| Button | Key | Icon glyph |
+| **Button** | **Key** | **Icon glyph** |
 |-----------------------------|----------------|--------------------------------|
 | Add Class | `Ctrl+Shift+C` | class box |
 | Add Inheritance | `Ctrl+Shift+I` | inheritance triangle |
@@ -514,7 +514,7 @@ The element icons speak one visual language, shared with the diagrams and the to
 
 **Structure and elements:**
 
-| Icon | Element | Icon | Element |
+| **Icon** | **Element** | **Icon** | **Element** |
 |------|---------|------|---------|
 | ![](../../src/qt/icons/file.svg) | model root | ![](../../src/qt/icons/class.svg) | class |
 | ![](../../src/qt/icons/externclass.svg) | extern class | ![](../../src/qt/icons/type.svg) | type |
@@ -694,14 +694,14 @@ Select two or more classes/notes and align them to the **anchor** (the last-sele
 
 ## Hiding, per-shape toggles, colors
 
-- **Hide** removes selected connections from view (per diagram); **Show Hidden** brings them back via a picker.
+- **Hide** removes selected connections from view (per diagram); **Show Hidden** brings them back directly — all of them, or, with a class selected, just that class's hidden connections.
 - Per-class toggles: **Auto Width**, **Show Method Arguments**. Per-relation: **Show Relation Names**.
 - **Change Line Color... / Change Text Color...** recolor the selected shapes.
 - **Color Templates ▸** sets the **document-wide default colors** — class line/text, member text, method text, relation line/critical-relation line/text, inherit line, diagram-only line/text, dependency line/text, note line/text. Each opens a color picker seeded with the current value; the change applies to every diagram of the model (and is undoable).
 
 ## Zoom and pan
 
-| Input | Effect |
+| **Input** | **Effect** |
 |----------------------------|------------------------------------------------|
 | `Ctrl`+wheel (or trackpad pinch) | zoom in/out, anchored at the cursor |
 | `Ctrl+=` / `Ctrl+-` / toolbar | zoom one step in/out |
@@ -726,7 +726,7 @@ One menu serves the whole canvas: which entries are enabled follows from what is
 
 ## Canvas keys
 
-| Key | Action |
+| **Key** | **Action** |
 |----------------------|------------------------------------------------|
 | `R` / `I` / `D` / `O` + drag | create relation / inheritance / dependency / diagram-only |
 | `Ctrl+Shift+C/N` | arm Add Class / Add Note placement |
@@ -754,7 +754,7 @@ Sequence diagrams show *interactions*: which object calls what, in which order. 
 
 ## What moves, and how
 
-| What | Gesture | Notes |
+| **What** | **Gesture** | **Notes** |
 |--------------------------|-------------------------|----------------------------------------|
 | Receiving activation | drag the **message arrow** up/down | vertical only; clamped to its container; dashed ghost |
 | Sending activation | `Alt` + drag the arrow | same drag, other end |
@@ -791,7 +791,7 @@ The context menu serves the whole canvas; entries enable per selection, exactly 
 
 ## Canvas keys
 
-| Key | Action |
+| **Key** | **Action** |
 |----------------------|------------------------------------------------|
 | `Ctrl+Shift+L` / `Ctrl+Shift+N` | arm Add Lifeline / Add Note placement |
 | `Ctrl+Shift+C` | Add Class (dialog; lifeline auto-placed) |
@@ -1236,7 +1236,7 @@ Generated helpers can insert code for you rather than making you type it:
 
 The `Insert` menu (also on the editor's right-click menu) carries the control-flow statements as one-keystroke snippets — no dialog, correctly indented, the caret placed inside the condition:
 
-| Snippet | Key |
+| **Snippet** | **Key** |
 |---------------------|------------------|
 | `if () {}` | `Ctrl+Shift+I` |
 | `if () {} else {}` | `Ctrl+Shift+E` |
@@ -1294,7 +1294,7 @@ The code editors are modeless — the model can change while they are open. They
 
 Everything in this chapter — indent behaviour, snippets, wizards — applies wherever the editor is embedded. The hosts, and the exact text each one edits:
 
-| Dialog | Edits |
+| **Dialog** | **Edits** |
 |-------------------------------|-----------------------------------------------|
 | Method / Constructor code | the `{//@CODE_nnnn ... }` body |
 | User Sections (six per class) | the `//@START_USERn` regions of `.h` / `.cpp` |
@@ -1335,7 +1335,7 @@ Per class: one `.h` and one `.cpp` (paths from the class dialog). Per model: the
 
 The markers, precisely:
 
-| Marker | Meaning |
+| **Marker** | **Meaning** |
 |------------------------------|------------------------------------------------|
 | `//@START_USERn` / `//@END_USERn` | Free user region (1: top, 2: after includes/inside class, 3: tail/inline section). Round-tripped verbatim. |
 | `{//@CODE_nnnn ... }//@CODE_nnnn` | A method body. `nnnn` is the method's permanent id (also used by the command interface). Round-tripped. |
@@ -1396,7 +1396,7 @@ class Cell { RELATION_MULTI_OWNED_PASSIVE(Row, Row, Cell, Cell)  ... };  // memb
 
 and the `.cpp`s add `METHODS_MULTI_OWNED_ACTIVE(...)` (the method bodies) plus `INIT_.../EXIT_...` lines inside `ConstructorInclude`/`DestructorInclude`. That is *all* the generated source shows — the machinery lives in `include/CB_*.h`, and your code reads like design, not bookkeeping. The macro families:
 
-| Family | Variants |
+| **Family** | **Variants** |
 |----------------|------------------------------------------------------------|
 | kind | `SINGLE` (one pointer) / `MULTI` (list) / `STATICMULTI` (one shared container for the whole class) |
 | ownership | plain (reference only) / `OWNED` (aggregation: cascade delete) |
@@ -1709,7 +1709,7 @@ print(cb("list_classes"))
 
 ## The command families
 
-| Family | Commands (abridged) |
+| **Family** | **Commands (abridged)** |
 |--------------------|--------------------------------------------------------------------|
 | Lifecycle / meta | `ping` (returns the build stamp — detects a stale binary), `list_commands`, `new_model_basic`, `new_model_serialize` |
 | Documents | `list_documents`, `select_document` (sticky server-side target, decoupled from GUI focus), `current_document`, `close_document` |
@@ -1804,7 +1804,7 @@ Generate sources and export a figure:
 
 ## A. Runtime header inventory
 
-| Header | Provides |
+| **Header** | **Provides** |
 |----------------------------------|----------------------------------------------|
 | `CB_Single.h` / `CB_SingleOwned.h` | 1:1 relation (reference / owned) |
 | `CB_Multi.h` / `CB_MultiOwned.h` | 1:N intrusive list (+ serialize macros `SERIALIZE_ALL_OBJECTS`, `WRITE/READ_*`) |
@@ -1830,7 +1830,7 @@ Generate sources and export a figure:
 
 ## C. Glossary
 
-| Term | Meaning |
+| **Term** | **Meaning** |
 |------------------------|----------------------------------------------------------|
 | Active / passive side | The owner (from) / member (to) side of a relation |
 | Aggregation | Owned relation: cascade delete of members |
