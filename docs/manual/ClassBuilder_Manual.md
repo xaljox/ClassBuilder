@@ -908,7 +908,7 @@ Each dialog is described field by field. A **bold** label is a field you fill in
 
 *Renaming a method* does not stop at the declaration: ClassBuilder scans all stored method bodies for occurrences of the old name and opens the **occurrences dialog** — every hit listed with its class/method location; select which to rename, and view any hit's code directly from the dialog before deciding. This makes model-wide renames safe without a text editor.
 
-![Renaming a method offers to update every call site stored in the model — with the possibility to view the code.](images/Replace_Dialog.png)
+![Renaming a method offers to update every call site stored in the model — with the possibility to view the code.](images/Rename_Occurrences_Dialog.png)
 
 ## Constructor / Destructor
 
