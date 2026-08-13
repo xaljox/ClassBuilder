@@ -418,6 +418,32 @@ done -- every object freed by cascade, no leaks by design
 
 Read those middle lines again: deleting one `Row` made its cells disappear from every `Column` — no code was written for that. A row was deleted *while iterating the rows* — the loop just continued. The whole surviving structure round-tripped through a compressed binary file. That is the value proposition of ClassBuilder in eleven lines of console output.
 
+**Without compression.** The Zstd frame is optional. `CbArchive` reads and writes a plain `std::istream` / `std::ostream` — it takes the store-or-load direction from the stream type — so you can hand it the file stream directly and drop the compression layer entirely. The code is a few lines shorter and the build no longer needs the Zstd library (`serialize/CbZstdStream.cpp` and `-lzstd` both come out). The only trade-off is file size: the archive is stored uncompressed, where the full CBZ path is roughly 8–9× smaller on real models (chapter 13). For small models, or simply to keep the build dependency-free, plain is perfectly fine:
+
+```cpp
+// save -> destroy -> reload (uncompressed: no Zstd)
+{
+    std::ofstream raw("matrix.dat", std::ios::binary);
+    CbArchive ar(raw);                  // ostream -> storing
+    pMatrix->Serialize(ar);
+}
+delete pMatrix;
+Matrix* pLoaded = new Matrix();
+{
+    std::ifstream raw("matrix.dat", std::ios::binary);
+    CbArchive ar(raw);                  // istream -> loading
+    pLoaded->Serialize(ar);
+}
+```
+
+Built without the Zstd pieces:
+
+```
+g++ -std=c++17 -I. -Iinclude -Ivalue -Iserialize \
+    main.cpp Matrix.cpp MatrixObject.cpp Row.cpp Column.cpp Cell.cpp \
+    serialize/CbSerialize.cpp -o matrixdemo
+```
+
 ## Step 10 — the round trip
 
 Edit a generated body **on disk** (inside its `//@CODE` markers), switch back to ClassBuilder, and use `File ▸ Read Source...` (**Read Modifications**): the model absorbs your edit. If ClassBuilder itself has the file's model open when the source changes, it offers the read-back automatically — accept it, or your next Write Source will overwrite the edit. Model ↔ source is a two-way street.
@@ -807,13 +833,24 @@ A power feature for documentation: **call traces**. Via the command interface (`
 
 Every dialog, what it edits, and the fields that need explanation. The screenshots show each dialog filled with Matrix-model content. (All dialogs end with OK/Cancel; changes are undoable model edits.)
 
+Each dialog is described field by field. A **bold** label is a field you fill in or a button you press; a ***bold-italic*** label is a switch — a single checkbox, or a group of radio buttons named by the group, with its choices following in plain text (the grouping is the telling part, not each option label).
+
 ## Class
 
 `Open` / `Edit Attributes` on a class — in the tree or on its diagram shape; `Add ▸ Class` (`Ctrl+Shift+C`) creates one and opens it.
 
 ![](images/Class_Dialog.png)
 
-Name; **Source File** / **Include File** (output paths); **Template** (+ declaration `template<class T>` and reference `<T>`); properties: **Replace** (generate the replace constructor — chapter 15), **Dll Export**, **Serialize** (chapter 13; locking rules below), **Struct** (emit `struct`), **Relation Macros Last** (move the relation macro block to the end of the class declaration); **Member Prefix** (per-class override of the model default); Note.
+- **Name** — the class name.
+- **Source File** / **Include File** — the output `.cpp` / `.h` paths.
+- **Template** — makes the class a template; declaration `template<class T>` and reference `<T>`.
+- **Member Prefix** — per-class override of the model default.
+- ***Replace*** — generate the replace constructor (chapter 15).
+- ***Dll Export*** — mark the class for DLL export.
+- ***Serialize*** — enable serialization (chapter 13; locking rules below).
+- ***Struct*** — emit `struct` instead of `class`.
+- ***Relation Macros Last*** — move the relation-macro block to the end of the class declaration.
+- **Note** — free descriptive text.
 
 *Serialize locking:* the checkbox disables when switching would break the model — most importantly, a class with a Serialize-on subclass cannot turn Serialize off.
 
@@ -823,7 +860,11 @@ Name; **Source File** / **Include File** (output paths); **Template** (+ declara
 
 ![](images/Extern_Class_Dialog.png)
 
-Name, template declaration/reference, **Struct**, **Suppress forward declaration** (for types that must not be forward-declared, e.g. typedefs), member prefix (used when generated code calls its getters/setters).
+- **Name** — the external type's name.
+- **Template declaration / reference** — for templated extern types.
+- **Member prefix** — used when generated code calls its getters/setters.
+- ***Struct*** — the type is a `struct`.
+- ***Suppress forward declaration*** — for types that must not be forward-declared (e.g. typedefs).
 
 ## Member
 
@@ -831,7 +872,17 @@ Name, template declaration/reference, **Struct**, **Suppress forward declaration
 
 ![](images/Member_Dialog.png)
 
-Type (searchable combo of all model types) + name (bare, no prefix); template reference for templated types; type shape: **Const, Mutable, Reference, Pointer, Pointer/Pointer, Const Pointer, Array [size], Bit Field [bits]**; **Serialize** (include in the generated `Serialize` body — with the member's *version*, chapter 13); **Delete** (emit `= delete`); access + **Static**; **Get method / Set method** (see below); **Initial Value** (becomes the constructor-initializer expression); Note.
+- **Type** — searchable combo of every type in the model.
+- **name** — the bare name (the class's member prefix is added for you).
+- **template reference** — the `<...>` arguments when the type is a template.
+- ***Type shape*** — const, mutable, reference, pointer, pointer/pointer, const pointer, array `[size]`, bit field `[bits]`.
+- ***Access*** — private / protected / public.
+- ***Static*** — the member is class-wide (one shared instance).
+- ***Serialize*** — include the member in the generated `Serialize` body (streamed with its version — chapter 13).
+- ***Delete*** — emit the member as `= delete`.
+- ***Get method*** / ***Set method*** — none / public / protected / private: generate a getter and/or setter at that access (see below).
+- **Initial Value** — the constructor-initializer expression for the member.
+- **Note** — free descriptive text.
 
 **Generated getters and setters.** Choosing an access level (instead of *None*) generates `GetX()` (inline, `const`, returns the member) and/or `SetX(value)` with that access; the static flag follows the member, and both stay in sync when the member is renamed or retyped. One important special case: **if the member is the key of a tree-implemented relation** (Value Tree / Unique Value Tree / AVL Tree), the generated setter also **repositions the object inside the tree** — changing a key must never be a plain assignment. See chapter 12.8 for the generated code.
 
@@ -841,7 +892,19 @@ Type (searchable combo of all model types) + name (bare, no prefix); template re
 
 ![](images/Method_Dialog.png)
 
-Return type + shape; name (combo remembers names used elsewhere — pick `Serialize` and the tool knows the convention); access + **Static**; **Virtual**, **Pure** (`= 0`), **Declare** / **Implement** (whether to emit the declaration and/or an implementation body — declare-only for hand-implemented specials), **Inline**, **Const**, **= delete**, **Dll Export**, **Calling Convention** (`__cdecl`, `__stdcall`, ... or free text); Note (emitted as the `@NOTE` comment above the method).
+- **Return type** — the return type and shape.
+- **name** — combo that remembers names used elsewhere (pick `Serialize` and the tool knows the convention).
+- ***Access*** — private / protected / public.
+- ***Static*** — a class-wide method.
+- ***Virtual*** — a virtual method.
+- ***Pure*** — pure virtual (`= 0`).
+- ***Declare*** / ***Implement*** — whether to emit the declaration and/or an implementation body (declare-only for hand-implemented specials).
+- ***Inline*** — an inline method.
+- ***Const*** — a `const` method.
+- ***= delete*** — emit the method as `= delete`.
+- ***Dll Export*** — mark for DLL export.
+- **Calling Convention** — `__cdecl`, `__stdcall`, … or free text.
+- **Note** — emitted as the `@NOTE` comment above the method.
 
 *Renaming a method* does not stop at the declaration: ClassBuilder scans all stored method bodies for occurrences of the old name and opens the **occurrences dialog** — every hit listed with its class/method location; select which to rename, and view any hit's code directly from the dialog before deciding. This makes model-wide renames safe without a text editor.
 
@@ -853,11 +916,17 @@ Return type + shape; name (combo remembers names used elsewhere — pick `Serial
 
 ![The Constructor dialog.](images/Constructor_Dialog.png)
 
-Constructor: access, **Inline / Explicit / Declare / Implement / = delete / Dll Export**, calling convention — plus the derived-arguments behaviour of chapter 4.5. The derived argument list and initializer list **re-derive automatically** when the class structure changes — adding/removing a member or changing a base updates the constructor's arguments and its `_x(value)` initializer entries (from each member's *Initial Value*). If you edit an initializer by hand in the constructor dialog, your text wins until the next structural change re-derives that entry.
+Constructor fields:
+
+- ***Access*** — private / protected / public.
+- ***Inline*** / ***Explicit*** / ***Declare*** / ***Implement*** / ***= delete*** / ***Dll Export*** — the usual method switches.
+- **Calling Convention** — as for methods.
+
+Plus the derived-arguments behaviour of chapter 4.5: the derived argument list and initializer list **re-derive automatically** when the class structure changes — adding/removing a member or changing a base updates the constructor's arguments and its `_x(value)` initializer entries (from each member's *Initial Value*). If you edit an initializer by hand in the constructor dialog, your text wins until the next structural change re-derives that entry.
 
 ![The Destructor dialog.](images/Destructor_Dialog.png)
 
-Destructor: the same options minus Explicit, plus **Virtual / Pure**.
+Destructor: the same switches minus ***Explicit***, plus ***Virtual*** / ***Pure***.
 
 ## Exception Specification
 
@@ -865,7 +934,7 @@ Per method: context menu ▸ *Edit Exception Specification*.
 
 ![](images/Exception_Specification_Dialog.png)
 
-A master checkbox *"Method has an exception specification (throw clause)"*, and a two-list builder — pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add**/**Remove** them to compose the emitted `throw(...)` clause.
+A master checkbox — ***Method has an exception specification (throw clause)*** — and a two-list builder: pick types from the model (with the usual type-shape modifiers: const, reference, pointer, const pointer, pointer-pointer, array size, template reference) and **Add** / **Remove** them to compose the emitted `throw(...)` clause.
 
 ## Argument
 
@@ -873,7 +942,12 @@ A master checkbox *"Method has an exception specification (throw clause)"*, and 
 
 ![](images/Argument_Dialog.png)
 
-Type + shape (const/ref/pointer/array), name, **Default Value**, note. Reorder arguments by drag in the tree.
+- **Type** — the argument's type and shape (const / ref / pointer / array).
+- **name** — the argument name.
+- **Default Value** — the default expression.
+- **Note** — free text.
+
+Reorder arguments by drag in the tree.
 
 ## Inheritance
 
@@ -881,7 +955,11 @@ Type + shape (const/ref/pointer/array), name, **Default Value**, note. Reorder a
 
 ![](images/Inherit_Dialog.png)
 
-Base class combo (Classes + Extern Classes), access (public/protected/private), **Virtual** inheritance, template reference (inherit `Base<int>`), note.
+- **Base class** — combo of Classes + Extern Classes.
+- ***Access*** — public / protected / private.
+- ***Virtual*** — virtual inheritance.
+- **Template reference** — inherit a specialization, e.g. `Base<int>`.
+- **Note** — free text.
 
 The **Base Classes / Derived Classes** context-menu items open read-only browser dialogs showing the inheritance hierarchy up- or downward from the clicked class.
 
@@ -898,10 +976,14 @@ The **Base Classes / Derived Classes** context-menu items open read-only browser
 
 Chapter 12 is the background; the dialog fields:
 
-- **From / To**: the two classes and the two role names (the names appear in all generated identifiers: `GetFirstCell`, `AddCellLast`, `CellIterator`, ...).
-- **Association Type**: **Single** (one pointer), **Multi** (a list), **Static Multi** (one *shared* container across all instances of the from-class).
-- **Association Properties**: **Aggregation** (owned: cascade delete), **Critical** (thread-safe: every operation locks — chapter 12.9), **Filter** (iterators get a predicate variant).
-- **Implementation** (Multi only): **Standard** (doubly-linked intrusive list), **Value Tree** (bit-indexed tree on an **integer-like** member — fastest find, unordered; **Unique** selects the unique-key variant when duplicates are impossible), **AVL Tree** (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` — ints and `CbString` qualify). **Member**: the key member for the tree variants — its generated **setter becomes tree-aware** (chapter 12.8).
+- **From / To** — the two classes and their role names (the names appear in all generated identifiers: `GetFirstCell`, `AddCellLast`, `CellIterator`, …).
+- ***Association Type*** — single (one pointer), multi (a list), static multi (one *shared* container across all instances of the from-class).
+- ***Aggregation*** — owned; deleting the parent cascades to the children.
+- ***Critical*** — thread-safe; every operation locks (chapter 12.9).
+- ***Filter*** — iterators gain a predicate variant.
+- ***Implementation*** *(multi only)* — standard (doubly-linked intrusive list), value tree (bit-indexed on an integer-like key; fastest find, unordered), AVL tree (balanced, ordered iteration; the key type must support `<`, `<=`, `>`, `>=`, `==` — ints and `CbString` qualify).
+- ***Unique*** — the no-duplicates variant of the value tree.
+- **Member** — the key member for the tree variants; its generated setter becomes tree-aware (chapter 12.8).
 
 ## Find Method (on a relation)
 
@@ -909,7 +991,7 @@ Created on a **multi relation**: context menu of the relation node.
 
 ![](images/Find_Method_Dialog.png)
 
-The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The name defaults to `Find<ToName>` (editable), plus options for **reverse** iteration and a **continue-after** argument (find the *next* match, for iterating all matches). On a list relation the code body, is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the **fast tree lookup** is generated instead — callers are identical either way.
+The dialog offers a tree of everything reachable from the iterated object — its members, and members reached by *navigating* further relations — from which you pick the value(s) to compare; each pick becomes an argument of the generated method. The **Name** defaults to `Find<ToName>` (editable), plus ***Reverse*** iteration and a ***Continue-after*** argument (find the *next* match, for iterating all matches). On a list relation the code body is the compare loop of chapter 4.6; on a value-tree/AVL relation whose key matches the argument, the fast tree lookup is generated instead — callers are identical either way.
 
 ## Dependency
 
@@ -917,7 +999,12 @@ On a class diagram: `Add ▸ Dependency` (`Ctrl+Shift+D`) or **D**+drag from cli
 
 ![](images/Dependency_Dialog.png)
 
-**Client Class** (the user) and **Supplier Class** (the used), the **Stereotype** text drawn between `<< >>` guillemets on the dashed arrow, and a **Name**. Like Relation (Diagram Only), a dependency is drawing-only: nothing enters the model's code generation.
+- **Client Class** — the user (client) side.
+- **Supplier Class** — the used (supplier) side.
+- **Stereotype** — text drawn between `<< >>` guillemets on the dashed arrow.
+- **Name** — the dependency name.
+
+Like Relation (Diagram Only), a dependency is drawing-only: nothing enters the model's code generation.
 
 ## Relation (Diagram Only)
 
@@ -925,7 +1012,15 @@ On a class diagram: `Add ▸ Relation (Diagram Only)` (`Ctrl+Shift+O`) or **O**+
 
 ![](images/Relation_only_Dialog.png)
 
-The drawing-only counterpart of the Relation dialog: both ends get a **Class**, a **Name** and a free **Multiplicity** text; the kind radio buttons (Single / Multi / Static Multi) and **Association / Aggregation / Composition** choose the UML notation drawn. Nothing enters the model and nothing is generated — pure documentation, and notation-wise *richer* than modeled relations (e.g. Composition).
+The drawing-only counterpart of the Relation dialog:
+
+- **Class** (both ends) — the two classes.
+- **Name** (both ends) — the role names.
+- **Multiplicity** (both ends) — free multiplicity text.
+- ***Kind*** — single / multi / static multi.
+- ***Notation*** — association / aggregation / composition (the UML decoration drawn).
+
+Nothing enters the model and nothing is generated — pure documentation, and notation-wise *richer* than modeled relations (e.g. Composition).
 
 ## Type
 
@@ -933,7 +1028,9 @@ The drawing-only counterpart of the Relation dialog: both ends get a **Class**, 
 
 ![](images/Type_Dialog.png)
 
-Name, serialize mapping (**None** or **Int** — how the unknown type is streamed), and the **Declaration** text block: the actual `typedef`/`enum`/`struct` C++ text that gets emitted into the master include.
+- **Name** — the type's name.
+- ***Serialize mapping*** — none or int: how the unknown type is streamed.
+- **Declaration** — a text block: the actual `typedef` / `enum` / `struct` C++ text emitted into the master include.
 
 With Serialize on, a serialized member of such a type must be streamable: map the type to **Int** when it converts to an integer. When it cannot (mapping **None**), supply the two stream operators for the type yourself — for example in `StdAfx.h` or a user section:
 
@@ -977,7 +1074,12 @@ Name + note; actors appear under `Actors` and go on sequence diagrams as stick f
 
 ![](images/CD_Dialog.png)
 
-Name, page size/orientation/scale, multi-page layout (1–16 pages), caption, note — and the **auto-add** matrix: which member/method access levels are automatically shown when a class is placed on this diagram (private/protected/public members and methods, plus Get/Set methods).
+- **Name** — the diagram name.
+- **Page size / orientation / scale** — the drawing page setup.
+- **Multi-page layout** — 1–16 pages.
+- **Caption** — a caption drawn on the diagram.
+- **Note** — free text.
+- ***Auto-add*** matrix — which member/method access levels are shown automatically when a class is placed on this diagram (private / protected / public members and methods, plus Get/Set methods).
 
 ## Sequence Diagram
 
@@ -985,7 +1087,12 @@ Name, page size/orientation/scale, multi-page layout (1–16 pages), caption, no
 
 ![](images/SD_Dialog.png)
 
-Name, page setup as above; **Message Numbering** (None, `1`, `a`, `A`, `1.1.1`, `a.a.a`, `A.A.A`); **Message Name** options (argument types, argument names, scope). Per-message overrides exist on each signal's own dialog.
+- **Name** — the diagram name.
+- **Page setup** — as above.
+- ***Message Numbering*** — none, `1`, `a`, `A`, `1.1.1`, `a.a.a`, `A.A.A`.
+- ***Message Name*** — argument types, argument names, scope (what each message label shows).
+
+Per-message overrides exist on each signal's own dialog.
 
 ## Select Classes
 
@@ -1026,7 +1133,13 @@ Reorders how a class's members and methods are laid out **in this diagram's box*
 
 ![](images/Message_Dialog.png)
 
-Name (the displayed call), label/guard (`[...]` — the `*` clause conventionally means "called in a loop"), return text + show-return-arrow, async flag, per-message argument/scope display, note.
+- **Name** — the displayed call.
+- **Label / guard** — the `[...]` clause (the `*` clause conventionally means "called in a loop").
+- **Return text** — the return label.
+- ***Show return arrow*** — draw the return arrow.
+- ***Async*** — an asynchronous message.
+- ***Argument / scope display*** — per-message override of what the label shows.
+- **Note** — free text.
 
 ## LifeLine / Note dialogs
 
@@ -1034,11 +1147,18 @@ Name (the displayed call), label/guard (`[...]` — the `*` clause conventionall
 
 ![The LifeLine dialog.](images/Lifeline_Dialog.png)
 
-LifeLine: the represented class/actor, auto-width.
+LifeLine:
+
+- **Class / actor** — the class or actor the lifeline represents.
+- ***Auto-width*** — size the head to its label.
 
 ![The Note dialog.](images/Note_Dialog.png)
 
-Note (both diagram kinds): text, font height, and "force to all" (apply the size everywhere).
+Note (both diagram kinds):
+
+- **Text** — the note text.
+- **Font height** — the note's text size.
+- ***Force to all*** — apply the size to every note.
 
 ## Project Settings and the DataModel dialog
 
@@ -1046,7 +1166,17 @@ Two related dialogs share this ground: **Edit Attributes on the model node** ope
 
 ![The DataModel dialog — Edit Attributes on the model node.](images/Datamodel_Dialog.png)
 
-Model name; **Master Include File**; **Namespace** (wrap all generated code); **Document Class Name**; **Phase Support**; **Show DLL Export**; **Indent size**; **Version** (the model schema version — chapter 13) with the **Compact Version** button (renumbers to the smallest equivalent scheme); prefixes (Class name prefix, default Member prefix); comment-header templates for `.h`/`.cpp` — two buttons each open an editor for the template, applied to the header comment of every generated file of that kind (see below); **Code Generation**: StdAfx.h include on/off, Serialize, **Undo/Redo** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, line endings (CRLF/LF).
+- **Model name** — the model's name.
+- **Master Include File** — the master include path.
+- **Namespace** — wraps all generated code.
+- **Document Class Name** — the serialization document class.
+- **Indent size** — generated-code indentation.
+- **Class name prefix** / **Member prefix** — the model-wide default prefixes.
+- **Version** — the model schema version (chapter 13); the **Compact Version** button renumbers to the smallest equivalent scheme.
+- **Comment-header templates** — `.h` / `.cpp`; two buttons each open an editor for the template applied to the header comment of every generated file of that kind (see below).
+- ***Phase Support*** — enable the phase glyphs and workflow.
+- ***Show DLL Export*** — surface the DLL-export options.
+- ***Code Generation*** — StdAfx.h include, Serialize, ***Undo/Redo*** (chapter 14; enable-once), Modifiers at Implementation, Implement Template class in Header file, and line endings (CRLF / LF).
 
 ![](images/Comment_Header.png)
 
@@ -1054,7 +1184,10 @@ The comment-header editor — the same editor serves the `.h` and the `.cpp` tem
 
 ![Project Settings — Project ▸ Settings...](images/Project_Settings_Dialog.png)
 
-**Undo stack** depth — **default 10** steps, raise it here if you want deeper undo history; **Additional Allowed** identifier characters; **Comment Initial Code** (the TODO line seeded into new method bodies); Method Name List / Similar Lines List (name suggestions and the similar-lines tool's pattern list).
+- **Undo stack** — depth, default 10 steps; raise it for deeper undo history.
+- **Additional Allowed** — extra identifier characters.
+- **Comment Initial Code** — the TODO line seeded into new method bodies.
+- **Method Name List** / **Similar Lines List** — name suggestions and the similar-lines tool's pattern list.
 
 ## Add Serialization to project
 
@@ -1070,7 +1203,11 @@ Adds the full serialization scaffolding to an existing model that was created wi
 
 ![](images/Find_Dialog.png)
 
-Search text, match case / whole name, and which element kinds to search (Types / Arguments / Methods / Members). `F3` repeats.
+- **Search text** — the text to find.
+- ***Match case*** / ***Whole name*** — matching options.
+- ***Element kinds*** — Types / Arguments / Methods / Members to search.
+
+`F3` repeats.
 
 ## Read Source
 
