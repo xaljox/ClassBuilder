@@ -566,7 +566,7 @@ Right-click any node (an unselected node is selected first). The full menu, top 
 4. **Edit Exception Specification** — per-method exception clause.
 5. **Edit Context / Assign Context** — define contexts on the model node, assign them on classes/methods (chapter 9, *Context*).
 6. **Copy / Paste** (`Ctrl+C` / `Ctrl+V`) — subtree copy, also **across models**: copy a class in one model, paste into another.
-7. **Sort on Name / Sort on Phase** — reorder children.
+7. **Sort on Name / Sort on Phase** — sort the children that carry a free order (classes, groups, diagrams); members and methods keep their fixed built-in order (see *Ordering of members, methods, and groups*).
 8. **Add ▸** — everything addable here: Class Diagram, Sequence Diagram, Group, Class, External Class, Inheritance, Relation, Member, Method, Constructor, Argument, Meta Group, Actor, Virtual Methods, IsClass Methods, Type — plus *Deleted Copy Ctor + operator=* on a class (adds both as `= delete` in one click).
 9. **Print ▸** — on a **class**, *Header (.h)* or *Implementation (.cpp)*; on the **model** node, the *Master Include*. Prints the freshly generated file — syntax-coloured and line-numbered — through the browser (see *Printing*).
 10. **Phase ▸** — Analysis / Design / Implementation / Test / Complete.
@@ -605,6 +605,24 @@ Everyday examples: drag an **argument onto a method** to add it there (`Ctrl`+dr
 - onto a **class diagram**: a class node drops as a new class shape at the cursor (a ghost of the shape previews while hovering);
 - onto a **sequence diagram**: a class or actor drops as a new lifeline.
 
+## Ordering of members, methods, and groups
+
+The tree always shows members and methods in a **fixed, built-in order** — there is no way to drag them up or down to re-order them. Within a class:
+
+- **Members** are grouped by access and sorted by name (static members kept apart).
+- **Methods** come constructors first, then the destructor, then by access and name (static apart); the generator's own **relation methods** come last.
+
+That is a *display* order. Underneath it sit two different rules, and the difference matters:
+
+- **A member's position in the model is its creation order, and it is load-bearing.** Members are generated — and **serialized** — in the order they were created. The `Serialize` code writes each member in that order and reads them back in the same order, so re-ordering members would break loading of any file written by an earlier build (see *Serialization*). That is exactly why there is no gesture to move a member: the order is not yours to change. Add a new member and, in the model, it goes *last* — the tree merely slots it into its sorted place.
+- **Methods carry no such constraint** — they are code, not stored data — so ClassBuilder keeps the method list sorted for you; adding or editing a method re-sorts it, and the tree and the generated file always agree.
+
+**Groups are how you impose your own order.** Drag a member or method into a **Group** (or **Meta Group**) to collect related items under a heading. Groups — unlike the members and methods themselves — *can* be re-ordered (drag them) and sorted:
+
+- **Sort on Name / Sort on Phase** (context menu) sort the children that carry a free order — **classes, groups and diagrams** — never the members and methods inside them. On a class with no groups they therefore do nothing visible, which is expected, not a bug.
+
+The same rules show through in the generated file: in the header the declarations are grouped `private → protected → public` (by name within each); in the `.cpp` the definitions follow the model order — constructors, destructor, then methods, with the generator's own methods below the `//{{AFX DO NOT EDIT` line (see *Anatomy of a generated file*). Member declarations keep their creation order, per serialization above.
+
 # Reference: class diagrams
 
 A class diagram shows selected classes as UML boxes with their inheritances, relations and dependencies. A model can have any number of diagrams; each shows a chosen subset of classes and features — small focused diagrams beat one wall-sized one.
@@ -642,12 +660,12 @@ Connections are orthogonal poly-lines that you can reshape — select the connec
 - **Middle segments** slide perpendicular to their direction (a vertical segment moves left/right — horizontal double-arrow cursor; a horizontal one moves up/down). Movement snaps to the grid and is clamped so the routing stays legal; a dashed ghost previews the result.
 - **End points** slide along the class perimeter (four-arrow cursor). The whole path re-routes live: the preview shows the complete re-routed connection — arrowheads, diamonds and all — as a dashed ghost.
 - **Move all — `Alt`**: hold `Alt` while dropping and every sibling connection that shares the same routing moves together. This is how you move the **shared trunk of all inheritance lines** of a base class in one gesture: drag any one of them with `Alt`, and every collinear sibling follows. The same applies to `Alt` on a shared start point.
-- **Text labels** (relation role names and multiplicities, dependency name/stereotype) are draggable on a selected connection (four-arrow cursor, snaps to the grid). Once moved, a label stays where you put it.
+- **Text labels** (relation role names and multiplicities, dependency name/stereotype) are draggable on a selected connection (four-arrow cursor, snaps to the grid). A label's position is held **relative to the connection anchor point** it belongs to — the *from* labels to the start point, the *to* labels to the end point — so once you place a label it keeps that offset and travels with its anchor point when the connection re-routes or its class moves.
 
 ## Members and methods inside the box
 
-- A member/method **row** is individually selectable; double-click opens its dialog.
-- **Reorder by drag**: press on an already-selected row and drag vertically — a horizontal insertion line shows the landing slot. Members reorder among members, methods among methods. The new order is model order: it changes the declaration order in the generated file.
+- A member/method **row** is individually selectable. **Double-click** opens it: a **method** opens its **code editor** — a separate window that may open *behind* the diagram, so bring it to the front if you don't see it — while a **member** opens its **attributes dialog**. **`Ctrl`+double-click** opens the **attributes dialog** instead (for a method, its signature — name, return type, arguments, flags — rather than its body).
+- **Reorder by drag**: press on an already-selected row and drag vertically — a horizontal insertion line shows the landing slot. Members reorder among members, methods among methods. This order is **local to the diagram**: a class box can show only a subset of the class's members/methods, and each diagram keeps its own arrangement, so reordering here changes only how *this* box is laid out — it does **not** change the declaration order in the generated file.
 - Arrow keys walk the rows of a class (header ↔ members ↔ methods).
 
 ## Notes and their connection points
@@ -1000,7 +1018,7 @@ From the class-diagram context menu, on a selected class.
 
 ![](images/Reorder_MM_Class.png)
 
-Reorders a class's members and methods with the **Move Up / Move Down** buttons. On the diagram itself the same reorder is a direct row-drag inside the class shape (chapter 7); the dialog is the button-driven variant, convenient for long lists. The order is **model order**: it changes declaration order in the generated file.
+Reorders how a class's members and methods are laid out **in this diagram's box**, with the **Move Up / Move Down** buttons. It is the button-driven variant of the direct row-drag inside the class shape (chapter 7), convenient for long lists. Like that drag, the order is **local to the diagram** — each diagram keeps its own arrangement (and may show only a subset), so it does **not** change the declaration order in the generated file.
 
 ## Signal (message)
 
