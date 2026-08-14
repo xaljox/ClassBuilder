@@ -29,6 +29,7 @@ platform gap in a `WIN32`/`__APPLE__` branch → push the note back here → rep
 | [QT_DOCK_TEAROFF_PATCH.md](QT_DOCK_TEAROFF_PATCH.md) | The TWO Qt 6.11.1 dock bugs (float-group "2→1 tear-off" crash + post-tear-off layout freeze QTBUG-147209). **Superseded 2026-07-21:** the trigger path is now disabled in CB, so the Linux static build is stock/unpatched; kept as history + for the Win/Mac patched builds. |
 | [qt-patches/](qt-patches/) | Verbatim third-party patches that must be applied to the platform's Qt build. |
 | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Shared Claude Code config: the tracked-vs-local permission split and each platform's build/launch path. Read before touching `.claude/` permissions. |
+| [INSTALLER.md](INSTALLER.md) | Per-platform **installers/packaging** coordination. Windows = DONE (Inno Setup, full-static exe). macOS/Linux = TODO. What every installer bundles (app + committed manual PDF + example + compile-runtime + `.cbz` assoc), and the Mac/Linux packaging plan (`.dmg` / AppImage). **Read this for the installer handoff.** |
 
 ## Build speed across the three platforms
 
