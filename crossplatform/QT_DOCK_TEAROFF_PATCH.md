@@ -1,13 +1,26 @@
 # Qt dock bugs — required Qt patches (Windows, macOS **and** Linux)
 
-> ⚠️ **SUPERSEDED for the Linux static build (2026-07-21) — these patches are no
-> longer applied there.** CB has since disabled the dock feature path that
-> triggered the tear-off crash/freeze, so the bugs can't be hit. The proof: the
-> stock **dynamic** apt Qt (unpatched) runs CB fine. The Linux static Qt is
-> therefore built **stock 6.11.1, no patch** (see
-> [PORTING_LINUX.md](PORTING_LINUX.md) option B). This doc stays as history and
-> for Windows/macOS, whose patched builds are unchanged; drop the patch on the
-> other platforms too whenever their Qt is next rebuilt.
+> ⚠️ **SUPERSEDED ON EVERY PLATFORM — NO patches are needed (JV, tested).**
+> CB has dropped the dock functionality that triggered both bugs: a float is
+> always a **single** dock — no tabs, no splits inside a floating window — so
+> there is no tear-off, and neither bug can be reached. This was **tested**, not
+> inferred. First proven on Linux 2026-07-21 (the stock **dynamic** apt Qt,
+> unpatched, runs CB fine → the Linux static Qt is built **stock 6.11.1, no
+> patch**, see [PORTING_LINUX.md](PORTING_LINUX.md) option B), and it holds
+> everywhere for the same reason: the trigger path is gone from CB.
+>
+> Note the feature was stripped *deliberately and generously*: even **with** both
+> patches applied, extreme docking/tabbing/tear-off sequences could still be made
+> to crash. Removing the functionality — not patching Qt — is what actually made
+> it safe. The patches are the weaker fix and are no longer the mechanism CB
+> relies on.
+>
+> **So: build stock Qt 6.11.1 on any platform. Do not apply these patches to a
+> new Qt tree.** Build a fresh Qt (a version bump, a `/MT` rebuild, a new
+> machine) → apply **nothing**. The Windows and macOS trees that already carry
+> them are fine as-is (harmless); they simply fall away at the next Qt rebuild.
+> This doc is retained as history and as the record of what to re-test when Qt
+> is next bumped.
 
 **TL;DR:** Qt **6.11.1** has TWO platform-independent dock bugs in qtbase, both
 from the same 6.11 dock rework, both **not** in ClassBuilder, both fixed by
@@ -27,14 +40,41 @@ tiny verbatim backports of the upstream fixes. The diffs are committed here:
 > `endDrag`). Apply it to the same patched Qt tree, rebuild QtWidgets, done —
 > the full doc header inside the patch file has symptom/root-cause detail.
 
-The Windows static-Qt build at `C:/Qt-static/6.11.1` has BOTH applied
-(2026-07-03). **Linux** `~/Qt-6.11.1-patched` now also has BOTH — the second
-applied 2026-07-03 (two one-word edits in `src/widgets/widgets/qdockwidget.cpp`
-at the `startDrag` ctrl-drag + `endDrag` stay-floating sites, `KeepSavedState`
-→ `ClearSavedState`), qtbase Widgets rebuilt + installed, CB relinked. **macOS**
-`~/Qt-6.11.1-patched` still had only the first as of that date — apply the second
-the same way and rebuild/install qtbase (Widgets), then rebuild CB. Both patches
-expire together at Qt ≥ 6.11.2.
+The Windows static-Qt build has BOTH applied (2026-07-03). **Linux**
+`~/Qt-6.11.1-patched` now also has BOTH — the second applied 2026-07-03 (two
+one-word edits in `src/widgets/widgets/qdockwidget.cpp` at the `startDrag`
+ctrl-drag + `endDrag` stay-floating sites, `KeepSavedState` → `ClearSavedState`),
+qtbase Widgets rebuilt + installed, CB relinked. **macOS** `~/Qt-6.11.1-patched`
+**also has BOTH — verified 2026-08-14** (`ClearSavedState` at both call sites in
+`qdockwidget.cpp`; `savedState.clear()` in `qmainwindowlayout.cpp`). An earlier
+revision of this line said macOS was missing the second one; that was stale, and
+it cost a session chasing a non-issue — reasoning from the patch headers about
+which paths "should" still be reachable instead of trusting the test result in
+the banner above. **Nothing to do here: no platform needs a patch, and the trees
+that have them are fine.**
+
+> **Do not re-open this until Qt publishes a new release.** As of 2026-08-14
+> **6.11.1 is still upstream's newest** (6.11.2 and 6.12 do not exist; the 6.10
+> track is at 6.10.3, and brew still ships 6.11.1) — so there is nothing to bump
+> to, and the current patched Qt is correct on every platform. Do not build from
+> a git branch tip to get ahead of a release.
+>
+> **When a new Qt release does land, this item is revisited as one unit and
+> retested on ALL THREE platforms** — Windows, macOS and Linux together, not
+> one-off per box. The question is **not** whether to re-apply the patches (they
+> are obsolete); it is whether the dropped functionality can come back:
+> 1. Is the `GroupedDragging` UAF ([KNOWN_ISSUES.md](KNOWN_ISSUES.md) item 3)
+>    cleared? If yes, re-enable `GroupedDragging` in `QtShellWindow`'s
+>    `setDockOptions` and re-test floating tab groups on each platform.
+> 2. Re-run the extreme docking/tabbing/tear-off sequences that still crashed
+>    even *with* the patches. That is the bar to clear — a clean simple tear-off
+>    is not enough evidence to restore the feature.
+> 3. Only then update this doc / archive it.
+
+**Windows note (2026-08-14):** the `/MT` full-static switch (`2a0a6cf`) repointed
+the `x64` preset from `C:/Qt-static/6.11.1` to **`C:/Qt-static-mt/6.11.1`** — a
+*different* Qt tree, presumably built from fresh 6.11.1 source. Per the banner
+that is **fine and needs no action**: stock is the correct state, patches or not.
 
 The remainder of this doc covers the first (tear-off crash) patch in detail;
 the build/apply recipe per platform applies to both.
