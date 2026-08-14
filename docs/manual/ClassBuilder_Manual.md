@@ -1781,8 +1781,8 @@ With **Undo/Redo** enabled (Project Settings; requires Serialize; enable-once), 
 
 The framework leans on serialization for state capture:
 
-- **UndoNew** — recorded when an object is created; undo = delete it.
-- **UndoDelete** — recorded before an object dies; the object's state is kept; undo = resurrect and re-link.
+- **UndoNew** — recorded **automatically** when an object is created: the generator puts a `new UndoNew(this)` line in the document object's constructor (in the Matrix model, `MatrixObject`'s), so creation is tracked without you writing anything. Undo = delete the object.
+- **UndoDelete** — an undoable delete does **not** run the destructor. Deleting the object instead creates an `UndoDelete` record that takes a pointer to it (as its `DataModelDocObject` base) and **removes every reference to it** — unlinked from all its relations the object is "dead" but kept alive, parked on the stack. Undo **re-links** it into all its relations (its stored context); a redo removes it again. Only when the record scrolls off the stack (undo depth exceeded) is the parked object actually deleted.
 - **UndoChange** — recorded by calling `SaveState()` on an object *before* changing it; the object is snapshotted **through `CbArchive` into an in-memory stream** (a `std::stringstream`), relations included via reference bookkeeping; undo streams it back.
 - **UndoChangeDoc** — document-level settings snapshot via `SerializeMembersOnly` (cheap: no graph clone).
 
