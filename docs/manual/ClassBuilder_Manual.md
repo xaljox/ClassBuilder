@@ -1798,6 +1798,16 @@ pDoc->MarkLastUndo();        // close the user-visible step
 
 `SaveState` deduplicates: an object already captured in the open step is not snapshotted again.
 
+A **compound** action bundles several records but undoes as a single `Ctrl+Z`. For example, add a `Cell` to a `Row` and keep the row sorted — a creation followed by a re-sort whose comparator records a sub-batch per swap (chapter 12.3, *`Sort` vs `MergeSort`*):
+
+```cpp
+Cell* c = new Cell(pRow, pColumn);   // UndoNew (auto)
+pRow->SortCell(CompareCell);         // sub-batches per swap
+pDoc->MarkLastUndo();                // close the user step
+```
+
+The `MarkLastUndo(2)` calls inside `CompareCell` mark ordered sub-batches *within* the still-open step; the final `MarkLastUndo()` closes it. One undo then rewinds the sort (its sub-batches in reverse) and the creation (`UndoNew` → delete) together, as a single action.
+
 ## The undo/replace entanglement
 
 Undo restore works by **replacement**: the stored copy is deserialized and takes the live object's place, with every reference redirected (`ReplaceReference` sweeps live objects *and* the parked entries on the undo/redo stacks). That is the replace-constructor mechanism of chapter 15 — the framework is its heaviest user.
