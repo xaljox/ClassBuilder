@@ -1782,7 +1782,7 @@ With **Undo/Redo** enabled (Project Settings; requires Serialize; enable-once), 
 The framework leans on serialization for state capture:
 
 - **UndoNew** — recorded **automatically** when an object is created: the generator puts a `new UndoNew(this)` line in the document object's constructor (in the Matrix model, `MatrixObject`'s), so creation is tracked without you writing anything. Undo = delete the object.
-- **UndoDelete** — an undoable delete does **not** run the destructor. Deleting the object instead creates an `UndoDelete` record that takes a pointer to it (as its `DataModelDocObject` base) and **removes every reference to it** — unlinked from all its relations the object is "dead" but kept alive, parked on the stack. Undo **re-links** it into all its relations (its stored context); a redo removes it again. Only when the record scrolls off the stack (undo depth exceeded) is the parked object actually deleted.
+- **UndoDelete** — an undoable delete does **not** run the destructor; you just construct the record — `(void)new UndoDelete(this)` — and it does the work: it takes the object as its document-object base (the Matrix model's `MatrixObject`), **removes every reference to it** (unlinked from all its relations the object is "dead" but kept alive, parked on the stack) and takes care of its associations and aggregations. Undo **re-links** it into all its relations (its stored context); a redo removes it again; and only when the record scrolls off the stack (undo depth exceeded) is the parked object actually deleted.
 - **UndoChange** — recorded by calling `SaveState()` on an object *before* changing it; the object is snapshotted **through `CbArchive` into an in-memory stream** (a `std::stringstream`), relations included via reference bookkeeping; undo streams it back.
 - **UndoChangeDoc** — document-level settings snapshot via `SerializeMembersOnly` (cheap: no graph clone).
 
@@ -1797,6 +1797,16 @@ pDoc->MarkLastUndo();        // close the user-visible step
 ```
 
 `SaveState` deduplicates: an object already captured in the open step is not snapshotted again.
+
+Deleting is the mirror — you never call `delete` on a model object, you call its **generated `Delete()`**. The framework already puts a `Delete()` on the document-object base (the Matrix model's `MatrixObject`) that parks the object with `(void)new UndoDelete(this)`; its body is therefore the place for anything the removal must trigger — if a GUI must be notified, do it there, exactly as ClassBuilder's own base refreshes its views before parking:
+
+```cpp
+void MatrixObject::Delete()      // call instead of delete
+{
+    // add any view / GUI notification here
+    (void)new UndoDelete(this);  // generated
+}
+```
 
 A **compound** action bundles several records but undoes as a single `Ctrl+Z`. For example, add a `Cell` to a `Row` and keep the row sorted — a creation followed by a re-sort whose comparator records a sub-batch per swap (chapter 12.3, *`Sort` vs `MergeSort`*):
 
