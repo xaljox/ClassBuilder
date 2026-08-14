@@ -17,6 +17,11 @@ cmake_minimum_required(VERSION 3.25)   # 3.25+ for CMAKE_MSVC_DEBUG_INFORMATION_
 
 project(ClassBuilder LANGUAGES CXX)
 
+# App version -- ONE source of truth for every platform's packaging. Keep in
+# sync with installer/ClassBuilder.iss (MyAppVersion) and crossplatform/
+# INSTALLER.md; Inno Setup can't read this file, so that one is a manual pair.
+set(CB_VERSION "3.0")
+
 # WIN32_LEAN_AND_MEAN gates out winspool.h (its DocumentProperties A/W macro
 # otherwise clobbers Qt's QIcon::ThemeIcon::DocumentProperties); NOMINMAX keeps
 # min/max macros out of std::. WIN32-only -> the Mac/Linux port is unaffected.
@@ -233,8 +238,8 @@ elseif(APPLE)
         MACOSX_BUNDLE_BUNDLE_NAME         "ClassBuilder"
         MACOSX_BUNDLE_GUI_IDENTIFIER      "com.xaljox.ClassBuilder"
         MACOSX_BUNDLE_ICON_FILE           "ClassBuilder"
-        MACOSX_BUNDLE_BUNDLE_VERSION      "1.0"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0")
+        MACOSX_BUNDLE_BUNDLE_VERSION      "${CB_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${CB_VERSION}")
 else()
     # Linux: a plain ELF executable -- no app bundle, no Win32 .rc resource.
     # The .cbz file association (icon + double-click routing) is a freedesktop

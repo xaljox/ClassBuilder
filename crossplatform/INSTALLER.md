@@ -1,12 +1,20 @@
 # ClassBuilder installers / packaging — cross-platform coordination
 
 Auto-memory does **not** sync between machines, so this tracked file is the
-handoff for per-platform installer work. **Windows is done; macOS (and Linux)
-are the open items.** Read this together with `PORTING_MAC.md` /
-`PORTING_LINUX.md`.
+handoff for per-platform installer work. **Windows and macOS are done; Linux is
+the open item.** Read this together with `PORTING_MAC.md` / `PORTING_LINUX.md`.
 
 App version: **3.0** — a new major release (the original ClassBuilder ~25 years
 ago was 2.x). Keep it in sync across all installers.
+
+It lives in **two** hand-maintained places plus the model:
+`CB_VERSION` in [../CMakeLists.txt](../CMakeLists.txt) (drives the macOS bundle's
+`CFBundleShortVersionString`/`CFBundleVersion`) and `MyAppVersion` in
+[../installer/ClassBuilder.iss](../installer/ClassBuilder.iss) — Inno Setup can't
+read CMake, so that pair is manual. The **`Project: ClassBuilder v<N>` banner in
+every generated source header comes from the model**, so it only changes in CB
+itself (then regenerate); it is not editable on disk — as of 2026-08-14 it still
+reads v2.3 in the 281 generated headers.
 
 ## What every installer ships (mirror this across platforms)
 
@@ -34,9 +42,9 @@ ago was 2.x). Keep it in sync across all installers.
   shadows the machine-wide HKLM one (HKCU wins, same ProgId). The `.iss` clears it
   in admin mode + `ChangesAssociations=yes` broadcasts the change to Explorer.
 
-## macOS — TODO (much is already in place)
+## macOS — ✅ DONE (.dmg, 2026-08-14)
 
-**Already done** — see `PORTING_MAC.md` → *"Static Qt on macOS — DONE"* and the
+**Foundations** — see `PORTING_MAC.md` → *"Static Qt on macOS — DONE"* and the
 2026-06-25/26 commits:
 - **Self-contained static binary**: `mac-static` preset (in the *local*
   `CMakeUserPresets.json`, which is gitignored — recreate it on the Mac) + static
@@ -46,22 +54,50 @@ ago was 2.x). Keep it in sync across all installers.
 - **`.cbz` file association** — already fixed + committed (Info.plist document
   types), so double-click already works once the app is installed.
 
-**Remaining for a Mac installer:**
-1. Wrap the binary in a proper **`ClassBuilder.app`** bundle — Info.plist with
-   `CFBundleShortVersionString = 3.0`, the (already-done) `.cbz` document
-   type/UTI, and an app icon (`res/ClassBuilder.ico` → convert to `.icns`).
-2. Bundle the shared extras (into the `.app`'s `Resources/`, and/or beside it in
-   the `.dmg`): the committed **`docs/manual/ClassBuilder_Manual.pdf`**,
-   **`models/manual/Matrix.CBZ`**, and the **compile-runtime** (`include/`
-   `value/` `serialize/` + zstd header — Mac users usually `brew install zstd`
-   for the lib, or bundle a static `libzstd.a`).
-3. Package as a **`.dmg`** (drag `ClassBuilder.app` → `/Applications`, the
-   standard macOS install) via `hdiutil`. Today it ships as an ad-hoc-signed
-   `ditto` zip (~9 MB).
-4. **Signing / notarization:** currently ad-hoc `codesign --deep --sign -`,
-   unsigned → Gatekeeper needs right-click→Open / strip quarantine. Real
-   distribution wants a Developer ID signature + `notarytool` notarization.
-   arm64-only so far.
+**The installer itself:**
+
+- Script: **`installer/make-dmg.sh`** — the counterpart of the Windows `.iss`,
+  shipping the same payload. Build:
+  `cmake --build --preset mac-static-release`, then `./installer/make-dmg.sh`
+  → `installer/output/ClassBuilder-<ver>-mac-<arch>.dmg` (**18 MB**, gitignored —
+  regenerable). Optional arg: a path to an alternate `.app`.
+- **The payload goes INSIDE the bundle**, at `Contents/Resources/{doc,examples,
+  runtime}` — mirroring Windows' `{app}\doc,\examples,\runtime`. This is
+  deliberate: files merely sitting beside the app in the `.dmg` are **lost** when
+  the user drags only the `.app` to `/Applications`, so anything needed after
+  install has to travel inside it.
+- The `.dmg` holds the app + an `/Applications` symlink (drag-to-install).
+- **zstd:** the committed `third_party/zstd/lib*` are Windows `.lib` files and
+  useless here, so the script bundles brew's `libzstd.a` when its arch matches,
+  else ships headers only and says so. The headers are always included.
+- **Hard gate:** the script refuses to package a non-static build (`otool -L`
+  must show only system libs). A shared-Qt `.app` would package fine and then
+  fail on someone else's Mac with a missing-framework dialog.
+- The script never calls `rm` — staging is a fresh `mktemp -d`, the `.dmg` is
+  overwritten with `hdiutil -ov`.
+- Bundle version now comes from **`CB_VERSION` in `CMakeLists.txt`** (it was
+  hardcoded `1.0`, so every bundle before this shipped mislabelled).
+
+**Still open on macOS:**
+1. **Signing / notarization — PARKED: no Apple Developer account** (JV,
+   2026-08-14). Notarizing *requires* a paid Apple Developer Program membership
+   (~USD 99/year) for a Developer ID certificate; there is no free route, and
+   `codesign --sign -` (ad-hoc, what the script does) can never satisfy
+   Gatekeeper no matter how it is invoked. **The shipped answer is therefore the
+   recipient-side unquarantine**, which works fine and costs nothing:
+   right-click → **Open** (once, then it is remembered), or
+   `xattr -dr com.apple.quarantine /Applications/ClassBuilder.app`. Tell
+   recipients this up front — an unexplained "damaged and can't be opened"
+   dialog reads as a broken download. Revisit only if CB is ever distributed
+   beyond people who can be given that instruction.
+2. **arm64 only.** No Intel or universal binary. Needs a second Qt build
+   (x86_64) plus `lipo`, so it is a real chunk of work — do it only if an Intel
+   Mac actually has to run CB.
+3. **Bundle-ID collision when testing:** build-tree copies and the
+   `/Applications` copy all use `com.xaljox.ClassBuilder`, so Launch Services
+   points `.cbz` at whichever was registered last. After testing a build-tree
+   app, re-assert the installed one with
+   `lsregister -f /Applications/ClassBuilder.app`.
 
 ## Linux — TODO
 
