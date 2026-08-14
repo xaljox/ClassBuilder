@@ -10,8 +10,9 @@
 #   third_party/  zstd (CBZ compression) , json (command-server JSON)
 #   res/ models/ tools/ docs/
 #
-# CRT runtime is shared (/MD); MFC itself is GONE (replaced by the Qt shell).
-# The full static build (/MT + static Qt) is a later step.
+# Full-static build: static CRT (/MT) + static-runtime Qt (C:/Qt-static-mt) =>
+# a self-contained ClassBuilder.exe with no Qt6*.dll AND no VC++ redistributable
+# dependency. MFC itself is GONE (replaced by the Qt shell).
 cmake_minimum_required(VERSION 3.25)   # 3.25+ for CMAKE_MSVC_DEBUG_INFORMATION_FORMAT (CMP0141)
 
 project(ClassBuilder LANGUAGES CXX)
@@ -32,8 +33,9 @@ if(NOT DEFINED CB_DEBUG_FORMAT)
 endif()
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug>:${CB_DEBUG_FORMAT}>")
 
-# Shared DLL CRT (/MD, /MDd). The full static build will flip this to /MT.
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+# Static CRT (/MT, /MTd) -- links the MSVC runtime INTO the EXE so the ship needs
+# no VC++ redistributable. Pairs with the static-runtime Qt at C:/Qt-static-mt.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # The model sources are a MultiByte (non-Unicode) build: deliberately do NOT
 # define UNICODE/_UNICODE (the Qt code is quarantined in ClassBuilderQt).
@@ -60,7 +62,9 @@ if(WIN32)
             "CMAKE_CXX_COMPILER_ARCHITECTURE_ID='${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}'. "
             "This build needs the MSVC toolchain.")
     endif()
-    set(ZSTD_LIB "${ZSTD_DIR}/lib/${CB_ARCH}/libzstd_static.lib")
+    # /MT static-CRT variant (lib-mt) to match the /MT EXE. x64 is staged; a
+    # non-x64 /MT build would need its lib-mt/<arch> added.
+    set(ZSTD_LIB "${ZSTD_DIR}/lib-mt/${CB_ARCH}/libzstd_static.lib")
 else()
     # macOS / Linux: link the STATIC archive (libzstd.a) to match the all-static
     # ship goal. Force the .a suffix so find_library skips the .dylib/.so.
