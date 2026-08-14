@@ -4,6 +4,9 @@ build/
 [Dd]ebug/
 [Rr]elease/
 
+# Installer output (Inno Setup ClassBuilderSetup.exe) -- regenerable from the .iss
+/installer/output/
+
 # Visual Studio / VS Code local state
 .vs/
 *.user
