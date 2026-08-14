@@ -4,7 +4,8 @@ build/
 [Dd]ebug/
 [Rr]elease/
 
-# Installer output (Inno Setup ClassBuilderSetup.exe) -- regenerable from the .iss
+# Installer artifacts (ClassBuilderSetup.exe / .dmg / .deb) -- regenerable from
+# the .iss / make-dmg.sh / make-deb.sh
 /installer/output/
 
 # Visual Studio / VS Code local state

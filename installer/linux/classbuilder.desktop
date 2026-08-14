@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ClassBuilder
+GenericName=Code Generator
+Comment=Define an object model and generate C++ source for it
+Exec=/opt/classbuilder/ClassBuilder %f
+TryExec=/opt/classbuilder/ClassBuilder
+Icon=classbuilder
+Terminal=false
+Categories=Development;IDE;
+MimeType=application/x-classbuilder-model;
+StartupNotify=true

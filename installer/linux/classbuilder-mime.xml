@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-classbuilder-model">
+    <comment>ClassBuilder model</comment>
+    <glob pattern="*.cbz"/>
+    <glob pattern="*.CBZ"/>
+    <icon name="application-x-classbuilder-model"/>
+  </mime-type>
+</mime-info>

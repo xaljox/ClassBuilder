@@ -162,9 +162,52 @@ warn. That is fine for development; just never ship from it.
    app, re-assert the installed one with
    `lsregister -f /Applications/ClassBuilder.app`.
 
-## Linux — TODO
+## Linux — 🟡 SCRIPTED, not yet built (2026-08-14)
 
-Static Qt at `~/Qt-6.11.1-static` (the `linux-x64` preset) → a self-contained
-binary is the goal. Package as an **AppImage** (run-anywhere, self-contained) or
-a `.deb`; bundle the same extras (PDF + example + compile-runtime). Handle the
-`.desktop` file + MIME type for the `.cbz` association. See `PORTING_LINUX.md`.
+Script written on Windows and committed; **not run yet** — no Linux box was
+available at authoring time (JV). Build + test it on each target box. The whole
+thing is written but unverified, so treat the first run as a shakedown.
+
+- Script: **`installer/make-deb.sh`** — the Linux counterpart of the `.iss` /
+  `make-dmg.sh`, same payload. Build:
+  `cmake --build --preset linux-release` (static Qt, PORTING_LINUX.md option B),
+  then `./installer/make-deb.sh`
+  → `installer/output/classbuilder_<ver>_<arch>.deb` (gitignored, regenerable).
+  No root/fakeroot needed (`dpkg-deb --root-owner-group`).
+- **Format = `.deb`** (not AppImage): all of JV's Linux boxes are Debian-family
+  (2× Ubuntu + the Pi's Raspberry Pi OS), so a `.deb` gives the native menu
+  entry + `.cbz` double-click association + clean `apt`/`dpkg` uninstall. With
+  static Qt the `Depends` are just the desktop baseline (the script derives the
+  real list from the binary via `ldd`+`dpkg -S`). AppImage stays a later option
+  for non-Debian users. This is a private package under `/opt` — not
+  Debian-archive grade (no changelog/copyright; lintian will warn; that's fine).
+- **Layout** installed: `/opt/classbuilder/{ClassBuilder,doc,examples,runtime}`
+  + a `/usr/bin/classbuilder` symlink. Kept together so Qt's
+  `applicationDirPath()` (resolved via `/proc/self/exe`, even through the
+  symlink) finds the extras beside the binary — exactly what the Help menu's
+  `cbPayloadDir()` expects on non-Apple platforms. `.desktop` + shared-mime-info
+  XML (`*.cbz`) + hicolor icons (`installer/linux/classbuilder{,-model}.png`,
+  extracted from the `.ico`s on Windows and committed so the Linux build needs
+  no icoutils/ImageMagick). `postinst`/`postrm` run
+  `update-mime-database`/`update-desktop-database`/`gtk-update-icon-cache`.
+- **"static" ≠ Windows single-exe.** On Linux, static Qt still links
+  xcb/X11/GL/fontconfig/**glibc** against system libs — unavoidable. So glibc is
+  the real portability axis (see below), and the `.deb` still `Depends` on the
+  desktop baseline.
+
+### Arch / glibc strategy — 2 builds, not 3
+
+No cross-run on Linux, so build **natively per arch**. JV's fleet (per
+`PORTING_LINUX.md`): x86_64 Ubuntu, arm64 Ubuntu (Parallels), **arm64**
+Raspberry Pi OS (Pi 500+ — aarch64, *not* 32-bit armhf). So only **two** arch
+packages:
+
+| Package | Build on | Runs on |
+|---|---|---|
+| **amd64** | the x86_64 Ubuntu box | x86_64 Ubuntu (+ newer) |
+| **arm64** | **the Pi** (Debian = oldest glibc) | the Pi **and** arm64 Ubuntu |
+
+Build the arm64 `.deb` on the **oldest-glibc** arm64 box (the Pi's Debian, not a
+newer Ubuntu): a binary built against older glibc runs on the newer box, not the
+reverse. Build amd64 on the x86_64 box. No armhf build unless a 32-bit Pi OS
+actually has to run CB.
