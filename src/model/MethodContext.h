@@ -2,7 +2,7 @@
 *
 * Project:       ClassBuilder v2.3
 * File:          MethodContext.h
-* Creation date: July 15, 2026 21:08
+* Creation date: August 14, 2026 17:48
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'MethodContext'
 *
