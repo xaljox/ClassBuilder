@@ -28,6 +28,12 @@ SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
+; Broadcast SHCNE_ASSOCCHANGED after install/uninstall so Explorer picks up the
+; .cbz association without a re-login.
+ChangesAssociations=yes
+; We intentionally clear a stale per-user (HKCU) .cbz shadow in admin mode; this
+; targets the installing user's profile (the normal single-user case).
+UsedUserAreasWarning=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -61,6 +67,11 @@ Root: HKA; Subkey: "Software\Classes\.cbz";                                    V
 Root: HKA; Subkey: "Software\Classes\ClassBuilder.Model";                      ValueType: string; ValueName: ""; ValueData: "ClassBuilder Model";  Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\ClassBuilder.Model\DefaultIcon";          ValueType: string; ValueName: ""; ValueData: "{app}\ClassBuilderDoc.ico"
 Root: HKA; Subkey: "Software\Classes\ClassBuilder.Model\shell\open\command";   ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExe}"" ""%1"""
+; All-users install writes HKLM, but a stale PER-USER (HKCU) .cbz association --
+; e.g. from an older ClassBuilder -- shadows it (HKCU\Software\Classes wins over
+; HKLM). Clear that stale per-user shadow so the machine-wide association applies.
+Root: HKCU; Subkey: "Software\Classes\.cbz";               Flags: deletekey; Check: IsAdminInstallMode
+Root: HKCU; Subkey: "Software\Classes\ClassBuilder.Model"; Flags: deletekey; Check: IsAdminInstallMode
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
