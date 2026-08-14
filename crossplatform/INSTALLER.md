@@ -5,7 +5,8 @@ handoff for per-platform installer work. **Windows is done; macOS (and Linux)
 are the open items.** Read this together with `PORTING_MAC.md` /
 `PORTING_LINUX.md`.
 
-App version: **2.3** — keep it in sync across all installers.
+App version: **3.0** — a new major release (the original ClassBuilder ~25 years
+ago was 2.x). Keep it in sync across all installers.
 
 ## What every installer ships (mirror this across platforms)
 
@@ -47,7 +48,7 @@ App version: **2.3** — keep it in sync across all installers.
 
 **Remaining for a Mac installer:**
 1. Wrap the binary in a proper **`ClassBuilder.app`** bundle — Info.plist with
-   `CFBundleShortVersionString = 2.3`, the (already-done) `.cbz` document
+   `CFBundleShortVersionString = 3.0`, the (already-done) `.cbz` document
    type/UTI, and an app icon (`res/ClassBuilder.ico` → convert to `.icns`).
 2. Bundle the shared extras (into the `.app`'s `Resources/`, and/or beside it in
    the `.dmg`): the committed **`docs/manual/ClassBuilder_Manual.pdf`**,

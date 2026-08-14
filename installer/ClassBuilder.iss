@@ -5,7 +5,7 @@
 ;   cmake --build --preset x64-release
 
 #define MyAppName      "ClassBuilder"
-#define MyAppVersion   "2.3"
+#define MyAppVersion   "3.0"
 #define MyAppPublisher "Jimmy Venema"
 #define MyAppExe       "ClassBuilder.exe"
 #define RepoRoot       ".."
