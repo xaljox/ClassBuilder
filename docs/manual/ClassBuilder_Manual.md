@@ -1575,7 +1575,8 @@ void ReplaceCell(Cell* old, Cell* nw);
 
 // ordering
 void MoveCellFirst/Last/Before/After(...);
-void SortCell(int (*cmp)(Cell*, Cell*));   // and MergeSortCell
+void SortCell(int (*cmp)(Cell*, Cell*));      // undoable
+void MergeSortCell(int (*cmp)(Cell*, Cell*)); // faster, no undo
 
 // per-relation iterator class
 Row::CellIterator it(pRow);  while (++it) { it->...; }
@@ -1583,7 +1584,38 @@ Row::CellIterator it(pRow);  while (++it) { it->...; }
 
 On the passive side, `Cell` gets `GetRow()` — the back-pointer. All of these appear in the tree under *Relation methods*, so their exact signatures are always visible.
 
-**`Sort` vs `MergeSort`.** A multi relation generates both, and the choice is about undo. **`Sort<Role>`** is a bubble sort — adjacent compare-and-swap — so each swap is a single list mutation; a comparator that snapshots the moved object (`SaveState`, when the compare returns `> 0`) therefore makes the whole reorder **undoable**, recorded as a sequence of one-pair steps — the only reorder shape the undo framework (chapter 14) can faithfully reverse. It is `O(N²)`, which is fine because CB lists are usually small. **`MergeSort<Role>`** is an `O(N log N)` merge sort for large lists or a one-off sort (for example canonicalising on load); it is **not** undoable, and its comparator must *not* call `SaveState` — the merge moves elements in bulk rather than one adjacent swap at a time, so per-comparison snapshots would not reconstruct a reversible reorder. Rule of thumb: `Sort` when the reorder must undo (a comparator that snapshots per swap), `MergeSort` only when it need not and the list is large.
+**`Sort` vs `MergeSort`.** A multi relation generates both, and they differ in one thing: undo. **`Sort<Role>`** is a bubble sort — adjacent compare-and-swap — so each swap is a single list mutation; a comparator that snapshots the element that moves (`SaveState` on the right operand when the compare returns `> 0`) makes the whole reorder **undoable** — a sequence of one-pair steps, the reorder shape the undo framework (chapter 14) faithfully reverses. **`MergeSort<Role>`** is an `O(N log N)` merge sort — faster on a large list — but it is **not** undoable: the merge moves elements in bulk rather than one adjacent swap at a time, so its comparator must *not* `SaveState`.
+
+ClassBuilder itself runs on this undo framework and uses `Sort`, never `MergeSort` — which works well because its lists never hold tens of thousands of entries, and bubble sort is only `O(N²)` in the *worst* case: on an already-sorted list it is `O(N)`, so re-sorting after a few insertions costs little more than the handful of elements that are out of place. When you do have very large lists and still want undo, two routes sidestep the worst case:
+
+- an **AVL Tree** relation (chapter 9, *Relation*) keeps its elements ordered as you insert them — iteration is already sorted, with no sort call at all; or
+- a **hybrid**: one initial `MergeSort` to order a big list (fast, and nothing you need to undo), then `Sort` for every later change — undoable, and cheap because the list is by then almost sorted.
+
+A comparator is an ordinary `int cmp(Cell*, Cell*)` returning `< 0` / `0` / `> 0`, like `qsort`. Plain — order `Cell`s by an id:
+
+```cpp
+int CompareCell(Cell* a, Cell* b)
+{
+    return a->GetId() - b->GetId();
+}
+```
+
+The same order, made **undoable** for `Sort` — on each swap, snapshot the element that moves (the right operand) and close its one-pair undo step:
+
+```cpp
+int CompareCell(Cell* a, Cell* b)
+{
+    int result = a->GetId() - b->GetId();
+    if (result > 0)
+    {
+        b->SaveState();
+        b->GetDataModelDoc()->MarkLastUndo(2);   // close this one-pair step
+    }
+    return result;
+}
+```
+
+Then `pRow->SortCell(CompareCell)` reorders undoably, while `pRow->MergeSortCell(CompareCell)` sorts fast when undo is not needed.
 
 ## Lifetime semantics — the formal ground rules
 
