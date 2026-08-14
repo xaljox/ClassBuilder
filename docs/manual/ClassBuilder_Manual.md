@@ -1615,7 +1615,7 @@ int CompareCell(Cell* a, Cell* b)
 }
 ```
 
-Then `pRow->SortCell(CompareCell)` reorders undoably, while `pRow->MergeSortCell(CompareCell)` sorts fast when undo is not needed.
+Then `pRow->SortCell(CompareCell)` reorders undoably, while `pRow->MergeSortCell(CompareCell)` sorts fast when undo is not needed. (`SaveState()` and both forms of `MarkLastUndo` are covered in chapter 14: plain `MarkLastUndo()` closes a user-visible step — one `Ctrl+Z` — while `MarkLastUndo(2)` marks a sub-batch *inside* one, which is what the per-swap ordering needs here.)
 
 ## Lifetime semantics — the formal ground rules
 
