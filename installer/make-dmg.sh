@@ -97,6 +97,12 @@ codesign --verify --deep --strict "$STAGE/ClassBuilder.app"
 # Drag-to-install target.
 ln -s /Applications "$STAGE/Applications"
 
+# Read Me, visible in the .dmg window. It carries the Gatekeeper instructions
+# (unsigned build) and tells the user where the manual / runtime live -- they
+# are inside the bundle, which Finder shows as a single file, so without this
+# they are effectively invisible.
+cp "$REPO/installer/dmg-readme.txt" "$STAGE/Read Me.txt"
+
 # --- Build the .dmg -------------------------------------------------------
 mkdir -p "$OUTDIR"
 echo "==> building $DMG"
@@ -106,4 +112,6 @@ hdiutil create -ov -quiet \
 
 echo
 echo "==> done: $DMG"
-echo "    $(du -h "$DMG" | cut -f1)  |  unsigned (recipient: right-click -> Open)"
+echo "    $(du -h "$DMG" | cut -f1)  |  unsigned -- recipient runs:"
+echo "    xattr -dr com.apple.quarantine /Applications/ClassBuilder.app"
+echo "    (right-click -> Open stopped working on macOS 15+; see Read Me.txt)"
