@@ -84,12 +84,26 @@ reads v2.3 in the 281 generated headers.
    (~USD 99/year) for a Developer ID certificate; there is no free route, and
    `codesign --sign -` (ad-hoc, what the script does) can never satisfy
    Gatekeeper no matter how it is invoked. **The shipped answer is therefore the
-   recipient-side unquarantine**, which works fine and costs nothing:
-   right-click → **Open** (once, then it is remembered), or
-   `xattr -dr com.apple.quarantine /Applications/ClassBuilder.app`. Tell
-   recipients this up front — an unexplained "damaged and can't be opened"
-   dialog reads as a broken download. Revisit only if CB is ever distributed
-   beyond people who can be given that instruction.
+   recipient-side unquarantine**, which works fine and costs nothing.
+   **Give recipients the command, not the right-click tip:**
+
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/ClassBuilder.app
+   ```
+
+   The old **right-click → Open** shortcut is no longer reliable: macOS 15
+   (Sequoia) removed that bypass for unsigned apps, so on 15/26 the GUI route is
+   *System Settings → Privacy & Security → **Open Anyway*** after a first
+   blocked launch. The `xattr` command works on every version and is one step.
+   Tell recipients up front — an unexplained "damaged and can't be opened"
+   dialog reads as a corrupt download, not a signing policy.
+
+   Note quarantine is attached by the **downloader**, so a `.dmg` sent by
+   AirDrop / USB / a local copy may carry no quarantine flag at all, and a
+   locally-built `.app` never does. **Testing on this Mac therefore proves
+   nothing about the recipient experience** — to test it for real, download the
+   `.dmg` through a browser. Revisit only if CB is distributed beyond people who
+   can be given that instruction.
 2. **arm64 only.** No Intel or universal binary. Needs a second Qt build
    (x86_64) plus `lipo`, so it is a real chunk of work — do it only if an Intel
    Mac actually has to run CB.
