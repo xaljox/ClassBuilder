@@ -1,21 +1,13 @@
 /******************************************************************************\
 *
-* Project:       ClassBuilder v2.3
+* Project:       ClassBuilder v3.0
 * File:          CbStringBuilder.h
-* Creation date: August 14, 2026 17:48
+* Creation date: August 14, 2026 20:37
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'CbStringBuilder'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
-* August 14, 2026 17:48 JV
-*     Update comment header
-*     Update comment header
-*     Update comment header
-*     Update comment header
-*     Update comment header
-*     Update comment header
-*     Update comment header
-*     Update comment header
+* August 14, 2026 20:37 JV v2.3 -> v3.0
 *
 * Copyright 2026, Jimmy Venema
 * All rights are reserved. Reproduction in whole or part is prohibited

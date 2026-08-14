@@ -1,8 +1,8 @@
 /******************************************************************************\
 *
-* Project:       ClassBuilder v2.3
+* Project:       ClassBuilder v3.0
 * File:          UndoBase.h
-* Creation date: August 14, 2026 17:48
+* Creation date: August 14, 2026 20:37
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'UndoBase'
 *
