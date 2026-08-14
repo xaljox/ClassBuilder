@@ -29,6 +29,9 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QCursor>
+#include <QDesktopServices>   // Help menu: open the manual / reveal the extras
+#include <QDir>
+#include <QUrl>
 #include <QElapsedTimer>
 #include <QHoverEvent>
 #include <QMouseEvent>
@@ -685,6 +688,44 @@ void QtShellWindow::emergencySaveAll()
 //    this app anyway, so Qt's dialog is the only one that works there.
 // CB is not sandboxed, so losing the native/portal chooser costs nothing.
 
+// Where the installers put the shipped extras -- the manual PDF, the example
+// model and the compile-runtime. The two platforms differ by necessity:
+//
+//  * macOS keeps them INSIDE the bundle at Contents/Resources, because that is
+//    the only location that survives the user dragging ClassBuilder.app to
+//    /Applications. Finder shows a .app as a single file, so nothing in there
+//    is discoverable by browsing -- which is exactly why the Help items below
+//    exist.
+//  * Windows/Linux keep them beside the executable, matching the {app}\doc,
+//    \examples, \runtime layout the Inno Setup script installs.
+//
+// A build tree has neither (make-dmg.sh / the .iss add them at package time),
+// so cbOpenPayload() reports that instead of silently doing nothing.
+static QString cbPayloadDir()
+{
+#ifdef __APPLE__
+    return QDir::cleanPath(QCoreApplication::applicationDirPath() + "/../Resources");
+#else
+    return QCoreApplication::applicationDirPath();
+#endif
+}
+
+static void cbOpenPayload(QWidget* parent, const QString& relative, const QString& what)
+{
+    const QString path = cbPayloadDir() + "/" + relative;
+    if (!QFileInfo::exists(path))
+    {
+        QMessageBox::information(parent, "ClassBuilder",
+            QString("%1 is not part of this build.\n\n"
+                    "It ships with the installed application; a build tree does "
+                    "not contain it.\n\nExpected at:\n%2").arg(what, path));
+        return;
+    }
+    // A file opens in the OS default viewer (the manual -> Preview / Acrobat);
+    // a directory opens in Finder / Explorer / the desktop file manager.
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
 void QtShellWindow::buildMenus()
 {
     // --- File ---------------------------------------------------------------
@@ -818,6 +859,16 @@ void QtShellWindow::buildMenus()
 
     // --- Help ----------------------------------------------------------------
     QMenu* help = menuBar()->addMenu("&Help");
+    help->addAction("Open &Manual (PDF)", this, [this] {
+        cbOpenPayload(this, "doc/ClassBuilder_Manual.pdf", "The manual");
+    });
+    help->addAction("Show &Runtime Files", this, [this] {
+        cbOpenPayload(this, "runtime", "The compile-runtime");
+    });
+    help->addAction("Show &Example Model", this, [this] {
+        cbOpenPayload(this, "examples", "The example model");
+    });
+    help->addSeparator();
     help->addAction("&About ClassBuilder...", this, [this] {
         Qt_ShowAboutDialog((void*)winId());
     });
