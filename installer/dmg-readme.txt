@@ -66,6 +66,7 @@ examples/Matrix.CBZ if you are new to the tool.
 ABOUT THIS BUILD
 ----------------
 Version          3.0
-Platform         macOS, Apple Silicon (arm64) only - there is no Intel build
+Requires         macOS 13 (Ventura) or later
+Platform         Apple Silicon (arm64) only - there is no Intel build
 Self-contained   Qt and zstd are linked in; nothing else to install
 Signing          ad-hoc (unsigned) - see "FIRST LAUNCH" above

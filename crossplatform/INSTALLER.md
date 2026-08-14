@@ -80,6 +80,53 @@ project's header belongs to the user).
 - Bundle version now comes from **`CB_VERSION` in `CMakeLists.txt`** (it was
   hardcoded `1.0`, so every bundle before this shipped mislabelled).
 
+### Deployment target: macOS 13+ — and why it needs its own Qt and zstd
+
+The `mac` preset sets `CMAKE_OSX_DEPLOYMENT_TARGET=13.0`, so the app runs on
+**macOS 13 (Ventura) and later**. It was `26.0` until 2026-08-14, which meant
+every DMG built before then refused to launch on anything older than macOS 26 —
+on Apple Silicon too. Check any build with:
+
+```sh
+otool -l <app>/Contents/MacOS/ClassBuilder | grep -A3 LC_BUILD_VERSION   # minos
+```
+
+**Setting the target is NOT enough by itself, and this is the trap.** The
+deployment target only stamps CB's own objects; anything CB *links* keeps the
+target it was built with. Both usual sources are compiled against the host SDK:
+
+- **Homebrew bottles** are always built for the running macOS — on this box, 26.
+- **A from-source Qt** built without an explicit target inherits the host SDK
+  for its generated **plugin-init objects**, even when qtbase's own libraries
+  say 13.
+
+The result is a binary *labelled* `minos 13.0` that contains 26.0-built objects
+— it links with `ld: warning: object file ... was built for newer 'macOS'
+version (26.0)`, and may then fail at load or first call on a real macOS 13
+machine, which cannot be tested from a macOS 26 box. **Treat those linker
+warnings as errors: a correct ship build produces ZERO of them.**
+
+So the ship build uses purpose-built dependencies (both local, not in git):
+
+| | Path | Built with |
+|---|---|---|
+| Qt 6.11.1 static | `~/Qt-6.11.1-static-13` | `-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0` |
+| zstd 1.5.7 static | `~/zstd-macos13/lib/libzstd.a` | `CFLAGS=-mmacosx-version-min=13.0` |
+
+The gitignored `mac-static` preset points at both (`CMAKE_PREFIX_PATH` +
+`ZSTD_LIB`, which overrides the `find_library` HINTS in `CMakeLists.txt`).
+Do **not** pass `-DCMAKE_OSX_ARCHITECTURES=arm64` when building Qt — it then
+believes it is cross-compiling and demands `QT_HOST_PATH`; a native build is
+already arm64.
+
+**After repointing `CMAKE_PREFIX_PATH` at a different Qt, reconfigure with
+`--fresh`.** CMake caches `Qt6Svg_DIR` and friends, so a plain reconfigure keeps
+resolving Svg against the OLD prefix — which showed up here as exactly half the
+warnings surviving, all naming the previous Qt.
+
+The dev preset (`mac-patched`, brew Qt) still links host-SDK objects and will
+warn. That is fine for development; just never ship from it.
+
 **Still open on macOS:**
 1. **Signing / notarization — PARKED: no Apple Developer account** (JV,
    2026-08-14). Notarizing *requires* a paid Apple Developer Program membership
