@@ -13,8 +13,10 @@ It lives in **two** hand-maintained places plus the model:
 [../installer/ClassBuilder.iss](../installer/ClassBuilder.iss) — Inno Setup can't
 read CMake, so that pair is manual. The **`Project: ClassBuilder v<N>` banner in
 every generated source header comes from the model**, so it only changes in CB
-itself (then regenerate); it is not editable on disk — as of 2026-08-14 it still
-reads v2.3 in the 281 generated headers.
+itself (then regenerate); it is not editable on disk — bumped to **v3.0** in all
+281 generated headers on 2026-08-14 (commit 892aad6). The *default* header
+template for **new user projects** carries no version line on purpose (a new
+project's header belongs to the user).
 
 ## What every installer ships (mirror this across platforms)
 
