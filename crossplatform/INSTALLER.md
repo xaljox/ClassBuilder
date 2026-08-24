@@ -163,7 +163,7 @@ warn. That is fine for development; just never ship from it.
    app, re-assert the installed one with
    `lsregister -f /Applications/ClassBuilder.app`.
 
-## Linux — ✅ amd64 DONE (2026-08-24); arm64 still to build
+## Linux — ✅ amd64 + arm64 (Ubuntu) DONE (2026-08-24); only Pi-glibc arm64 still open
 
 `make-deb.sh` **run and verified on x86_64 Ubuntu 26.04**: builds
 `classbuilder_3.0_amd64.deb` (18 MB), installs under `/opt/classbuilder` with the
@@ -179,9 +179,17 @@ two real bugs in the Depends derivation, both fixed (commit `b07df68`):
 - **`paste -sd', '`.** `-d` takes a *cyclic* delimiter list, so it alternated
   comma/space; dpkg rejects the space. Now `paste -sd,`.
 
-**arm64 `.deb` still to build** — on the Pi (oldest glibc), see the arch table
-below. **The amd64 build is already attached to the v3.0 draft release (see
-"Release" at the bottom).**
+**arm64 `.deb` — BUILT + attached (2026-08-24), on the Mac's arm64 Ubuntu 26.04
+VM.** `make-deb.sh` ran clean there too → `classbuilder_3.0_arm64.deb` (18 MB),
+installed + verified: `/opt/classbuilder`, `/usr/bin/classbuilder`, the desktop
+entry, and `.cbz` double-click all correct. Attached to the v3.0 draft alongside
+amd64. **Caveat (unchanged): this is a NEWER-glibc arm64 package** — it runs on
+arm64 Ubuntu 26.04+, and is **not guaranteed on the Pi's Raspberry Pi OS** (older
+glibc; a binary built against newer glibc does not run on an older one). So the
+**only remaining Linux gap is a Pi-built arm64 `.deb`** (oldest glibc → runs on
+both); build it on the Pi and replace/annotate the asset if Pi coverage is
+wanted. See the arch table below. Both `.deb`s are attached to the v3.0 draft
+release (see "Release" at the bottom).
 
 Original authoring note (2026-08-14): script written on Windows and committed
 before any Linux box was available, hence the shakedown above.
@@ -236,10 +244,14 @@ All platform installers go into **ONE GitHub release** so they stay together
 under one version and out of the git history (the `.deb`/`.exe`/`.dmg` are
 gitignored build artifacts, never committed).
 
-**Current state:** a **DRAFT** release "ClassBuilder 3.0" (tag `v3.0`, target
-`main`) exists with the **Linux amd64 `.deb` already attached**. A draft does
-**not** create the git tag yet — that happens on Publish, so nothing is public
-and nothing is irreversible until then.
+**Current state (2026-08-24):** a **DRAFT** release "ClassBuilder 3.0" (tag
+`v3.0`, target `main`) exists with **all four installers attached** — Windows
+`.exe`, macOS `.dmg`, Linux **amd64** `.deb`, and Linux **arm64** `.deb` (the
+arm64 built on the Mac's arm64 Ubuntu 26.04 VM — newer-glibc, see the Linux
+step 2 caveat re: the Pi). A draft does **not** create the git tag yet — that
+happens on Publish, so nothing is public and nothing is irreversible until then.
+Ready to **Publish** once you've decided whether the Pi-glibc arm64 build must
+replace the Ubuntu-built one first.
 
 **Handoff — the plan (JV):**
 
@@ -259,11 +271,12 @@ and nothing is irreversible until then.
    `v3.0` tag.
 
 **How to attach:**
-- While it is a **draft** the tag URL does not resolve yet, so `gh release
-  upload v3.0 <file>` FAILS. Use the web UI: repo → Releases → "ClassBuilder
-  3.0 (Draft)" → **Edit** → drag files into *Attach binaries*.
-- **After Publish**, further assets can go up with
-  `gh release upload v3.0 <file>` from any machine.
+- `gh release upload v3.0 <file>` **works against the draft too** — verified
+  2026-08-24 uploading `classbuilder_3.0_arm64.deb` from the Linux VM. (An earlier
+  note here said it fails on a draft; that was wrong — `gh` resolves the draft by
+  tag name even though the public tag URL 404s until Publish.)
+- Web-UI alternative: repo → Releases → "ClassBuilder 3.0 (Draft)" → **Edit** →
+  drag files into *Attach binaries*.
 
 The draft's notes already list all four downloads (Windows `.exe`, macOS `.dmg`,
 Linux amd64/arm64 `.deb`) with "added from …" markers on the missing ones —
