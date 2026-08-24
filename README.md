@@ -87,13 +87,22 @@ Pre-built installers are on the
 | Windows x64 | `ClassBuilderSetup-3.0-x64.exe` |
 | macOS 13+ (Apple Silicon) | `ClassBuilder-3.0-mac-arm64.dmg` |
 | macOS 13+ (Intel) | `ClassBuilder-3.0-mac-x64.dmg` |
-| Linux x86_64 | `classbuilder_3.0_amd64.deb` |
-| Linux arm64 | `classbuilder_3.0_arm64.deb` |
+| Linux x86_64 | `classbuilder_3.0_amd64-glibc2.35.deb` |
+| Linux arm64 | `classbuilder_3.0_arm64-glibc2.35.deb` |
 
 Each installer bundles the app plus the manual (PDF), an example model, and the
-compile-runtime, and wires up the `.cbz` file association. The `arm64` `.deb` is
-built on Ubuntu 26.04 (glibc ≥ 2.43), so it does not yet run on Raspberry Pi OS —
-see the release notes. The binaries are **unsigned**; the release notes and
+compile-runtime, and wires up the `.cbz` file association.
+
+The two `.deb`s above are the **recommended** Linux downloads: both are built
+against **glibc 2.35**, so they run on Ubuntu 22.04 / Debian 12 and everything
+newer — the arm64 one includes Raspberry Pi OS. The release also carries
+alternative `.deb` builds with higher glibc floors (a Pi-native `-glibc2.38` and
+the original Ubuntu-26.04 `glibc 2.43` pair); see
+[`installer/README.md`](installer/README.md) for the full "which build runs
+where" table.
+
+macOS ships **two** disk images rather than one universal binary — take the one
+matching your Mac. The binaries are **unsigned**; the release notes and
 [`installer/README.md`](installer/README.md) give the one-time "allow unsigned
 app" step for Windows and macOS.
 
