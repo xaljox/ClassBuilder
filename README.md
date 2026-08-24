@@ -18,8 +18,9 @@ It is an **all-Qt** application (originally MFC on Windows, since fully ported)
 and builds to a single self-contained executable on **Windows, macOS and Linux**.
 
 ClassBuilder has been in continuous development and daily use for around 25
-years. **v3.0 is its first public release** — and the first under an open-source
-licence.
+years. An earlier version was already open source, released on SourceForge under
+a different licence; **v3.0 is the first release under the MIT licence**, and the
+first hosted here.
 
 ## Screenshots
 
