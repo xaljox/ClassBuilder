@@ -15,12 +15,46 @@ reachable from the Help menu once installed.
 Pick the file for your platform. The version is in the filename, so successive
 releases sit side by side.
 
-| Platform | File |
-|----------|------|
-| Windows x64 | `ClassBuilderSetup-3.0-x64.exe` |
-| macOS (Apple Silicon / arm64) | `ClassBuilder-3.0-mac-arm64.dmg` |
-| Linux x86_64 | `classbuilder_3.0_amd64.deb` |
-| Linux arm64 | `classbuilder_3.0_arm64.deb` |
+| Platform | File | Minimum |
+|----------|------|---------|
+| Windows x64 | `ClassBuilderSetup-3.0-x64.exe` | Windows 10/11 x64 |
+| macOS (Apple Silicon / arm64) | `ClassBuilder-3.0-mac-arm64.dmg` | macOS 13 (Ventura)+ |
+| Linux x86_64 | `classbuilder_3.0_amd64.deb` | glibc ≥ 2.43 (Ubuntu 26.04+) |
+| **Linux arm64 (recommended)** | `classbuilder_3.0_arm64-glibc2.38.deb` | **glibc ≥ 2.38** — Raspberry Pi OS / Debian 13 **and** newer |
+| Linux arm64 (Ubuntu 26.04+) | `classbuilder_3.0_arm64.deb` | glibc ≥ 2.43 |
+
+On **arm64, prefer `…_arm64-glibc2.38.deb`** — it is built on Raspberry Pi OS
+(Debian 13), so its glibc floor is 2.38 and it runs on the widest range of arm64
+systems (Pi OS, Debian 13, Ubuntu 24.04, Ubuntu 26.04, …). The plain
+`…_arm64.deb` is built on Ubuntu 26.04 (glibc 2.43) and will **not** run on
+Raspberry Pi OS / Debian 13.
+
+### Which build runs where
+
+A Linux binary runs on its build-time glibc **or newer, never older**. So the
+lowest-glibc build has the widest reach.
+
+| Your system (arch) | glibc | Use |
+|--------------------|:-----:|-----|
+| Raspberry Pi OS / Debian 13 (arm64) | 2.41 | `classbuilder_3.0_arm64-glibc2.38.deb` |
+| Ubuntu 24.04 LTS (arm64) | 2.39 | `classbuilder_3.0_arm64-glibc2.38.deb` |
+| Ubuntu 26.04+ (arm64) | 2.43 | either arm64 `.deb` (the `-glibc2.38` one also runs) |
+| Debian 12 / Ubuntu 22.04 (arm64) | 2.36 / 2.35 | ❌ too old — [build from source](#need-an-older-distro) |
+| Ubuntu 26.04+ (x86_64) | 2.43 | `classbuilder_3.0_amd64.deb` |
+| x86_64 with glibc < 2.43 | < 2.43 | ❌ too old — [build from source](#need-an-older-distro) |
+
+Check your glibc with `ldd --version`.
+
+<a name="need-an-older-distro"></a>
+#### Need it on an older distro?
+
+The floor comes from the **statically-linked Qt** (baked in when Qt is built),
+not from ClassBuilder's own code, so it can't be lowered by changing CB — you
+rebuild the whole stack (Qt + CB) on the older distro, whose older glibc then
+sets a lower floor. See `crossplatform/PORTING_LINUX.md` (option B, static Qt)
+then run `installer/make-deb.sh` — it stamps the `.deb` for the arch of the
+machine you build on. This is exactly how the `-glibc2.38` arm64 package above
+was produced (built on Raspberry Pi OS rather than Ubuntu 26.04).
 
 ---
 
@@ -33,8 +67,8 @@ OS). Native menu entry, `.cbz` double-click association, and clean
 ### Install
 
 ```sh
-sudo apt install ./classbuilder_3.0_amd64.deb      # x86_64
-sudo apt install ./classbuilder_3.0_arm64.deb      # arm64
+sudo apt install ./classbuilder_3.0_amd64.deb              # x86_64
+sudo apt install ./classbuilder_3.0_arm64-glibc2.38.deb    # arm64 (Pi OS / Debian 13 + newer)
 ```
 
 `apt install ./<file>` pulls the required system libraries automatically. (You
@@ -57,27 +91,25 @@ dependencies yourself.)
 sudo apt remove classbuilder
 ```
 
-### Minimum system requirements — READ THIS re: which distro
+### Minimum system requirements — glibc is the real gate
 
-The packages published here are built on **Ubuntu 26.04**, and that sets a
-**hard floor**:
+Each `.deb`'s glibc floor is set by the machine its **static Qt** was built on
+(the floor is baked into Qt, not into ClassBuilder's own code — so it can't be
+lowered by changing CB, only by building the stack on an older distro). See the
+[compatibility table](#which-build-runs-where) above; in short:
 
-- **glibc ≥ 2.43** → **Ubuntu 26.04 (or newer), or any distro whose glibc is
-  ≥ 2.43.** A binary built against a given glibc does **not** run on an older
-  one. Check yours with `ldd --version`.
-  - This floor does **not** come from ClassBuilder's own code — it comes from
-    the **statically-linked Qt** (`libQt6Gui`, compiled on Ubuntu 26.04). One
-    symbol, `acosf@GLIBC_2.43`, is the highest; without it the binary needs only
-    glibc 2.38. Because it is baked in when **Qt** is built, it can't be dropped
-    by changing CB — the fix is to build the whole stack (Qt + CB) on an
-    **older** distro, whose glibc then sets a lower floor. That is exactly why
-    the Pi build (oldest glibc) runs everywhere.
-  - **Raspberry Pi OS / Debian 13 and earlier have an OLDER glibc and will
-    refuse to run these packages** (`version 'GLIBC_2.43' not found`). For those,
-    a `.deb` built on that older system is needed (a build against older glibc
-    runs on both it and newer systems, not the reverse). If you need Pi/Debian
-    coverage, build from source there — see `crossplatform/PORTING_LINUX.md`
-    (option B, static Qt) + `installer/make-deb.sh`.
+- **`classbuilder_3.0_arm64-glibc2.38.deb`** — built on **Raspberry Pi OS
+  (Debian 13)** → **glibc ≥ 2.38**. Runs on Pi OS, Debian 13, Ubuntu 24.04,
+  Ubuntu 26.04 and newer arm64. This is the recommended arm64 download.
+- **`classbuilder_3.0_arm64.deb`** and **`classbuilder_3.0_amd64.deb`** — built
+  on **Ubuntu 26.04** → **glibc ≥ 2.43**. The highest symbol is `acosf@GLIBC_2.43`
+  (from `libQt6Gui`); these will **not** run on Pi OS / Debian 13
+  (`version 'GLIBC_2.43' not found`).
+
+A binary built against a given glibc does **not** run on an older one, so the
+lowest-glibc build reaches the most systems. Check yours with `ldd --version`.
+On a distro below the floor, [build from source](#need-an-older-distro).
+
 - **libstdc++6** providing `GLIBCXX_3.4.30` (GCC 12+) — present on any current
   desktop.
 - **Desktop baseline libraries**, pulled in automatically by the package's
