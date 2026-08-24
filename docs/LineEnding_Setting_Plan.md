@@ -52,8 +52,10 @@ automatically.
 because nothing distinguishes "v3 before this feature" from "v3 after." Worst case
 you just **flip that one value**: open the project, set the CRLF radio, save.
 **Do this for `ClassBuilder.CBZ` before the first regen** — if its `_crlf` reads
-back `false`, a regen would emit CB's own source as LF. (See the
-[serialize-field trap](../../.claude/projects/c--Users-jimmy-Projects-ClassBuilder/memory/project_classbuilder_serialize_field_add_breaks_old_cbz.md).)
+back `false`, a regen would emit CB's own source as LF. (This is the serialize-field
+trap: appending a field shifts every byte after it, so an old `.cbz` reads back
+misaligned — which is exactly why this plan recycles a dead slot instead of
+adding one.)
 
 ## 3. The initial guess — first-set only, then fixed
 

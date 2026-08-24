@@ -69,7 +69,7 @@ The serialization runtime is **`CbArchive`** ([serialize/CbSerialize.h](serializ
 
 The legacy MFC `CArchive` path has been **removed**: the `_mfcSerialize` model field is retained as `_mfcSerialize_notUsed` for CBZ format compatibility (it's still in the byte stream); all conditional codegen branches and the `MFC_*_SERIAL` escape-hatch macros are gone. A standalone `ClassBuilderStatic.exe` was produced once for portable `.cbd` → `.cbz` conversion and **archived** (not in this repo); it is not part of the regular build.
 
-Single inheritance is enforced for any class with `Serialize` enabled. The `Serialize` codegen iterates all bases at the top of the body, but the GUI rule prevents the cases (diamond, mixed ancestry) the codegen doesn't handle safely. See [project_classbuilder_serialize_single_inheritance.md](C:\Users\jimmy\.claude\projects\c--Users-jimmy-Projects-ClassBuilder\memory\project_classbuilder_serialize_single_inheritance.md) in auto-memory for the sharp edges.
+Single inheritance is enforced for any class with `Serialize` enabled. The `Serialize` codegen iterates all bases at the top of the body, but the GUI rule prevents the cases (diamond, mixed ancestry) the codegen doesn't handle safely. The sharp edges are recorded in the Windows machine's auto-memory (`project_classbuilder_serialize_single_inheritance`); it does not sync between machines, so consult it there.
 
 ## Pipe API
 
