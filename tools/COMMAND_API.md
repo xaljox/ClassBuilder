@@ -28,6 +28,23 @@ are flagged individually below — prefer the non-modal variants when scripting.
 > that configured it, **no longer exist** — hence the rename from "Pipe API". The
 > JSON protocol and every command below are unchanged.
 
+## Start here: ask the app what it supports
+
+`list_commands` returns every command the running build registers — **149** at
+the time of writing. It is the ground truth; this file documents the important
+ones in detail but is not guaranteed to cover all of them, and commands get added
+when a workflow needs one.
+
+```sh
+echo '{"cmd":"list_commands"}' | nc 127.0.0.1 51777
+{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":149}}
+```
+
+An agent should call this first and treat the result as the vocabulary for that
+build, rather than assuming the set below is complete.
+
+---
+
 - Request:  `{"cmd":"<name>","params":{...}}`
 - Reply OK: `{"ok":true,"result":<value>}`
 - Reply err:`{"ok":false,"error":"<msg>"}`
@@ -56,7 +73,7 @@ Creates a new untitled document via the first registered doc template (mirrors F
 
 **Params:** none.
 **Returns:** `{"title":"...","path":"..."}`
-**Note:** opens the New-Model wizard dialog modally — **blocks the pipe** until the user clicks OK or Cancel. Prefer `new_model_basic` / `new_model_serialize` for scripted flows.
+**Note:** opens the New-Model wizard dialog modally — **blocks the connection** until the user clicks OK or Cancel. Prefer `new_model_basic` / `new_model_serialize` for scripted flows.
 
 ### `new_model_basic` `{name, h_file?}`
 Creates a new model with **serialize OFF**, bypassing the wizard. Only the default groups (`ExternClasses`, `OtherTypes`, `Actors`) and scalar types are populated.
@@ -102,7 +119,7 @@ Typed `Class` lookup (excludes ExternClass). Lightweight existence probe.
 
 ### Member-name convention
 
-Member names are stored **without** the prefix. The Class's `member_prefix` (default `"_"`, often `"m_"`) is added uniformly at codegen time. This matches the GUI: you type `id` in the dialog and the tool emits `_id` (or `m_id`). Same rule applies to the pipe — pass `name:"id"`, not `name:"_id"`. `set_class_member_prefix` overrides the Class-level prefix; `get_member` exposes both the bare `name` and the rendered `prefixed_name`.
+Member names are stored **without** the prefix. The Class's `member_prefix` (default `"_"`, often `"m_"`) is added uniformly at codegen time. This matches the GUI: you type `id` in the dialog and the tool emits `_id` (or `m_id`). Same rule applies to the API — pass `name:"id"`, not `name:"_id"`. `set_class_member_prefix` overrides the Class-level prefix; `get_member` exposes both the bare `name` and the rendered `prefixed_name`.
 
 ### `get_class` `{name}`
 Rich record for a `Class`: serialize flag, files, note, inheritances, members, methods, member_prefix.
@@ -553,7 +570,7 @@ So **classes and diagrams can live at one of three levels**:
 2. **Inside a MetaGroup** — pass `parent_meta_group_id`.
 3. **Inside a ClassGroup** — pass `parent_class_group_id`. The ClassGroup itself sits under either the model node or a MetaGroup.
 
-(In the model layer, MetaGroups are owned by the DataModel via a passive relation; the GUI presents them as siblings of the model node. Both ClassGroup constructors exist — `ClassGroup(DataModel*)` and `ClassGroup(MetaGroup*)` — so the pipe routes accordingly.)
+(In the model layer, MetaGroups are owned by the DataModel via a passive relation; the GUI presents them as siblings of the model node. Both ClassGroup constructors exist — `ClassGroup(DataModel*)` and `ClassGroup(MetaGroup*)` — so the API routes accordingly.)
 
 Groups are addressed by **id** (names are not guaranteed unique across the model — two ClassGroups in different MetaGroups can share a name).
 
@@ -702,7 +719,7 @@ Re-binds (or clears) the activation's method binding. Pass no method fields to c
 **Returns:** ActivationRecord.
 
 #### `add_signal` `{diagram, sender_activation, receiver_activation, signal_name?, signal_label?, signal_async?, signal_enable_return?, signal_return?}`
-Wires two **existing** activations together — the pipe equivalent of the GUI Ctrl+click "Add Message" connect-flow. Re-parents the receiver into the sender's subtree (preserving the receiver's own descendants) and creates a `SignalShape` between them. If the receiver was already nested under another activation, the existing signal is reused (just moved to the new sender) rather than a duplicate being created.
+Wires two **existing** activations together — the API equivalent of the GUI Ctrl+click "Add Message" connect-flow. Re-parents the receiver into the sender's subtree (preserving the receiver's own descendants) and creates a `SignalShape` between them. If the receiver was already nested under another activation, the existing signal is reused (just moved to the new sender) rather than a duplicate being created.
 
 Use this when you want to lay down activations in arbitrary order — typically place a few `add_root_child_activation` (loose under root), then `add_signal` to wire them up after. The `add_child_activation` shorthand combines "create + connect" but requires the sender to exist first; `add_signal` decouples the two.
 
@@ -747,9 +764,9 @@ Opens the GUI view of a class- **or** sequence-diagram, exactly like double-clic
 **Returns:** `{name, kind:"class_diagram"|"sequence_diagram"}`.
 
 #### `export_diagram_svg` `{diagram, path, tight?, margin?}`
-Renders the named diagram to a standalone `.svg` (vector, selection-free). Reuses the diagram's open view when present; opens one first when none exists. Works for class- and sequence-diagrams. Built for scripted / AI documentation pipelines: construct a diagram via the pipe, export it, embed the `.svg`.
+Renders the named diagram to a standalone `.svg` (vector, selection-free). Reuses the diagram's open view when present; opens one first when none exists. Works for class- and sequence-diagrams. Built for scripted / AI documentation pipelines: construct a diagram via the API, export it, embed the `.svg`.
 
-By default (`tight` omitted or `false`) the export is at page extent (page size from the diagram, A4 default if unset). Pass `tight: true` to instead crop to the actual shapes' bounding rect, inflated by `margin` model-units of padding on every side (default `50`, i.e. 5 grid squares at the 10-unit snap) — use this when embedding a diagram into a document, so a small diagram doesn't export as mostly page whitespace. The view's **Export SVG** toolbar button always exports tight (a full-page export is rarely useful once you can crop); the pipe defaults to page extent for backward compatibility but should normally be called with `tight: true` too.
+By default (`tight` omitted or `false`) the export is at page extent (page size from the diagram, A4 default if unset). Pass `tight: true` to instead crop to the actual shapes' bounding rect, inflated by `margin` model-units of padding on every side (default `50`, i.e. 5 grid squares at the 10-unit snap) — use this when embedding a diagram into a document, so a small diagram doesn't export as mostly page whitespace. The view's **Export SVG** toolbar button always exports tight (a full-page export is rarely useful once you can crop); the API defaults to page extent for backward compatibility but should normally be called with `tight: true` too.
 **Returns:** `{diagram, kind, path, tight}`.
 **Errors:** unknown diagram name; `SVG export failed` when the Qt Svg module is unavailable or the file can't be written.
 
@@ -829,7 +846,7 @@ Send 'add_call_trace' @{
 }
 ```
 
-**Layout note:** at the moment `add_call_trace` runs there's no view DC available, so `optimize_placement`'s "snap leftmost to canonical x" step uses pre-text-measurement bounding rects and the diagram can end up shifted right of where it'll eventually settle. Clicking **Optimize Placement** once in the GUI after the diagram opens corrects it (the view's DC is in scope by then). This is the same no-view-DC limitation noted in the memory entries for `Grid::Place` and pipe-driven layout.
+**Layout note:** at the moment `add_call_trace` runs there's no view DC available, so `optimize_placement`'s "snap leftmost to canonical x" step uses pre-text-measurement bounding rects and the diagram can end up shifted right of where it'll eventually settle. Clicking **Optimize Placement** once in the GUI after the diagram opens corrects it (the view's DC is in scope by then). This is the same no-view-DC limitation noted in the memory entries for `Grid::Place` and API-driven layout.
 
 ### Records
 
@@ -858,7 +875,7 @@ Send 'add_call_trace' @{
 
 A `FindMethod` is a generated lookup that lives on the from-side of a multi relation. It iterates the relation and returns the first element whose value(s) match the given argument(s). Each argument carries a `path` that becomes the comparison expression in the codegen; `InitCode` chooses the impl-specific fast path (avl/value-tree) when an argument's `MemberArgument` matches the relation's tree-key, otherwise it generates an iterate-loop.
 
-In the GUI a tree of reachable members + navigated relations is offered for selection; the pipe API has the script supply the same data explicitly: which Member or navigated Class each argument represents, plus the path string that the body should compare against.
+In the GUI a tree of reachable members + navigated relations is offered for selection; the command API has the script supply the same data explicitly: which Member or navigated Class each argument represents, plus the path string that the body should compare against.
 
 ### `add_find_method` `{class, from_name, to_name?, args, name?, access?, reverse?, next?}`
 
@@ -907,7 +924,7 @@ Removes a `FindMethod` from the relation. Prefer `id` (overloaded find methods c
 ## Source generation / read-back
 
 The headless equivalents of **File ▸ Save Source** and **File ▸ Read Source** —
-so a pipe-driven workflow can edit the model (`set_method_body`,
+so an API-driven workflow can edit the model (`set_method_body`,
 `set_argument_type`, `add_method`, …) and then flush to disk and/or import disk
 hand-edits without touching the GUI. Both `_chdir` to the project directory
 first (codegen uses paths relative to it), exactly like the menu handlers.
@@ -1004,7 +1021,7 @@ The bare type name (without modifiers) must already exist in the model's Type li
 
 ## Document selection (server-side target, decoupled from GUI focus) — IMPLEMENTED 2026-06-24
 
-The pipe targets ONE document. By default it follows the GUI's active model; `select_document` overrides that with a sticky server-side target so a script can drive one model while you edit another.
+The API targets ONE document. By default it follows the GUI's active model; `select_document` overrides that with a sticky server-side target so a script can drive one model while you edit another.
 
 - `list_documents` → `{documents:[{title, path, modified, gui_active, selected}, ...], count}` — `gui_active` = what the GUI has up front; `selected` = what the pipe is currently targeting (with no explicit selection, that's the gui_active doc).
 - `select_document {title | path}` → `{title, path, selected:true}` — sets the sticky server-side target; **exact** title/path match; error if no open doc matches. Does **not** change the GUI's active window.
@@ -1015,7 +1032,7 @@ The target is **sticky** until the next `select_document`. If the targeted doc i
 
 ## Gaps (not implemented yet — high-priority candidates)
 
-Roughly ordered by leverage for tool-driven workflows. See [project_classbuilder_pipe_api_expansion_idea.md](../../.claude/...) memory for prioritisation rationale.
+Roughly ordered by leverage for tool-driven workflows.
 
 **Class / structural:** all core in. Future: groups (`add_group`, `set_class_group`).
 
@@ -1034,7 +1051,7 @@ Roughly ordered by leverage for tool-driven workflows. See [project_classbuilder
 
 **Diagnostic:** IMPLEMENTED 2026-06-24 —
 - `list_commands` → `{commands:[...], count}` (every registered command name, sorted)
-- `ping` now also returns `build` (the server's `__DATE__ " " __TIME__` stamp — detects a stale binary still owning the pipe)
+- `ping` now also returns `build` (the server's `__DATE__ " " __TIME__` stamp — detects a stale binary still holding the port)
 
 ---
 

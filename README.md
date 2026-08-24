@@ -108,11 +108,11 @@ echo '{"cmd":"list_classes"}' | nc 127.0.0.1 51777
 {"ok":true,"result":["Matrix","MatrixObject","Row","Column","Cell","CellMember"]}
 ```
 
-Over 70 documented commands cover reading and editing the model — classes, members,
+149 commands cover reading and editing the model — classes, members,
 methods, relations, inheritance — which is what makes bulk and automated edits
 practical. It is also how the port itself was managed: model migrations were
 driven through this API rather than by editing ClassBuilder in the editor it was
-being used to change. Full reference: [`tools/PIPE_API.md`](tools/PIPE_API.md).
+being used to change. Full reference: [`tools/COMMAND_API.md`](tools/COMMAND_API.md).
 
 ## Build from source
 

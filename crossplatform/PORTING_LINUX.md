@@ -266,7 +266,7 @@ Full-screen does not help.
 The command server is TCP `127.0.0.1:51777` on non-Windows. One JSON line
 `{"cmd":"open_doc","params":{"path":"/abs/x.cbz"}}` opens a second model (copy the
 file first — `open_doc` dedups by path) to exercise tabs/splits. See
-[../tools/PIPE_API.md](../tools/PIPE_API.md).
+[../tools/COMMAND_API.md](../tools/COMMAND_API.md).
 
 ## Manual UI scale (View > UI Scale menu)
 

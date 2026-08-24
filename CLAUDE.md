@@ -73,7 +73,7 @@ Single inheritance is enforced for any class with `Serialize` enabled. The `Seri
 
 ## Pipe API
 
-`ClassBuilder.exe` runs a JSON-over-named-pipe server at `\\.\pipe\ClassBuilder` ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/PIPE_API.md](tools/PIPE_API.md). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The pipe API is also the intended way to drive port-related model migrations without modifying CB itself.
+`ClassBuilder` runs a JSON-over-TCP server on `127.0.0.1:51777` (`CB_CMD_PORT` to override; loopback only, all three platforms) ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/COMMAND_API.md](tools/COMMAND_API.md); `list_commands` on a running build is the authoritative list (149 registered). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The command API is also the intended way to drive port-related model migrations without modifying CB itself.
 
 ## Conventions
 
@@ -86,7 +86,7 @@ Single inheritance is enforced for any class with `Serialize` enabled. The `Seri
 
 ## Port status
 
-Historical migration order: VS2019 upgrade → VS2026 retarget (done 2026-04-27) → MFC→Qt port (**done 2026-06-09**, zero `mfc*.dll` imports). The app is now all-Qt, the folders are restructured for multi-platform, and the repo is in Git (**public, MIT-licensed** since 2026-08-24 — `github.com/xaljox/ClassBuilder`; ClassBuilder was originally open source). The **next** phase is the cross-platform (Mac/Linux) build: the committed generated sources build on other platforms (CB can't yet *run* there to regenerate), pivoting on the single `CbPlatformCompat` `#ifdef` seam. Port-related model migrations are driven through the pipe API rather than by editing CB itself, to avoid the deadlock of changing the tool you depend on.
+Historical migration order: VS2019 upgrade → VS2026 retarget (done 2026-04-27) → MFC→Qt port (**done 2026-06-09**, zero `mfc*.dll` imports). The app is now all-Qt, the folders are restructured for multi-platform, and the repo is in Git (**public, MIT-licensed** since 2026-08-24 — `github.com/xaljox/ClassBuilder`; ClassBuilder was originally open source). The **next** phase is the cross-platform (Mac/Linux) build: the committed generated sources build on other platforms (CB can't yet *run* there to regenerate), pivoting on the single `CbPlatformCompat` `#ifdef` seam. Port-related model migrations are driven through the command API rather than by editing CB itself, to avoid the deadlock of changing the tool you depend on.
 
 ## Auto-memory
 
