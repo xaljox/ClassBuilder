@@ -19,15 +19,17 @@ releases sit side by side.
 |----------|------|---------|
 | Windows x64 | `ClassBuilderSetup-3.0-x64.exe` | Windows 10/11 x64 |
 | macOS (Apple Silicon / arm64) | `ClassBuilder-3.0-mac-arm64.dmg` | macOS 13 (Ventura)+ |
-| Linux x86_64 | `classbuilder_3.0_amd64.deb` | glibc ≥ 2.43 (Ubuntu 26.04+) |
+| **Linux x86_64 (recommended)** | `classbuilder_3.0_amd64-glibc2.35.deb` | **glibc ≥ 2.35** — Ubuntu 22.04 / Debian 12 **and** newer |
+| Linux x86_64 (Ubuntu 26.04+) | `classbuilder_3.0_amd64.deb` | glibc ≥ 2.43 |
 | **Linux arm64 (recommended)** | `classbuilder_3.0_arm64-glibc2.38.deb` | **glibc ≥ 2.38** — Raspberry Pi OS / Debian 13 **and** newer |
 | Linux arm64 (Ubuntu 26.04+) | `classbuilder_3.0_arm64.deb` | glibc ≥ 2.43 |
 
-On **arm64, prefer `…_arm64-glibc2.38.deb`** — it is built on Raspberry Pi OS
-(Debian 13), so its glibc floor is 2.38 and it runs on the widest range of arm64
-systems (Pi OS, Debian 13, Ubuntu 24.04, Ubuntu 26.04, …). The plain
-`…_arm64.deb` is built on Ubuntu 26.04 (glibc 2.43) and will **not** run on
-Raspberry Pi OS / Debian 13.
+On **x86_64, prefer `…_amd64-glibc2.35.deb`** — built on Ubuntu 22.04 (glibc 2.35),
+so it runs on Ubuntu 22.04 / Debian 12 and everything newer. On **arm64, prefer
+`…_arm64-glibc2.38.deb`** — built on Raspberry Pi OS (Debian 13, glibc 2.38), so it
+runs on the widest range of arm64 systems (Pi OS, Debian 13, Ubuntu 24.04/26.04, …).
+The plain `…_amd64.deb` / `…_arm64.deb` are built on Ubuntu 26.04 (glibc 2.43) and
+will **not** run on anything older — in particular not on Raspberry Pi OS / Debian 13.
 
 ### Which build runs where
 
@@ -40,8 +42,9 @@ lowest-glibc build has the widest reach.
 | Ubuntu 24.04 LTS (arm64) | 2.39 | `classbuilder_3.0_arm64-glibc2.38.deb` |
 | Ubuntu 26.04+ (arm64) | 2.43 | either arm64 `.deb` (the `-glibc2.38` one also runs) |
 | Debian 12 / Ubuntu 22.04 (arm64) | 2.36 / 2.35 | ❌ too old — [build from source](#need-an-older-distro) |
-| Ubuntu 26.04+ (x86_64) | 2.43 | `classbuilder_3.0_amd64.deb` |
-| x86_64 with glibc < 2.43 | < 2.43 | ❌ too old — [build from source](#need-an-older-distro) |
+| Ubuntu 22.04 / Debian 12 (x86_64) | 2.35 / 2.36 | `classbuilder_3.0_amd64-glibc2.35.deb` |
+| Ubuntu 24.04 / 26.04+ (x86_64) | 2.39 / 2.43 | `classbuilder_3.0_amd64-glibc2.35.deb` (the 2.43 one also runs) |
+| x86_64 with glibc < 2.35 | < 2.35 | ❌ too old — [build from source](#need-an-older-distro) |
 
 Check your glibc with `ldd --version`.
 
@@ -50,11 +53,23 @@ Check your glibc with `ldd --version`.
 
 The floor comes from the **statically-linked Qt** (baked in when Qt is built),
 not from ClassBuilder's own code, so it can't be lowered by changing CB — you
-rebuild the whole stack (Qt + CB) on the older distro, whose older glibc then
-sets a lower floor. See `crossplatform/PORTING_LINUX.md` (option B, static Qt)
-then run `installer/make-deb.sh` — it stamps the `.deb` for the arch of the
-machine you build on. This is exactly how the `-glibc2.38` arm64 package above
-was produced (built on Raspberry Pi OS rather than Ubuntu 26.04).
+rebuild the whole stack (Qt + CB) on an older-glibc system, whose glibc then sets
+a lower floor.
+
+The easiest reproducible way is a low-glibc **container**:
+
+```sh
+# arch follows the host: arm64 on a Pi / Apple-Silicon VM, amd64 on an x86_64 box
+docker run --rm -v "$PWD":/src -w /src ubuntu:22.04 bash installer/build-in-container.sh
+```
+
+`ubuntu:22.04` → glibc 2.35; the script builds static Qt + CB + the `.deb`
+(`installer/output/classbuilder_<ver>_<arch>-glibc2.35.deb`). The published
+`-glibc2.35` amd64 package is produced this way in CI
+(`.github/workflows/linux-amd64-deb.yml`); the `-glibc2.38` arm64 one was built
+natively on the Pi with `installer/make-deb.sh` (which stamps the arch of the box
+it runs on). Both routes are documented in `crossplatform/PORTING_LINUX.md`
+(option B) and `crossplatform/INSTALLER.md`.
 
 ---
 
@@ -67,8 +82,8 @@ OS). Native menu entry, `.cbz` double-click association, and clean
 ### Install
 
 ```sh
-sudo apt install ./classbuilder_3.0_amd64.deb              # x86_64
-sudo apt install ./classbuilder_3.0_arm64-glibc2.38.deb    # arm64 (Pi OS / Debian 13 + newer)
+sudo apt install ./classbuilder_3.0_amd64-glibc2.35.deb    # x86_64 (Ubuntu 22.04 / Debian 12 + newer)
+sudo apt install ./classbuilder_3.0_arm64-glibc2.38.deb    # arm64  (Pi OS / Debian 13 + newer)
 ```
 
 `apt install ./<file>` pulls the required system libraries automatically. (You

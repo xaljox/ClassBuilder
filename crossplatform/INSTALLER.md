@@ -155,16 +155,74 @@ warn. That is fine for development; just never ship from it.
    nothing about the recipient experience** — to test it for real, download the
    `.dmg` through a browser. Revisit only if CB is distributed beyond people who
    can be given that instruction.
-2. **arm64 only.** No Intel or universal binary. Needs a second Qt build
-   (x86_64) plus `lipo`, so it is a real chunk of work — do it only if an Intel
-   Mac actually has to run CB.
+2. **Intel (x86_64) `.dmg` — TODO on the Mac. Decided approach: a SECOND, separate
+   dmg, NOT a universal binary.** CB currently ships arm64 only. For Intel coverage
+   we add `ClassBuilder-3.0-mac-x64.dmg`, mirroring the per-arch Linux `.deb` split.
+   **Why not universal:** the binary is ~37 MB because Qt is static, so a universal
+   (arm64+x86_64) would roughly DOUBLE it and every Mac would download the half it
+   can't use. Two dmgs → each user grabs ~37 MB for their own arch. (Universal only
+   pays off for small, dynamically-linked apps.)
+
+   **How (build on the Apple-Silicon Mac — the macOS SDK is "fat", so emitting
+   x86_64 is a normal build, no Rosetta needed for the build itself):**
+   - Build a static **x86_64** Qt 6.11.1 from source with
+     `-DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0` into e.g.
+     `~/Qt-6.11.1-static-13-x64`, plus an **x86_64** static zstd built with the same
+     `-mmacosx-version-min=13.0` (mirrors the arm64 ship recipe two rows up).
+   - Add a `mac-x64` preset (in the gitignored `CMakeUserPresets.json`) inheriting
+     `mac` but with `CMAKE_OSX_ARCHITECTURES=x86_64` + that Qt/zstd prefix; build with
+     `--fresh` (CMake caches `Qt6*_DIR`). Verify `lipo -info <bin>` → `x86_64` and
+     `otool -L` → only system libs (the same hard gate make-dmg.sh enforces).
+   - `./installer/make-dmg.sh` → rename to `ClassBuilder-3.0-mac-x64.dmg`, attach to
+     the v3.0 release. Unsigned → same `xattr` quarantine note as #1. It runs on
+     Intel Macs natively and on Apple Silicon under Rosetta, but Apple-Silicon users
+     should take the arm64 dmg.
 3. **Bundle-ID collision when testing:** build-tree copies and the
    `/Applications` copy all use `com.xaljox.ClassBuilder`, so Launch Services
    points `.cbz` at whichever was registered last. After testing a build-tree
    app, re-assert the installed one with
    `lsregister -f /Applications/ClassBuilder.app`.
+4. **arm64 Linux `.deb` at glibc 2.35 — can be built HERE, on the Mac's arm64
+   Ubuntu Parallels VM (no Pi needed).** The Pi already produced the `-glibc2.38`
+   arm64 package (covers Pi OS / Debian 13 + newer); a `-glibc2.35` one additionally
+   covers arm64 Ubuntu 22.04 / Debian 12. Build it WITHOUT disturbing the VM's own
+   26.04, inside an `arm64v8/ubuntu:22.04` **container** (native arm64, no emulation):
+   ```sh
+   docker run --rm -v "$PWD":/src -w /src arm64v8/ubuntu:22.04 bash installer/build-in-container.sh
+   ```
+   → `installer/output/classbuilder_3.0_arm64-glibc2.35.deb`; attach with
+   `gh release upload v3.0 <file> --clobber`. (The same script builds the amd64 one on
+   an x86_64 host; CI already produces amd64 — see the Linux section.) **Optional:**
+   the Pi's `-glibc2.38` arm64 already covers the Pi; do this only if arm64 Ubuntu
+   22.04 / Debian 12 coverage is wanted.
 
-## Linux — ✅ amd64 + arm64 (Ubuntu) DONE (2026-08-24); only Pi-glibc arm64 still open
+## Linux — ✅ DONE: glibc-labelled per-arch packages (updated 2026-08-25)
+
+**Published on v3.0 (Linux) now:**
+- `classbuilder_3.0_amd64-glibc2.35.deb` — built in **CI**
+  (`ubuntu:22.04` container, `.github/workflows/linux-amd64-deb.yml`); runs on
+  Ubuntu 22.04 / Debian 12 and newer.
+- `classbuilder_3.0_arm64-glibc2.38.deb` — built **natively on the Pi**
+  (Raspberry Pi OS / Debian 13); runs on Pi OS / Debian 13 and newer.
+- `classbuilder_3.0_amd64.deb` / `_arm64.deb` — the earlier **Ubuntu 26.04**
+  (glibc 2.43) builds; kept, superseded by the lower-glibc ones above.
+
+**Two ways to build a low-glibc `.deb`** (floor goes in the filename either way):
+1. **Container** — `installer/build-in-container.sh` in an `ubuntu:22.04` image;
+   arch follows the host, one `docker run`. Used by CI, and runnable on the Pi or
+   an Apple-Silicon Parallels VM (see macOS "Still open" **#4**).
+2. **Native** — `installer/make-deb.sh` on an old-glibc box (how the Pi arm64 was
+   made). It stamps the arch of the machine it runs on.
+
+**`make-deb.sh` Depends fix (commit 684fd82):** the `ldd`→`dpkg -S` derivation
+returned empty on usr-merged systems (every current Debian/Ubuntu) and silently
+fell back to a short hardcoded list, dropping real deps (`libdbus-1-3`, the full
+`libxcb-*` set, …). Paths are now `readlink -f`-canonicalised, so the full package
+closure is derived.
+
+Historical detail below.
+
+### Original status (2026-08-24): amd64 + arm64 (Ubuntu) done
 
 `make-deb.sh` **run and verified on x86_64 Ubuntu 26.04**: builds
 `classbuilder_3.0_amd64.deb` (18 MB), installs under `/opt/classbuilder` with the
@@ -239,20 +297,32 @@ newer Ubuntu): a binary built against older glibc runs on the newer box, not the
 reverse. Build amd64 on the x86_64 box. No armhf build unless a 32-bit Pi OS
 actually has to run CB.
 
-## Release — v3.0 draft on GitHub (started 2026-08-24, Linux)
+## Release — v3.0 PUBLISHED on GitHub (updated 2026-08-25)
 
 All platform installers go into **ONE GitHub release** so they stay together
 under one version and out of the git history (the `.deb`/`.exe`/`.dmg` are
 gitignored build artifacts, never committed).
 
-**Current state (2026-08-24):** a **DRAFT** release "ClassBuilder 3.0" (tag
-`v3.0`, target `main`) exists with **all four installers attached** — Windows
-`.exe`, macOS `.dmg`, Linux **amd64** `.deb`, and Linux **arm64** `.deb` (the
-arm64 built on the Mac's arm64 Ubuntu 26.04 VM — newer-glibc, see the Linux
-step 2 caveat re: the Pi). A draft does **not** create the git tag yet — that
-happens on Publish, so nothing is public and nothing is irreversible until then.
-Ready to **Publish** once you've decided whether the Pi-glibc arm64 build must
-replace the Ubuntu-built one first.
+**Current state (2026-08-25):** the release "ClassBuilder 3.0" (tag `v3.0`) is
+**published**, with **6 assets**:
+
+| Asset | Notes |
+|---|---|
+| `ClassBuilderSetup-3.0-x64.exe` | Windows x64, full-static |
+| `ClassBuilder-3.0-mac-arm64.dmg` | macOS Apple Silicon; **Intel dmg still TODO** — see macOS "Still open" #2 |
+| `classbuilder_3.0_amd64-glibc2.35.deb` | x86_64, glibc 2.35 (**CI**-built) — recommended amd64 |
+| `classbuilder_3.0_arm64-glibc2.38.deb` | arm64, glibc 2.38 (**Pi**-built) — recommended arm64 |
+| `classbuilder_3.0_amd64.deb` / `_arm64.deb` | earlier Ubuntu-26.04 (glibc 2.43) builds; superseded |
+
+**Still to attach (both optional, on the Mac):** the **Intel `.dmg`** (macOS
+"Still open" #2) and, if arm64 Ubuntu 22.04 / Debian 12 coverage is wanted, the
+**arm64 `-glibc2.35` `.deb`** via the Parallels VM container (macOS "Still open"
+#4). Everything else is done.
+
+_Historical (2026-08-24): the release started as a DRAFT with the first four
+installers (the arm64 `.deb` then built on the Mac's Ubuntu 26.04 VM = newer
+glibc). It has since been published and the Linux packages replaced with the
+glibc-labelled per-arch builds above._
 
 **Handoff — the plan (JV):**
 
