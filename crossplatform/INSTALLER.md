@@ -195,28 +195,30 @@ warn. That is fine for development; just never ship from it.
    points `.cbz` at whichever was registered last. After testing a build-tree
    app, re-assert the installed one with
    `lsregister -f /Applications/ClassBuilder.app`.
-4. **arm64 Linux `.deb` at glibc 2.35 — can be built HERE, on the Mac's arm64
-   Ubuntu Parallels VM (no Pi needed).** The Pi already produced the `-glibc2.38`
-   arm64 package (covers Pi OS / Debian 13 + newer); a `-glibc2.35` one additionally
-   covers arm64 Ubuntu 22.04 / Debian 12. Build it WITHOUT disturbing the VM's own
-   26.04, inside an `arm64v8/ubuntu:22.04` **container** (native arm64, no emulation):
+4. **arm64 Linux `.deb` at glibc 2.35 — ✅ DONE (2026-08-25), built on the Mac's
+   arm64 Ubuntu Parallels VM (no Pi needed).** Built WITHOUT disturbing the VM's own
+   26.04, inside an `ubuntu:22.04` **container** (native arm64, no emulation):
    ```sh
    docker run --rm -v "$PWD":/src -w /src arm64v8/ubuntu:22.04 bash installer/build-in-container.sh
    ```
-   → `installer/output/classbuilder_3.0_arm64-glibc2.35.deb`; attach with
-   `gh release upload v3.0 <file> --clobber`. (The same script builds the amd64 one on
-   an x86_64 host; CI already produces amd64 — see the Linux section.) **Optional:**
-   the Pi's `-glibc2.38` arm64 already covers the Pi; do this only if arm64 Ubuntu
-   22.04 / Debian 12 coverage is wanted.
+   → `installer/output/classbuilder_3.0_arm64-glibc2.35.deb`, attached to v3.0.
+   glibc 2.35 < the Pi's 2.36, so it **also covers the Pi** and is now the
+   recommended arm64 download; the Pi-native `-glibc2.38` stays published as an
+   alternative for Pi-specific use.
 
 ## Linux — ✅ DONE: glibc-labelled per-arch packages (updated 2026-08-25)
 
 **Published on v3.0 (Linux) now:**
 - `classbuilder_3.0_amd64-glibc2.35.deb` — built in **CI**
   (`ubuntu:22.04` container, `.github/workflows/linux-amd64-deb.yml`); runs on
-  Ubuntu 22.04 / Debian 12 and newer.
+  Ubuntu 22.04 / Debian 12 and newer. **Recommended amd64.**
+- `classbuilder_3.0_arm64-glibc2.35.deb` — built in an **arm64 `ubuntu:22.04`
+  container** on the Apple-Silicon VM (2026-08-25); runs on Debian 12 / Ubuntu
+  22.04 and newer arm64, **incl. the Pi** (2.35 < 2.36). **Recommended arm64** —
+  widest reach.
 - `classbuilder_3.0_arm64-glibc2.38.deb` — built **natively on the Pi**
-  (Raspberry Pi OS / Debian 13); runs on Pi OS / Debian 13 and newer.
+  (Raspberry Pi OS / Debian 13); runs on Pi OS / Debian 13 and newer. Kept as the
+  Pi-native alternative; the `-glibc2.35` one covers the same and more.
 - `classbuilder_3.0_amd64.deb` / `_arm64.deb` — the earlier **Ubuntu 26.04**
   (glibc 2.43) builds; kept, superseded by the lower-glibc ones above.
 
