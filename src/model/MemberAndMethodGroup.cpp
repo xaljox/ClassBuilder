@@ -2,17 +2,14 @@
 *
 * Project:       ClassBuilder v3.0
 * File:          MemberAndMethodGroup.cpp
-* Creation date: August 14, 2026 20:37
+* Creation date: August 24, 2026 14:03
 * Author:        Jimmy Venema
 * Purpose:       Method implementations of class 'MemberAndMethodGroup'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
 *
 * Copyright 2026, Jimmy Venema
-* All rights are reserved. Reproduction in whole or part is prohibited
-* without the written consent of the copyright owner.
-* Philips Digital Video Systems, Eindhoven, The Netherlands.
-* Distributed under the GNU General Public License (GPL)
+* Licensed under the MIT License (see the LICENSE file).
 *
 \******************************************************************************/
 //@START_USER1

@@ -2,18 +2,24 @@
 *
 * Project:       ClassBuilder v3.0
 * File:          CbStringBuilder.h
-* Creation date: August 14, 2026 20:37
+* Creation date: August 24, 2026 14:03
 * Author:        Jimmy Venema
 * Purpose:       Declaration of class 'CbStringBuilder'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
-* August 14, 2026 20:37 JV v2.3 -> v3.0
+* August 24, 2026 14:03 JV License text updated
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
 *
 * Copyright 2026, Jimmy Venema
-* All rights are reserved. Reproduction in whole or part is prohibited
-* without the written consent of the copyright owner.
-* Philips Digital Video Systems, Eindhoven, The Netherlands.
-* Distributed under the GNU General Public License (GPL)
+* Licensed under the MIT License (see the LICENSE file).
 *
 \******************************************************************************/
 #ifndef _CBSTRINGBUILDER_H
