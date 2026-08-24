@@ -46,6 +46,11 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Source: "{#BuildOut}\{#MyAppExe}";                              DestDir: "{app}";                    Flags: ignoreversion
 Source: "{#RepoRoot}\res\ClassBuilder.ico";                    DestDir: "{app}";                    Flags: ignoreversion
 Source: "{#RepoRoot}\res\ClassBuilderDoc.ico";                 DestDir: "{app}";                    Flags: ignoreversion
+; MIT licence text. Required, not decorative: the compile-runtime below is a
+; substantial portion of the Software and carries no per-file notice, and the
+; generated headers point at "the LICENSE file". Installed as LICENSE.txt --
+; an extensionless file opens with nothing on Windows.
+Source: "{#RepoRoot}\LICENSE";                                DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 Source: "{#RepoRoot}\docs\manual\ClassBuilder_Manual.pdf";     DestDir: "{app}\doc";                Flags: ignoreversion
 Source: "{#RepoRoot}\models\manual\Matrix.CBZ";                DestDir: "{app}\examples";           Flags: ignoreversion
 ; --- runtime the user needs to compile generated code ---

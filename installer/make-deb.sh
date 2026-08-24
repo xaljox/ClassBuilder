@@ -81,6 +81,15 @@ install -m 0755 "$BIN" "$APP/ClassBuilder"
 cp "$REPO/docs/manual/ClassBuilder_Manual.pdf" "$APP/doc/"
 cp "$REPO/models/manual/Matrix.CBZ"            "$APP/examples/"
 
+# MIT licence text. Required, not decorative: the compile-runtime shipped below
+# is a substantial portion of the Software and carries no per-file notice, and
+# the generated headers point at "the LICENSE file". Installed both beside the
+# app and at the Debian-conventional /usr/share/doc/<pkg>/copyright, which
+# lintian expects every package to have.
+cp "$REPO/LICENSE" "$APP/LICENSE"
+mkdir -p "$STAGE/usr/share/doc/$PKG"
+install -m 0644 "$REPO/LICENSE" "$STAGE/usr/share/doc/$PKG/copyright"
+
 # Compile-runtime: what a user needs to COMPILE the code ClassBuilder generates.
 for d in include value serialize; do
     mkdir -p "$APP/runtime/$d"
