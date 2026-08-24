@@ -241,15 +241,21 @@ gitignored build artifacts, never committed).
 **not** create the git tag yet — that happens on Publish, so nothing is public
 and nothing is irreversible until then.
 
-**Handoff — the plan, in order (JV):**
+**Handoff — the plan (JV):**
 
-1. **Windows** — build the Inno Setup `.exe` (`installer/ClassBuilder.iss`),
-   attach it to the draft.
-2. **macOS** — build the `.dmg` (`./installer/make-dmg.sh`), attach it.
-3. **arm64 Linux** — on the Pi (oldest glibc), `cmake --build --preset
-   linux-release` then `./installer/make-deb.sh` → `classbuilder_3.0_arm64.deb`,
-   attach it. (The Mac's arm64 Ubuntu VM runs it too; build on the Pi.)
-4. When all are attached and checked, **Publish** the draft — that creates the
+1. **Windows `.exe`** and **macOS `.dmg`** are already **built and tested** — just
+   attach the existing files to the draft (no rebuild needed).
+2. **arm64 Linux `.deb`** — Pi not on hand, so build it on the **Mac's arm64
+   Ubuntu VM** instead. That is fine, with one caveat: the VM has a **newer
+   glibc** than the Pi, and a binary built against newer glibc does NOT run on an
+   older one. So this `.deb` is an **"arm64 Ubuntu 26.04+ (newer glibc)"**
+   package — it runs on arm64 Ubuntu (and newer), and is **not guaranteed on the
+   Pi's Raspberry Pi OS**. If Pi coverage is wanted later, rebuild that one on the
+   Pi (oldest glibc → runs on both) and replace/annotate the asset. Build:
+   `cmake --build --preset linux-release` then `./installer/make-deb.sh`
+   → `classbuilder_3.0_arm64.deb`. Check the exact minimum with
+   `ldd --version` on the VM.
+3. When all are attached and checked, **Publish** the draft — that creates the
    `v3.0` tag.
 
 **How to attach:**
