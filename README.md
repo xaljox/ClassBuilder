@@ -1,5 +1,10 @@
 # ClassBuilder
 
+[![Release](https://img.shields.io/github/v/release/xaljox/ClassBuilder)](https://github.com/xaljox/ClassBuilder/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/xaljox/ClassBuilder)](LICENSE)
+![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
+![C++17](https://img.shields.io/badge/C%2B%2B-17-blue)
+
 Self-hosted C++ code-generation tool. You define an object-oriented data model —
 classes, members, methods, relations, inheritance, and diagrams — in the GUI, and
 ClassBuilder writes the `.h` / `.cpp` source for it. The generated code uses a
@@ -11,6 +16,10 @@ source ships in this repository, and CB regenerates itself from it.
 
 It is an **all-Qt** application (originally MFC on Windows, since fully ported)
 and builds to a single self-contained executable on **Windows, macOS and Linux**.
+
+ClassBuilder has been in continuous development and daily use for around 25
+years. **v3.0 is its first public release** — and the first under an open-source
+licence.
 
 ## Screenshots
 

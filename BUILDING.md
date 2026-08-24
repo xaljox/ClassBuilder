@@ -1,296 +1,178 @@
 # Building ClassBuilder
 
-This file captures build setup, gotchas, and the cross-machine handoff procedure so
-they don't have to be rediscovered. For what the app does, the model, and the
-serialization runtime, see [CLAUDE.md](CLAUDE.md). For the agent's persistent
-context (deferred decisions, incident history) see the user's auto-memory dir
-referenced in CLAUDE.md.
+Build setup, per-platform prerequisites, and the gotchas that are easy to
+rediscover the hard way. For what the app *does* and the model/serialization
+design, see [CLAUDE.md](CLAUDE.md); for the port and the installers, see
+[crossplatform/](crossplatform/) and [installer/](installer/).
+
+> **CMake is the only build.** The old MSBuild solution (`ClassBuilderEXE.sln`
+> + `.vcxproj`) was removed in 2026-06, together with the MFC-extension-DLL /
+> thin-EXE split. There is one target: a single self-contained `ClassBuilder`
+> executable.
 
 ---
 
 ## Quick start
 
-Open [ClassBuilderEXE.sln](ClassBuilderEXE.sln) in Visual Studio 2022 / 2026
-(MSBuild v145 toolset). Pick a platform + config and **F5** / **Ctrl+F5**.
+One configure preset per platform, read by VS 2026 ("Open Folder"), VS Code
+(CMake Tools) and the command line — all sharing the `out/build/<preset>` tree.
 
-| Platform | Native on | Notes |
-| --- | --- | --- |
-| `x86` (Win32) | x86 / x64 / ARM64 hosts (Windows emulation) | Legacy 32-bit, builds cleanly everywhere |
-| `x64` | x64 / ARM64 (x64 emulation on ARM64 Windows) | Default for new desktop work |
-| `ARM64` | ARM64 hosts (Apple Silicon Parallels, Surface Pro X, etc.) | See ARM64 caveat below |
-
-Output goes to `Release\<Platform>\ClassBuilder.exe` (+ `.dll`) or
-`Debug\<Platform>\` — see [output layout](#output-layout).
-
-### Solution platform names
-
-The .sln uses **`x86`** as the 32-bit platform name; both vcxproj files use
-**`Win32`**. The .sln maps `x86 → Win32` per-project. If you invoke MSBuild
-directly, pass `/p:Platform=x86` against the .sln (not `Win32`):
-
-```
-msbuild ClassBuilderEXE.sln /p:Configuration=Release /p:Platform=x86
+```sh
+cmake --preset x64       && cmake --build --preset x64-release      # Windows
+cmake --preset mac       && cmake --build --preset mac-release      # macOS
+cmake --preset linux-x64 && cmake --build --preset linux-release    # Linux
 ```
 
-For the per-project vcxproj invocation, use `Win32`:
+Swap `-release` for `-debug` for a debug build.
 
-```
-msbuild ClassBuilder\ClassBuilder.vcxproj /p:Configuration=Release /p:Platform=Win32
-```
+| Preset | Binary lands at |
+|---|---|
+| `x64` | `out/build/x64/bin/Release/ClassBuilder.exe` |
+| `mac` | `out/build/mac/bin/Release/ClassBuilder.app` |
+| `linux-x64` | `out/build/linux-x64/bin/Release/ClassBuilder` |
 
----
+There is **no test suite**. Verification is manual and self-hosted: open the
+project's own `src/model/ClassBuilder.CBZ` in CB, regenerate, rebuild, repeat.
 
-## Output layout
+## Prerequisites
 
-Both vcxprojs use `<Config>\<Platform>\` (configuration-first), repo-relative:
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| Compiler | MSVC (VS 2026, v145) | Xcode Command Line Tools (clang) | GCC or clang |
+| Build tools | bundled with VS | `brew install cmake ninja` (**arm64** brew) | `apt install cmake ninja-build` |
+| Qt 6 | static, see below | `brew install qt` or from source | `apt install qt6-base-dev qt6-svg-dev` or from source |
+| zstd | vendored in-tree | `brew install zstd` | `apt install libzstd-dev` |
 
-```
-<repo-root>/
-├── Release/
-│   ├── Win32/   ClassBuilder.exe + ClassBuilder.dll  (x86 final)
-│   ├── x64/     ClassBuilder.exe + ClassBuilder.dll  (x64 final)
-│   └── ARM64/   ClassBuilder.exe + ClassBuilder.dll  (ARM64 final)
-├── Debug/
-│   └── ...same structure as Release
-└── ClassBuilder/
-    ├── Release/
-    │   ├── Win32/   DLL intermediates: .obj, .lib, .pch, .tlog
-    │   ├── x64/     ...
-    │   └── ARM64/   ...
-    └── Debug/
-        └── ...
-```
+C++17 (`cxx_std_17`). flex/bison are only needed if you regenerate
+`Read.l`/`Read.y`; the generated `.cpp` are committed.
 
-**Why it matters:** if you ever see an `MSB8012: TargetPath ... does not match the
-Linker's OutputFile property value` warning, it means an `<OutDir>` got dropped
-for one of the 6 (Configuration|Platform) PropertyGroups and MSBuild fell back to
-its default `$(Platform)\$(Configuration)\` layout — which is the opposite order.
-Add an `<OutDir>.\Release\$(Platform)\</OutDir>` (and `IntDir` match) to the
-affected PropertyGroup. There are 12 entries total — 6 in each vcxproj.
+### Qt
 
-**Important:** F5 in VS reads `TargetPath` (= `OutDir + TargetName + TargetExt`),
-not `Linker.OutputFile`. If they diverge, the linker writes to one place and F5
-looks somewhere else and fails with *"cannot find the file specified"*. So always
-keep `OutDir` and `Linker.OutputFile` pointing to the same directory.
+The committed presets point at:
 
----
+| Preset | `CMAKE_PREFIX_PATH` |
+|---|---|
+| `x64` | `C:/Qt-static-mt/6.11.1` — static Qt built against the **static CRT** |
+| `mac` | `/opt/homebrew/opt/qt` — brew, shared |
+| `linux-x64` | `$HOME/Qt-6.11.1-static` |
 
-## zstd dependency
+Those are **local paths, not something the repo can provide.** Building the
+from-source Qt is documented per platform in
+[crossplatform/PORTING_MAC.md](crossplatform/PORTING_MAC.md) and
+[crossplatform/PORTING_LINUX.md](crossplatform/PORTING_LINUX.md) (option B).
+Machine-specific overrides belong in a **gitignored `CMakeUserPresets.json`**
+that inherits a committed preset and repoints `CMAKE_PREFIX_PATH` — never edit
+the committed presets for one machine.
 
-zstd 1.5.7 is **vendored in the repo** under [ClassBuilder/zstd/](ClassBuilder/zstd/):
+Static Qt is detected automatically (via `Qt6::Core`'s TYPE); the platform and
+SVG plugins are then linked into the executable, so there is no `windeployqt` /
+`macdeployqt` step and no `Qt6*.dll` beside the binary. With the Svg module
+present, SVG model icons are enabled.
 
-```
-ClassBuilder/zstd/
-├── include/   (zstd.h, zdict.h, zstd_errors.h)
-├── lib/
-│   ├── Win32/  libzstd_static.lib  (x86, MSVC, /MD)
-│   ├── x64/    libzstd_static.lib  (x64, MSVC, /MD)
-│   └── ARM64/  libzstd_static.lib  (ARM64, MSVC, /MD)
-└── README.upstream.md
-```
+## Things in CMakeLists.txt that look odd but are load-bearing
 
-All three platforms get a vendored static lib. **Nothing to install or
-pre-build on a fresh checkout.** The vcxproj points at
-`zstd\include` (relative) and `zstd\lib\$(Platform)`, no per-machine paths.
+Each of these was root-caused; changing it reintroduces a real bug.
 
-### Why we built from source (rather than using the GitHub prebuilt)
+- **The UNICODE quarantine (Windows).** Qt 6 forces `UNICODE`/`_UNICODE` on
+  anything linking it, but the model sources are a **MultiByte** build calling
+  the ANSI Win32 APIs. So the Qt code lives in a static lib `ClassBuilderQt`
+  that links Qt **PRIVATE**, and the EXE re-strips the defines with
+  `/UUNICODE /U_UNICODE` (`cl.exe` gives `/U` precedence over `/D`). Windows-only
+  — Qt does not force it elsewhere.
+- **`/Z7`, not `/Zi`, for Debug.** Embedded debug info avoids the shared
+  `vc145.pdb` `mspdbsrv` race (error C1090) under the ~300-file parallel build.
+- **Release carries no debug info by design** — no `/DEBUG`, no `.pdb`. Debug
+  on Debug builds.
+- **`/MT` static CRT** (with the matching `third_party/zstd/lib-mt/` zstd), so
+  the shipped `.exe` needs no VC++ redistributable.
+- **PCH on [src/model/StdAfx.h](src/model/StdAfx.h)**; the flex lexer
+  `Read.l.cpp` opts out (`SKIP_PRECOMPILE_HEADERS`) because it does not include
+  it. Incremental rebuilds land around 3.5 s.
+- **macOS `CMAKE_OSX_DEPLOYMENT_TARGET=13.0`.** Setting it is not enough on its
+  own — Qt and zstd must be built for the same target or the binary is *labelled*
+  13 while containing newer objects. Full explanation in
+  [crossplatform/INSTALLER.md](crossplatform/INSTALLER.md).
 
-The official `zstd-v1.5.7-win32.zip` ships a `static/libzstd_static.lib` that is
-**MinGW-built** — it depends on libgcc helpers (`___chkstk_ms`, `___udivdi3`) and
-has no SAFESEH metadata. Both are fatal for MSVC linking. Don't replace any of
-these vendored libs with files from the GitHub release zip — that will reintroduce
-both problems.
+## zstd
 
-### If you ever need to rebuild zstd from source
+Vendored under [third_party/zstd/](third_party/zstd/): headers plus prebuilt
+**Windows** static libs (`lib/` for `/MD`, `lib-mt/` for `/MT`). Nothing to
+install on a fresh Windows checkout.
 
-Use the bundled VS solution in zstd's source tree (`build/VS2010/libzstd/libzstd.vcxproj`):
+The committed `.lib` files are Windows-only and useless elsewhere; macOS and
+Linux `find_library` a static `libzstd.a` (brew / `libzstd-dev`), with
+`CMAKE_FIND_LIBRARY_SUFFIXES` forced to `.a` so it cannot pick up a `.dylib`/
+`.so`. Override with `-DZSTD_LIB=/path/to/libzstd.a` when you need a specific
+one — that is how the macOS ship build pins a deployment-target-13 zstd.
 
-1. Patch `<RuntimeLibrary>MultiThreaded</RuntimeLibrary>` → `MultiThreadedDLL`
-   (/MT → /MD) in the Release ItemDefinitionGroups, so it links into our /MD MFC
-   extension DLL without a CRT conflict.
-2. For ARM64: clone the Win32 `ProjectConfiguration` + `PropertyGroup` +
-   `ImportGroup` + `ItemDefinitionGroup` blocks and rename to ARM64
-   (upstream's solution only ships Win32/x64).
-3. `msbuild libzstd.vcxproj /p:Configuration=Release /p:Platform=<plat> /p:PlatformToolset=v145`
-4. Copy `bin/<Platform>_Release/libzstd_static.lib` → `ClassBuilder/zstd/lib/<Platform>/`.
-
-### Debug/Release CRT mismatch (silenced)
-
-The vendored libs are all `/MD` (Release CRT). Debug builds of ClassBuilder use
-`/MDd`, so you'd normally see `LNK4098: defaultlib 'MSVCRT' conflicts with use of
-other libs: use /NODEFAULTLIB:library`. The DLL project's Debug Link sections
-include `<AdditionalOptions>/ignore:4098 %(AdditionalOptions)</AdditionalOptions>`
-to silence it. Safe in practice because zstd doesn't pass heap-owned memory
-across the API boundary in CB's usage. If you want a fully clean Debug link,
-build a `/MDd` variant of zstd and place it at e.g. `zstd/lib/<Platform>/Debug/`,
-then add `<AdditionalLibraryDirectories>zstd\lib\$(Platform)\Debug;...` to the
-Debug Link sections. Not required for working Debug builds.
-
-### SAFESEH (Win32 only)
-
-The DLL project's Link sections all have
-`<ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>`. SAFESEH
-is x86-only; this disables it because the prebuilt zstd object files (back when
-we tried the GitHub Win32 zip) lacked SAFESEH metadata. Vendored libs we build
-ourselves would have it, but leave the project setting alone — it's harmless on
-ARM64/x64 and adds no exposure on x86 for a desktop dev tool.
-
----
-
-## Precompiled header (PCH) gotchas
-
-`StdAfx.cpp` has per-platform conditional `<PrecompiledHeader>Create</PrecompiledHeader>`
-entries in [ClassBuilder/ClassBuilder.vcxproj](ClassBuilder/ClassBuilder.vcxproj).
-If you add a new platform configuration, **you must add a matching Create entry**
-or every other source file fails with `C1083: Cannot open precompiled header
-file: '.\Release\ClassBuilder.pch': No such file or directory` (because nothing
-in the build is set to *create* the PCH).
-
-`Read.l.cpp` and `Rtf.l.cpp` are flex-generated C files that don't include
-`stdafx.h`. They have per-platform empty-`<PrecompiledHeader></PrecompiledHeader>`
-overrides to opt out of the project-level "Use" default. New platforms need
-matching entries here too or these two files fail with `C1010: unexpected end of
-file while looking for precompiled header`.
-
----
-
-## ARM64 caveat: PreferredToolArchitecture
-
-When building ARM64 on an ARM64 host (Apple Silicon under Parallels, Surface Pro
-X, etc.), the **ARM64-native MSVC compiler** runs out of virtual memory for
-MFC's PCH and dies with:
-
-```
-fatal error C1076: compiler limit: internal heap limit reached
-fatal error C3859: Failed to create virtual memory for PCH
-```
-
-Fix: use the **x64-hosted ARM64 cross-compiler** (which has more vmem headroom).
-There's a top-level `PropertyGroup` near the top of
-[ClassBuilder/ClassBuilder.vcxproj](ClassBuilder/ClassBuilder.vcxproj) that sets
-this:
-
-```xml
-<PropertyGroup Condition="'$(Platform)'=='ARM64'">
-  <PreferredToolArchitecture>x64</PreferredToolArchitecture>
-</PropertyGroup>
-```
-
-**Known quirk:** as of VS 2026 / v145, this PropertyGroup placement doesn't
-always take effect from the IDE. If you hit the C3859/C1076 wall, override on the
-command line:
-
-```
-msbuild ClassBuilderEXE.sln /p:Configuration=Release /p:Platform=ARM64 /p:PreferredToolArchitecture=x64
-```
-
-If you're building ARM64 from VS and the property is being ignored, the
-workaround is to set the environment variable `PreferredToolArchitecture=x64`
-before launching VS, or build from a Developer Command Prompt with the flag
-above.
-
-This is irrelevant on Intel/AMD x64 hosts — the x64 compiler is the native one
-and has no memory issue. Only matters on ARM64 *hosts* targeting ARM64.
-
----
+**Do not replace the vendored Windows libs with the ones from zstd's GitHub
+release zip.** Those are MinGW-built: they pull in libgcc helpers
+(`___chkstk_ms`, `___udivdi3`) and carry no SAFESEH metadata, both fatal for
+MSVC linking. Build from source instead (`build/VS2010/libzstd/libzstd.vcxproj`,
+with `<RuntimeLibrary>` set to match).
 
 ## The `_index` union (CopyShape pointer alias)
 
-[ClassBuilder/DataModelDocObject.h](ClassBuilder/DataModelDocObject.h) declares
-`_index` as a union:
+[src/model/DataModelDocObject.h](src/model/DataModelDocObject.h) declares:
 
 ```cpp
 public:
     union {
-        int      _index;     // transient object-mapping ID during archive save/load
-        LONG_PTR _ptrIndex;  // transient pointer alias during CopyShape (64-bit safe)
+        int      _index;     // transient object id during archive save/load
+        intptr_t _ptrIndex;  // transient pointer alias during CopyShape
     };
 ```
 
-This is intentional. `_index` is used for two non-overlapping purposes:
+Intentional. The two uses are temporally disjoint: serialization assigns
+sequential ids (always 32-bit), while CopyShape stuffs a pointer to each shape's
+new copy in there so nested shapes can find their new parent — which does not fit
+an `int` on 64-bit. The union keeps the footprint at the size of the larger
+member.
 
-1. **Serialization:** during archive save/load, the framework assigns sequential
-   integer IDs to objects. Always fits in 32 bits.
-2. **CopyShape:** when deep-copying a diagram, each shape stuffs a pointer to its
-   "new copy" into `_index` so nested shapes can find the new parent. On x86 a
-   pointer fits in an int; on x64/ARM64 it doesn't, hence `_ptrIndex` (8 bytes).
+The codegen emits it from a literal in
+[src/model/Class.cpp:2209](src/model/Class.cpp#L2209). The `_ptrIndex` read/write
+sites in `*Shape.cpp` live inside `//@CODE_NNNN` markers, so they round-trip
+through the model.
 
-The two uses are temporally disjoint. The union keeps the object footprint
-minimal (4 bytes on Win32, 8 bytes on 64-bit — same size as the largest member).
+## Regenerating from the model — the chicken-and-egg
 
-The codegen emits this union for every class flagged as a "document object" via
-the literal in [ClassBuilder/Class.cpp:2202](ClassBuilder/Class.cpp#L2202). The
-13 `_ptrIndex = LONG_PTR(...)` write sites in `*Shape.cpp` and the 7
-`(SomeShape*)x->_ptrIndex` read sites in CopyShape live inside
-`//@CODE_NNNN` markers, so they round-trip through the model.
+CB generates its own source, so an **older** `ClassBuilder` run against a
+**newer** `.cbz` can produce a tree that will not build: the parts round-tripped
+from the model come out new, while anything emitted by the old binary's
+compiled-in codegen comes out old.
 
-**On a fresh machine, do NOT regenerate sources from the model before reading
-[Cross-machine bootstrap](#cross-machine-bootstrap) below — there's a one-pass
-chicken-and-egg.**
+**On a fresh machine, just build from the committed sources.** They are already
+consistent — do not open the model and regenerate until you have a CB built from
+them. If you do get caught: build → run the *new* CB on the same `.cbz` →
+regenerate again → rebuild.
 
----
+This is also why the generated `.cpp`/`.h` are tracked in git rather than
+ignored: macOS and Linux build what Windows generated (see
+[crossplatform/README.md](crossplatform/README.md)).
 
-## Cross-machine bootstrap
+## Line endings
 
-When moving the repo (and the .cbz model) to a new machine:
+`.gitattributes` pins **CRLF in the working tree on every platform**. CB's
+codegen emits CRLF (`NL == "\015\012"`) and round-trips its own sources as CRLF,
+so a Windows regen would otherwise show up as whole-file EOL churn. clang and GCC
+compile CRLF fine. Do not "fix" it to LF.
 
-1. **Sync the whole repo.** All vcxproj/sln/zstd/source edits travel via git or
-   file copy. The vendored zstd libs are in the tree.
-2. **Build CB normally for x86 first** (`x86 Release`). It's the most stable
-   target and doesn't need ARM64 toolchain bits.
-3. **Then build x64 / ARM64** as needed.
+## When a build breaks
 
-### The .cbz model regeneration chicken-and-egg
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Static libzstd.a not found` | no system zstd | `brew install zstd` / `apt install libzstd-dev`, or pass `-DZSTD_LIB=` |
+| `Qt6Config.cmake not found` | `CMAKE_PREFIX_PATH` points nowhere | fix it in a **`CMakeUserPresets.json`**, not the committed preset |
+| Qt found, but the *wrong* one after repointing the prefix | CMake caches `Qt6Svg_DIR` and friends | reconfigure with `--fresh` |
+| `ld: warning: object file was built for newer 'macOS' version` | Qt/zstd built for a newer target than CB | rebuild those deps at the same deployment target — see INSTALLER.md |
+| unresolved `__imp_*` / `UNICODE`-flavoured symbol mismatches (Windows) | the UNICODE quarantine was broken | keep Qt **PRIVATE** on `ClassBuilderQt`, keep `/UUNICODE /U_UNICODE` on the EXE |
+| `C1090` / `mspdbsrv` errors (Windows Debug) | `/Zi` instead of `/Z7` | leave `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT` alone |
+| `LNK2026: module unsafe for SAFESEH` or missing `___chkstk_ms` | a MinGW-built zstd got in | restore the in-tree MSVC-built lib |
+| `*Shape.cpp` cannot find `_ptrIndex` | regenerated with an older CB | see the chicken-and-egg section above |
 
-If the other machine has an **older CB.exe** whose codegen still emits
-`int _index;` (instead of the union), and you run that old CB on the *new* .cbz:
+## Not missing — do not go looking
 
-- CB regens `Class.cpp` with the new union-emitting literal (round-tripped from
-  the .cbz). Good.
-- CB regens `DataModelDocObject.h` using its compiled-in **old** codegen → emits
-  `int _index;` (no union). **Bad.**
-- Subsequent build fails because `*Shape.cpp` references `_ptrIndex` which
-  doesn't exist in the regenerated header.
-
-Three ways to break the cycle on the new machine:
-
-1. **Skip the first regen.** Don't open the .cbz in CB until you've already
-   built a CB with the new codegen. Just build directly from the synced sources
-   (they already have the union edits, no regen needed).
-2. **Build-twice.** Open .cbz in old CB → regen → build → run *new* CB on the
-   same .cbz → regen again → final build.
-3. **One-shot hand-patch.** After the first old-CB regen, manually edit
-   `DataModelDocObject.h:46` to insert the union (the form shown above). Then
-   build. The next regen with the new CB produces identical content.
-
-Easiest: option (1). Just don't regen until you have to.
-
----
-
-## What to do if a build breaks
-
-| Symptom | Probable cause | Fix |
-| --- | --- | --- |
-| `C1083: Cannot open include file: 'zstd.h'` | Include path lost in vcxproj | Check `<AdditionalIncludeDirectories>` includes `zstd\include` |
-| `LNK1181: cannot open input file 'libzstd_static.lib'` | Lib path or platform mismatch | Check `<AdditionalLibraryDirectories>` includes `zstd\lib\$(Platform)`; verify `zstd/lib/<plat>/libzstd_static.lib` exists |
-| `LNK2026: module unsafe for SAFESEH image` | Vendored lib lacks SAFESEH | Check `<ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>` in Link section, or use the in-tree MSVC-built lib (not a GitHub prebuilt) |
-| `LNK2019: unresolved external symbol ___chkstk_ms` | Linking a MinGW-built zstd | Replace with the MSVC-built lib from `ClassBuilder/zstd/lib/<plat>/` (do not use the GitHub release zip's static lib) |
-| `C1853: precompiled header file is from a different version` | Stale PCH from another platform | Delete `ClassBuilder\Release\ClassBuilder.pch` (or do a clean rebuild) |
-| `C1083: Cannot open precompiled header file ... No such file` | Missing `<PrecompiledHeader>Create</PrecompiledHeader>` entry for StdAfx.cpp on this platform | Add the per-platform Create entry in the ClCompile block for StdAfx.cpp |
-| `C1076 / C3859: virtual memory for PCH` | ARM64-native compiler on ARM64 host | Pass `/p:PreferredToolArchitecture=x64` to msbuild |
-| `LNK4098: defaultlib 'MSVCRT' conflicts...` | /MD-vs-/MDd CRT mismatch | Already silenced via `/ignore:4098` for Debug; if you need a clean build, build a /MDd zstd variant |
-| `MSB8012: TargetPath ... does not match Linker's OutputFile` | Missing `<OutDir>` for one PropertyGroup | Add `<OutDir>.\<Config>\$(Platform)\</OutDir>` to the missing config |
-| `F5 / Ctrl+F5: cannot find the file specified` | Same as MSB8012 — TargetPath and OutputFile diverge | Same fix; also confirm a build completed after fixing |
-
----
-
-## What this tree is **not** missing
-
-So you don't go looking for stuff that isn't there:
-
-- No `Release\ClassBuilder.exe` at the repo root anymore. The legacy x86 layout
-  (everything dumping into `Release\` flat) was replaced with `Release\<Platform>\`.
-- No `vcpkg` or `Conan` integration. Dependencies are vendored.
-- No CI. Verification is manual: open `ClassBuilder/ClassBuilder_org.cbz` in CB,
-  regenerate, rebuild, repeat (self-host).
-- No test suite. (Yet.)
+- No `vcpkg`/Conan: Windows dependencies are vendored, the others come from the
+  system package manager.
+- No CI and no test suite; verification is the self-host loop.
+- No `.sln`/`.vcxproj`, no `Release\<Platform>\` output tree, no MFC.
