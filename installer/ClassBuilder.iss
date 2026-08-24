@@ -22,7 +22,8 @@ DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExe}
 SetupIconFile={#RepoRoot}\res\ClassBuilder.ico
 OutputDir=output
-OutputBaseFilename=ClassBuilderSetup
+; Versioned + arch-tagged to match the macOS .dmg / Linux .deb release assets.
+OutputBaseFilename=ClassBuilderSetup-{#MyAppVersion}-x64
 Compression=lzma2/max
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
