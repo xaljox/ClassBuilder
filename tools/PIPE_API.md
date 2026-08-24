@@ -1,8 +1,32 @@
-# ClassBuilder Pipe API — Command Reference
+# ClassBuilder Command API — Reference
 
-ClassBuilder.exe hosts a JSON-over-named-pipe server (`\\.\pipe\ClassBuilder`). One JSON request per line, one JSON reply per line.
+> **This file is written to be handed to a script or an AI agent as-is.** It is
+> the complete contract: transport below, then every command with its
+> parameters, return value and traps.
 
-The pipe name is **single-instance**: with two ClassBuilders running, the second server silently loses the race and is unreachable. Set the env var **`CB_PIPE_NAME`** before launch to give an instance its own pipe (e.g. `CB_PIPE_NAME=ClassBuilderDev` → `\\.\pipe\ClassBuilderDev`), so a dev build can be driven beside the stable instance.
+ClassBuilder hosts a **JSON-over-TCP** server on **loopback only**
+(`127.0.0.1`, port **51777**) — identical on Windows, macOS and Linux. It starts
+with the application; there is no flag to enable it. One JSON request per line,
+one JSON reply per line.
+
+```sh
+echo '{"cmd":"ping"}' | nc 127.0.0.1 51777
+{"ok":true,"result":{"build":"Aug 24 2026 14:15:42","pong":true}}
+```
+
+The port is **single-instance**: the first ClassBuilder to start binds 51777 and
+a second one silently fails to bind, leaving it undriveable. Set **`CB_CMD_PORT`**
+before launch to give an instance its own port (e.g. `CB_CMD_PORT=51778`), so a
+dev build can be driven alongside the stable one.
+
+Requests are handled **on the GUI thread, one line at a time**: a command that
+opens a modal dialog blocks the connection until it is dismissed. Those commands
+are flagged individually below — prefer the non-modal variants when scripting.
+
+> **Historical note.** This was a Win32 named pipe (`\\.\pipe\ClassBuilder`,
+> `CB_PIPE_NAME`) until the Qt port. That transport, and the environment variable
+> that configured it, **no longer exist** — hence the rename from "Pipe API". The
+> JSON protocol and every command below are unchanged.
 
 - Request:  `{"cmd":"<name>","params":{...}}`
 - Reply OK: `{"ok":true,"result":<value>}`
@@ -10,7 +34,7 @@ The pipe name is **single-instance**: with two ClassBuilders running, the second
 
 Commands operate on the **server-targeted document**. By default that target is implicit — whichever model the GUI reports as active. `select_document {title|path}` (see *Document selection* below) sets a **sticky** server-side target decoupled from the GUI's active window, so a script can drive one model while you keep editing another. The target stays until the next `select_document`; if its document is closed, doc-targeting commands report `no active document` until a new one is selected.
 
-Source: [CbCommandServer.cpp](../ClassBuilder/CbCommandServer.cpp)
+Source: [src/model/CbCommandServer.cpp](../src/model/CbCommandServer.cpp) (command implementations), [src/qt/QtCommandServer.cpp](../src/qt/QtCommandServer.cpp) (transport)
 
 ---
 
@@ -23,7 +47,9 @@ Liveness check.
 |-------|------|----------|-------|
 | `echo` | any  | no | echoed back |
 
-**Returns:** `{"pong":true,"echo":<echo if given>}`
+**Returns:** `{"pong":true,"build":"<compile timestamp>","echo":<echo if given>}`
+
+`build` is the binary's compile timestamp — use it to confirm *which* ClassBuilder you are driving before issuing edits.
 
 ### `new_model`
 Creates a new untitled document via the first registered doc template (mirrors File / New).
