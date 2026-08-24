@@ -141,8 +141,6 @@ DataModel::DataModel(DataModelDoc* pDataModelDoc) //@INIT_934
     _hHeader += "* Modifications: @INSERT_MODIFICATIONS(* )" NL;
     _hHeader += "*" NL;
     _hHeader += copyright + NL;
-    _hHeader += "* All rights are reserved. Reproduction in whole or part is prohibited" NL;
-    _hHeader += "* without the written consent of the copyright owner." NL;
     _hHeader += "*" NL;
     _hHeader += "\\******************************************************************************/";
 
@@ -157,9 +155,6 @@ DataModel::DataModel(DataModelDoc* pDataModelDoc) //@INIT_934
     _cppHeader += "* Modifications: @INSERT_MODIFICATIONS(* )" NL;
     _cppHeader += "*" NL;
     _cppHeader += copyright + NL;
-    _cppHeader += "* All rights are reserved. Reproduction in whole or part is prohibited" NL;
-    _cppHeader += "* without the written consent of the copyright owner." NL;
-//    _cppHeader += "* Philips Digital Video Systems, Eindhoven, The Netherlands." NL;
     _cppHeader += "*" NL;
     _cppHeader += "\\******************************************************************************/";
     
