@@ -17,10 +17,12 @@ source ships in this repository, and CB regenerates itself from it.
 It is an **all-Qt** application (originally MFC on Windows, since fully ported)
 and builds to a single self-contained executable on **Windows, macOS and Linux**.
 
-ClassBuilder has been in continuous development and daily use for around 25
-years. An earlier version was already open source, released on SourceForge under
-a different licence; **v3.0 is the first release under the MIT licence**, and the
-first hosted here.
+ClassBuilder has been in continuous development and daily use for over 25 years.
+It was published on SourceForge in 2002 under the GPL — arriving there already at
+**build 439**, having been in use for years before that. Those GPL-era releases
+are still [archived there](https://sourceforge.net/projects/classbuilder/files/Classbuilder/),
+but development has moved here: **v3.0 is the first release under the MIT
+licence**.
 
 ## Screenshots
 
