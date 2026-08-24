@@ -24,6 +24,13 @@ are still [archived there](https://sourceforge.net/projects/classbuilder/files/C
 but development has moved here: **v3.0 is the first release under the MIT
 licence**.
 
+For most of that life it was a Windows-only MFC application. Porting a codebase
+of that age and size to Qt had been on the list for years without ever being
+started — the arrival of capable AI assistance is what finally made the author
+take it on. It was completed in 2026: MFC fully removed, and the same source now
+builds and runs on Windows, macOS and Linux.
+
+
 ## Screenshots
 
 The same application, cross-platform:
@@ -88,6 +95,24 @@ built on Ubuntu 26.04 (glibc ≥ 2.43), so it does not yet run on Raspberry Pi O
 see the release notes. The binaries are **unsigned**; the release notes and
 [`installer/README.md`](installer/README.md) give the one-time "allow unsigned
 app" step for Windows and macOS.
+
+## Automation and AI control
+
+ClassBuilder exposes a **JSON command API**, so the model can be driven by a
+script or an AI agent instead of by hand. It listens on loopback only
+(`127.0.0.1:51777`, override with `CB_CMD_PORT`) — one JSON request per line,
+one reply per line:
+
+```sh
+echo '{"cmd":"list_classes"}' | nc 127.0.0.1 51777
+{"ok":true,"result":["Matrix","MatrixObject","Row","Column","Cell","CellMember"]}
+```
+
+Over 70 documented commands cover reading and editing the model — classes, members,
+methods, relations, inheritance — which is what makes bulk and automated edits
+practical. It is also how the port itself was managed: model migrations were
+driven through this API rather than by editing ClassBuilder in the editor it was
+being used to change. Full reference: [`tools/PIPE_API.md`](tools/PIPE_API.md).
 
 ## Build from source
 
