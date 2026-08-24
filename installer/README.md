@@ -19,6 +19,7 @@ releases sit side by side.
 |----------|------|---------|
 | Windows x64 | `ClassBuilderSetup-3.0-x64.exe` | Windows 10/11 x64 |
 | macOS (Apple Silicon / arm64) | `ClassBuilder-3.0-mac-arm64.dmg` | macOS 13 (Ventura)+ |
+| macOS (Intel / x86_64) | `ClassBuilder-3.0-mac-x64.dmg` | macOS 13 (Ventura)+ |
 | **Linux x86_64 (recommended)** | `classbuilder_3.0_amd64-glibc2.35.deb` | **glibc ≥ 2.35** — Ubuntu 22.04 / Debian 12 **and** newer |
 | Linux x86_64 (Ubuntu 26.04+) | `classbuilder_3.0_amd64.deb` | glibc ≥ 2.43 |
 | **Linux arm64 (recommended)** | `classbuilder_3.0_arm64-glibc2.38.deb` | **glibc ≥ 2.38** — Raspberry Pi OS / Debian 13 **and** newer |
@@ -154,8 +155,21 @@ confirmed.)*
 
 ## macOS (`.dmg`)
 
-Disk image: `ClassBuilder-3.0-mac-arm64.dmg` (Apple Silicon / arm64). Drag
-`ClassBuilder.app` onto Applications. Runs on **macOS 13 (Ventura) and later**.
+Two disk images, one per architecture — take the one matching your Mac:
+
+| Your Mac | File |
+|---|---|
+| Apple Silicon (M1 and later) | `ClassBuilder-3.0-mac-arm64.dmg` |
+| Intel | `ClassBuilder-3.0-mac-x64.dmg` |
+
+There is deliberately **no universal binary**: Qt is linked statically, so a
+universal build would roughly double the download and every Mac would fetch the
+half it cannot use. If you are unsure which you have, check  → About This Mac.
+The Intel image also runs on Apple Silicon under Rosetta, but those Macs should
+take the arm64 one — it is faster and Apple is phasing Intel apps out.
+
+Drag `ClassBuilder.app` onto Applications. Both run on **macOS 13 (Ventura) and
+later**.
 
 The app is **not signed** with an Apple Developer certificate, so macOS blocks it
 on first launch ("damaged and can't be opened" / "developer cannot be verified").

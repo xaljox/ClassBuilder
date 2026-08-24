@@ -317,23 +317,25 @@ under one version and out of the git history (the `.deb`/`.exe`/`.dmg` are
 gitignored build artifacts, never committed).
 
 **Current state (2026-08-25):** the release "ClassBuilder 3.0" (tag `v3.0`) is
-**published**, with **6 assets**:
+**published**, with **7 assets**:
 
 | Asset | Notes |
 |---|---|
 | `ClassBuilderSetup-3.0-x64.exe` | Windows x64, full-static |
 | `ClassBuilder-3.0-mac-arm64.dmg` | macOS Apple Silicon |
+| `ClassBuilder-3.0-mac-x64.dmg` | macOS Intel (attached 2026-08-24) |
 | `classbuilder_3.0_amd64-glibc2.35.deb` | x86_64, glibc 2.35 (**CI**-built) — recommended amd64 |
 | `classbuilder_3.0_arm64-glibc2.38.deb` | arm64, glibc 2.38 (**Pi**-built) — recommended arm64 |
 | `classbuilder_3.0_amd64.deb` / `_arm64.deb` | earlier Ubuntu-26.04 (glibc 2.43) builds; superseded |
 
-**Still to attach (both optional, on the Mac):** the **Intel `.dmg`**
-`ClassBuilder-3.0-mac-x64.dmg` — now BUILT and verified (macOS "Still open" #2),
-sitting in `installer/output/`, not yet uploaded:
-`gh release upload v3.0 installer/output/ClassBuilder-3.0-mac-x64.dmg --clobber`
-— and, if arm64 Ubuntu 22.04 / Debian 12 coverage is wanted, the **arm64
-`-glibc2.35` `.deb`** via the Parallels VM container (macOS "Still open" #4).
-Everything else is done.
+**Still to attach (optional, on the Mac):** if arm64 Ubuntu 22.04 / Debian 12
+coverage is wanted, the **arm64 `-glibc2.35` `.deb`** via the Parallels VM
+container (macOS "Still open" #4). Everything else is done.
+
+_Note: the local `installer/output/ClassBuilder-3.0-mac-arm64.dmg` was rebuilt
+2026-08-24 alongside the Intel one and now bundles the from-source min-13.0
+`libzstd.a` instead of brew's. The asset on the release is the ORIGINAL build —
+functionally equivalent, so it was left in place rather than re-uploaded._
 
 _Historical (2026-08-24): the release started as a DRAFT with the first four
 installers (the arm64 `.deb` then built on the Mac's Ubuntu 26.04 VM = newer

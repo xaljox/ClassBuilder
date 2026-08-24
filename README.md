@@ -86,6 +86,7 @@ Pre-built installers are on the
 |---|---|
 | Windows x64 | `ClassBuilderSetup-3.0-x64.exe` |
 | macOS 13+ (Apple Silicon) | `ClassBuilder-3.0-mac-arm64.dmg` |
+| macOS 13+ (Intel) | `ClassBuilder-3.0-mac-x64.dmg` |
 | Linux x86_64 | `classbuilder_3.0_amd64.deb` |
 | Linux arm64 | `classbuilder_3.0_arm64.deb` |
 
