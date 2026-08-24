@@ -66,6 +66,12 @@ mkdir -p "$RES/doc" "$RES/examples" "$RES/runtime/zstd/include"
 cp "$REPO/docs/manual/ClassBuilder_Manual.pdf" "$RES/doc/"
 cp "$REPO/models/manual/Matrix.CBZ"            "$RES/examples/"
 
+# MIT licence text. The project went public + MIT in 2026-08; the shipped
+# compile-runtime (include/ value/ serialize/) is a substantial portion of the
+# Software and carries no per-file notice, and the generated headers point at
+# "the LICENSE file" -- so that file has to actually travel with the package.
+cp "$REPO/LICENSE" "$RES/LICENSE"
+
 # Compile-runtime: what a user needs to COMPILE the code ClassBuilder generates.
 for d in include value serialize; do
     ditto "$REPO/$d" "$RES/runtime/$d"
@@ -102,6 +108,9 @@ ln -s /Applications "$STAGE/Applications"
 # are inside the bundle, which Finder shows as a single file, so without this
 # they are effectively invisible.
 cp "$REPO/installer/dmg-readme.txt" "$STAGE/Read Me.txt"
+
+# ...and visible in the .dmg window itself, before anyone installs anything.
+cp "$REPO/LICENSE" "$STAGE/LICENSE.txt"
 
 # --- Build the .dmg -------------------------------------------------------
 mkdir -p "$OUTDIR"

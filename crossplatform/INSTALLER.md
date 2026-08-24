@@ -28,6 +28,7 @@ project's header belongs to the user).
 | **Example model** | `models/manual/Matrix.CBZ` | the clean Matrix model |
 | **Compile-runtime** | `include/` `value/` `serialize/` `third_party/zstd/` | the `CB_*` headers + value/serialize sources + zstd header & static lib — what a user needs to compile the code ClassBuilder generates |
 | **`.cbz` association** | per-platform | double-click a model → opens ClassBuilder |
+| **Licence** | `LICENSE` | MIT. **Required in the package, not optional:** the shipped compile-runtime is a substantial portion of the Software and carries no per-file notice, and the generated headers say "see the LICENSE file" — which has to exist in what the user receives. ⚠️ **Only the macOS `.dmg` ships it today** (`Contents/Resources/LICENSE` + a visible `LICENSE.txt` in the image); `ClassBuilder.iss` and `make-deb.sh` do **not** yet — see below. |
 
 ## Windows — ✅ DONE (Inno Setup)
 
