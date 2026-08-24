@@ -86,7 +86,7 @@ Single inheritance is enforced for any class with `Serialize` enabled. The `Seri
 
 ## Port status
 
-Historical migration order: VS2019 upgrade → VS2026 retarget (done 2026-04-27) → MFC→Qt port (**done 2026-06-09**, zero `mfc*.dll` imports). The app is now all-Qt, the folders are restructured for multi-platform, and the repo is in Git (private, `github.com/xaljox/ClassBuilder`). The **next** phase is the cross-platform (Mac/Linux) build: the committed generated sources build on other platforms (CB can't yet *run* there to regenerate), pivoting on the single `CbPlatformCompat` `#ifdef` seam. Port-related model migrations are driven through the pipe API rather than by editing CB itself, to avoid the deadlock of changing the tool you depend on.
+Historical migration order: VS2019 upgrade → VS2026 retarget (done 2026-04-27) → MFC→Qt port (**done 2026-06-09**, zero `mfc*.dll` imports). The app is now all-Qt, the folders are restructured for multi-platform, and the repo is in Git (**public, MIT-licensed** since 2026-08-24 — `github.com/xaljox/ClassBuilder`; ClassBuilder was originally open source). The **next** phase is the cross-platform (Mac/Linux) build: the committed generated sources build on other platforms (CB can't yet *run* there to regenerate), pivoting on the single `CbPlatformCompat` `#ifdef` seam. Port-related model migrations are driven through the pipe API rather than by editing CB itself, to avoid the deadlock of changing the tool you depend on.
 
 ## Auto-memory
 
