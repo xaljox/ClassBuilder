@@ -123,7 +123,13 @@ Everything else is rewritten on the next **Write Source**. **Read Source** parse
 
 ## The application
 
-`ClassBuilder.exe` is a single executable (Qt linked statically on Windows). Installing is copying it; associate `.cbz` files with it for double-click opening. On start-up it also opens the command-interface TCP port (chapter 16).
+ClassBuilder is a single self-contained executable — Qt and zstd are linked in, so there are no libraries to install alongside it.
+
+Use the installer for your platform (`.exe` on Windows, `.dmg` on macOS, `.deb` on Linux). Each one installs the application together with this manual, an example model and the runtime headers below, and registers `.cbz` so a model opens on double-click. Inside the application, **Help ▸ Open Manual**, **Show Runtime Files** and **Show Example Model** lead straight to those files.
+
+Copying the executable by hand also works, but then the manual, the example and the runtime headers do not come with it, and `.cbz` is not associated.
+
+On start-up the application also opens the command-interface TCP port (chapter 16).
 
 ## What generated code needs — the runtime headers
 
@@ -2003,7 +2009,7 @@ Generate sources and export a figure:
 
 **Workflow**
 
-- Save the model before big pipe-driven operations (`write_source` saves; a failed one rolls back to the last save).
+- Save the model before big script-driven operations (`write_source` saves; a failed one rolls back to the last save).
 - Use `select_document` when scripting against one model while editing another.
 - Keep generated files out of manual formatting tools; CRLF endings are part of the round-trip contract.
 - Use SVG export (GUI button or `export_diagram_svg`) for documentation — it is the same renderer as the screen, vector-clean at any size.
