@@ -129,6 +129,15 @@ mkdir -p "$STAGE/DEBIAN"
 derive_depends() {
     ldd "$BIN" 2>/dev/null \
         | awk '{for (i=1;i<=NF;i++) if ($i ~ /^\//) print $i}' \
+        | sort -u \
+        `# CANONICALISE first: ldd reports /lib/<triplet>/lib*.so.N, but on a` \
+        `# usr-merged system (every current Debian/Ubuntu) dpkg registers the` \
+        `# file under /usr/lib/<triplet>/ as the real, fully-versioned .so.` \
+        `# dpkg -S on the /lib path then matches NOTHING, so the whole` \
+        `# derivation silently yielded empty and fell through to the fallback` \
+        `# list below -- dropping real deps (libdbus-1-3, libx11-6, the full` \
+        `# libxcb-* set, ...). readlink -f resolves to the path dpkg knows.` \
+        | while read -r p; do readlink -f "$p"; done \
         | sort -u | xargs -r dpkg -S 2>/dev/null \
         `# drop dpkg-divert lines ("diversion by libc6 from: /lib64/ld-linux..."` \
         `# -- the usr-merge migration diverts ld.so, and their ':' would parse` \
