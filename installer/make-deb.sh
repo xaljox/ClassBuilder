@@ -121,9 +121,16 @@ derive_depends() {
     ldd "$BIN" 2>/dev/null \
         | awk '{for (i=1;i<=NF;i++) if ($i ~ /^\//) print $i}' \
         | sort -u | xargs -r dpkg -S 2>/dev/null \
+        `# drop dpkg-divert lines ("diversion by libc6 from: /lib64/ld-linux..."` \
+        `# -- the usr-merge migration diverts ld.so, and their ':' would parse` \
+        `# as a bogus package name and break the Depends field` \
+        | grep -v '^diversion ' \
         | cut -d: -f1 | tr ',' '\n' \
         | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
-        | sort -u | grep -v '^$' | paste -sd', ' -
+        `# paste -d takes a LIST of delimiters used CYCLICALLY, so ', ' would` \
+        `# alternate comma/space and dpkg rejects the space. Comma only -- the` \
+        `# spaces after each comma are cosmetic and not required in Depends.` \
+        | sort -u | grep -v '^$' | paste -sd, -
 }
 DEPS="$(derive_depends || true)"
 [[ -n "$DEPS" ]] || DEPS="libc6, libstdc++6, libxcb1, libxcb-cursor0, libfontconfig1, libfreetype6, libgl1, libglib2.0-0, libxkbcommon0, zlib1g"
