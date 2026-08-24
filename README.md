@@ -1,0 +1,64 @@
+# ClassBuilder
+
+Self-hosted C++ code-generation tool. You define an object-oriented data model —
+classes, members, methods, relations, inheritance, and diagrams — in the GUI, and
+ClassBuilder writes the `.h` / `.cpp` source for it. The generated code uses a
+small runtime support layer (owned containers, AVL trees, value trees,
+serialization) that ships with the app.
+
+ClassBuilder is **self-hosted**: the model that generates ClassBuilder's own
+source ships in this repository, and CB regenerates itself from it.
+
+It is an **all-Qt** application (originally MFC on Windows, since fully ported)
+and builds to a single self-contained executable on **Windows, macOS and Linux**.
+
+## Screenshots
+
+The same application, cross-platform:
+
+| Windows | macOS |
+|:---:|:---:|
+| ![ClassBuilder on Windows](docs/manual/images/Overview_Windows.png) | ![ClassBuilder on macOS](docs/manual/images/Overview_Mac.png) |
+| **Ubuntu** | **Raspberry Pi OS** |
+| ![ClassBuilder on Ubuntu](docs/manual/images/Overview_Ubuntu.png) | ![ClassBuilder on Raspberry Pi OS](docs/manual/images/Overview_Pi.png) |
+
+## Download
+
+Pre-built installers are on the
+[**Releases**](https://github.com/xaljox/ClassBuilder/releases/latest) page:
+
+| Platform | File |
+|---|---|
+| Windows x64 | `ClassBuilderSetup-3.0-x64.exe` |
+| macOS 13+ (Apple Silicon) | `ClassBuilder-3.0-mac-arm64.dmg` |
+| Linux x86_64 | `classbuilder_3.0_amd64.deb` |
+| Linux arm64 | `classbuilder_3.0_arm64.deb` |
+
+Each installer bundles the app plus the manual (PDF), an example model, and the
+compile-runtime, and wires up the `.cbz` file association. The `arm64` `.deb` is
+built on Ubuntu 26.04 (glibc ≥ 2.43), so it does not yet run on Raspberry Pi OS —
+see the release notes. The binaries are **unsigned**; the release notes and
+[`installer/README.md`](installer/README.md) give the one-time "allow unsigned
+app" step for Windows and macOS.
+
+## Build from source
+
+CMake with a static Qt 6.11.1. The primary target is x64 Release:
+
+```sh
+cmake --preset x64
+cmake --build --preset x64-release
+```
+
+See [`CMakeLists.txt`](CMakeLists.txt) / [`CMakePresets.json`](CMakePresets.json),
+and [`crossplatform/`](crossplatform/) for the macOS and Linux builds and the
+per-platform installer scripts (`installer/`).
+
+## Documentation
+
+The user manual lives in [`docs/manual/`](docs/manual/) — a Markdown source and a
+generated PDF (also bundled inside every installer).
+
+## License
+
+[MIT](LICENSE) — © 2026 Jimmy Venema.
