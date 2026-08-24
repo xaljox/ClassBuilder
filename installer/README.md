@@ -65,9 +65,13 @@ The packages published here are built on **Ubuntu 26.04**, and that sets a
 - **glibc ≥ 2.43** → **Ubuntu 26.04 (or newer), or any distro whose glibc is
   ≥ 2.43.** A binary built against a given glibc does **not** run on an older
   one. Check yours with `ldd --version`.
-  - This floor is set by a **single symbol** (`acosf@GLIBC_2.43`); the rest of
-    the binary only needs glibc 2.38. A build made on an **older** distro
-    therefore lowers the requirement automatically — see below.
+  - This floor does **not** come from ClassBuilder's own code — it comes from
+    the **statically-linked Qt** (`libQt6Gui`, compiled on Ubuntu 26.04). One
+    symbol, `acosf@GLIBC_2.43`, is the highest; without it the binary needs only
+    glibc 2.38. Because it is baked in when **Qt** is built, it can't be dropped
+    by changing CB — the fix is to build the whole stack (Qt + CB) on an
+    **older** distro, whose glibc then sets a lower floor. That is exactly why
+    the Pi build (oldest glibc) runs everywhere.
   - **Raspberry Pi OS / Debian 13 and earlier have an OLDER glibc and will
     refuse to run these packages** (`version 'GLIBC_2.43' not found`). For those,
     a `.deb` built on that older system is needed (a build against older glibc
