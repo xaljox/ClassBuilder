@@ -67,7 +67,7 @@ ABOUT THIS BUILD
 ----------------
 Version          3.0
 Requires         macOS 13 (Ventura) or later
-Platform         Apple Silicon (arm64) only - there is no Intel build
+Platform         @@PLATFORM@@
 Self-contained   Qt and zstd are linked in; nothing else to install
 Signing          ad-hoc (unsigned) - see "FIRST LAUNCH" above
 Licence          MIT - see LICENSE.txt in this disk image, also installed to

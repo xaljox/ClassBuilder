@@ -48,8 +48,12 @@ fi
 
 VERSION="$(plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")"
 ARCH="$(lipo -archs "$APP/Contents/MacOS/ClassBuilder")"
+# Asset name uses the short "x64" spelling decided in INSTALLER.md (and matching
+# the mac-x64 preset / out/build/mac-x64), while $ARCH stays the real lipo name
+# used for the arch checks below.
+case "$ARCH" in x86_64) ARCHTAG=x64 ;; *) ARCHTAG="$ARCH" ;; esac
 VOLNAME="ClassBuilder $VERSION"
-DMG="$OUTDIR/ClassBuilder-$VERSION-mac-$ARCH.dmg"
+DMG="$OUTDIR/ClassBuilder-$VERSION-mac-$ARCHTAG.dmg"
 
 echo "==> ClassBuilder $VERSION ($ARCH)"
 
@@ -82,12 +86,25 @@ cp "$REPO"/third_party/zstd/include/* "$RES/runtime/zstd/include/"
 # useless here, so bundle the Mac .a when brew has it. Not fatal if absent --
 # the user can `brew install zstd` instead; the headers above are the portable
 # half and are always shipped.
-ZSTD_A="$(brew --prefix zstd 2>/dev/null)/lib/libzstd.a"
-if [[ -f "$ZSTD_A" ]] && [[ "$(lipo -archs "$ZSTD_A" 2>/dev/null)" == *"$ARCH"* ]]; then
+# Candidates, first arch-MATCHING one wins. More than one is needed because the
+# Intel dmg is cross-packaged on an Apple-Silicon Mac: there `brew` on PATH is
+# the arm64 one at /opt/homebrew, so its libzstd.a is arm64 and cannot ship in an
+# x86_64 package. $ZSTD_A overrides (point it at the from-source lib built with
+# the same -mmacosx-version-min as the app -- see INSTALLER.md macOS "Still open"
+# #2); /usr/local is the x86_64 Homebrew, present on Macs that carry both.
+for cand in \
+        "${ZSTD_A:-}" \
+        "$(brew --prefix zstd 2>/dev/null)/lib/libzstd.a" \
+        "/usr/local/opt/zstd/lib/libzstd.a" \
+        "/opt/homebrew/opt/zstd/lib/libzstd.a"; do
+    [[ -n "$cand" && -f "$cand" ]] || continue
+    [[ "$(lipo -archs "$cand" 2>/dev/null)" == *"$ARCH"* ]] || continue
     mkdir -p "$RES/runtime/zstd/lib"
-    cp "$ZSTD_A" "$RES/runtime/zstd/lib/"
-    echo "    bundled $ARCH libzstd.a"
-else
+    cp "$cand" "$RES/runtime/zstd/lib/"
+    echo "    bundled $ARCH libzstd.a  <- $cand"
+    break
+done
+if [[ ! -f "$RES/runtime/zstd/lib/libzstd.a" ]]; then
     echo "    NOTE: no $ARCH libzstd.a found -- shipping headers only"
     echo "          (users: brew install zstd)"
 fi
@@ -107,7 +124,15 @@ ln -s /Applications "$STAGE/Applications"
 # (unsigned build) and tells the user where the manual / runtime live -- they
 # are inside the bundle, which Finder shows as a single file, so without this
 # they are effectively invisible.
-cp "$REPO/installer/dmg-readme.txt" "$STAGE/Read Me.txt"
+# CB ships one dmg PER ARCH (see INSTALLER.md: two dmgs, not a universal
+# binary), so the "Platform" line is a placeholder filled in here rather than a
+# fixed string that would be wrong in half the packages.
+case "$ARCH" in
+    arm64)  PLATFORM="Apple Silicon (arm64) - Intel Macs need the x64 dmg" ;;
+    x86_64) PLATFORM="Intel (x86_64) - Apple Silicon Macs should take the arm64 dmg" ;;
+    *)      PLATFORM="$ARCH" ;;
+esac
+sed "s|@@PLATFORM@@|$PLATFORM|" "$REPO/installer/dmg-readme.txt" > "$STAGE/Read Me.txt"
 
 # ...and visible in the .dmg window itself, before anyone installs anything.
 cp "$REPO/LICENSE" "$STAGE/LICENSE.txt"

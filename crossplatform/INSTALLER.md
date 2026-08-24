@@ -155,28 +155,41 @@ warn. That is fine for development; just never ship from it.
    nothing about the recipient experience** — to test it for real, download the
    `.dmg` through a browser. Revisit only if CB is distributed beyond people who
    can be given that instruction.
-2. **Intel (x86_64) `.dmg` — TODO on the Mac. Decided approach: a SECOND, separate
-   dmg, NOT a universal binary.** CB currently ships arm64 only. For Intel coverage
-   we add `ClassBuilder-3.0-mac-x64.dmg`, mirroring the per-arch Linux `.deb` split.
-   **Why not universal:** the binary is ~37 MB because Qt is static, so a universal
-   (arm64+x86_64) would roughly DOUBLE it and every Mac would download the half it
-   can't use. Two dmgs → each user grabs ~37 MB for their own arch. (Universal only
-   pays off for small, dynamically-linked apps.)
+2. **Intel (x86_64) `.dmg` — DONE 2026-08-24. A SECOND, separate dmg, NOT a
+   universal binary.** `ClassBuilder-3.0-mac-x64.dmg` mirrors the per-arch Linux
+   `.deb` split. **Why not universal:** the binary is ~27 MB because Qt is static,
+   so a universal (arm64+x86_64) would roughly DOUBLE it and every Mac would
+   download the half it can't use. Two dmgs → each user grabs their own arch.
+   (Universal only pays off for small, dynamically-linked apps.)
 
-   **How (build on the Apple-Silicon Mac — the macOS SDK is "fat", so emitting
-   x86_64 is a normal build, no Rosetta needed for the build itself):**
-   - Build a static **x86_64** Qt 6.11.1 from source with
-     `-DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0` into e.g.
-     `~/Qt-6.11.1-static-13-x64`, plus an **x86_64** static zstd built with the same
-     `-mmacosx-version-min=13.0` (mirrors the arm64 ship recipe two rows up).
-   - Add a `mac-x64` preset (in the gitignored `CMakeUserPresets.json`) inheriting
-     `mac` but with `CMAKE_OSX_ARCHITECTURES=x86_64` + that Qt/zstd prefix; build with
-     `--fresh` (CMake caches `Qt6*_DIR`). Verify `lipo -info <bin>` → `x86_64` and
-     `otool -L` → only system libs (the same hard gate make-dmg.sh enforces).
-   - `./installer/make-dmg.sh` → rename to `ClassBuilder-3.0-mac-x64.dmg`, attach to
-     the v3.0 release. Unsigned → same `xattr` quarantine note as #1. It runs on
-     Intel Macs natively and on Apple Silicon under Rosetta, but Apple-Silicon users
-     should take the arm64 dmg.
+   **How (built on the Apple-Silicon Mac — the macOS SDK is "fat", so emitting
+   x86_64 is a normal build; Rosetta is not needed for the build):**
+   - Static **x86_64** Qt 6.11.1 → `~/Qt-6.11.1-static-13-x64`, from the same
+     PATCHED source, by `~/qt-build/build-static-qt-x64.sh` (the x86_64 twin of
+     `build-static-qt-x64.sh`'s arm64 original). **Gotcha:** Qt treats an x86_64
+     target on an arm64 host as a *cross-build* and hard-fails configure with
+     "You need to set QT_HOST_PATH to cross compile Qt" — so the script passes
+     `-DQT_HOST_PATH=$HOME/Qt-6.11.1-static-13`, reusing the arm64 install's
+     `moc`/`rcc`/`uic` natively. Build is ~2 min on this Mac, not the ~40 min the
+     Linux container recipe takes.
+   - **x86_64** static zstd at `~/zstd-macos13-x64`, built from
+     `~/zstd-build/zstd-1.5.7` with `-arch x86_64 -mmacosx-version-min=13.0`
+     (mirrors the arm64 ship recipe two rows up).
+   - The `mac-x64` preset (gitignored `CMakeUserPresets.json`) inherits `mac` with
+     `CMAKE_OSX_ARCHITECTURES=x86_64` + those two prefixes. Configure with
+     `--fresh` (CMake caches `Qt6*_DIR` and would otherwise reuse the arm64 Qt):
+     `cmake --preset mac-x64 --fresh && cmake --build --preset mac-x64-release`.
+   - `ZSTD_A=~/zstd-macos13-x64/lib/libzstd.a ./installer/make-dmg.sh \
+     out/build/mac-x64/bin/Release/ClassBuilder.app`. The script now names the
+     asset `-x64` itself and picks an **arch-matching** `libzstd.a` (the old
+     `brew --prefix zstd` lookup returned the arm64 lib when cross-packaging, so
+     the Intel dmg silently shipped headers only); `$ZSTD_A` overrides. The Read
+     Me's "Platform" line is likewise filled per-arch.
+   - Verified: `lipo -archs` → `x86_64`, `minos` → 13.0, `otool -L` → system libs
+     only, zstd payload x86_64, and the app launches and opens `Matrix.CBZ` on
+     this Apple-Silicon Mac under Rosetta. Unsigned → same `xattr` quarantine note
+     as #1. Apple-Silicon users should still take the arm64 dmg.
+
 3. **Bundle-ID collision when testing:** build-tree copies and the
    `/Applications` copy all use `com.xaljox.ClassBuilder`, so Launch Services
    points `.cbz` at whichever was registered last. After testing a build-tree
@@ -309,15 +322,18 @@ gitignored build artifacts, never committed).
 | Asset | Notes |
 |---|---|
 | `ClassBuilderSetup-3.0-x64.exe` | Windows x64, full-static |
-| `ClassBuilder-3.0-mac-arm64.dmg` | macOS Apple Silicon; **Intel dmg still TODO** — see macOS "Still open" #2 |
+| `ClassBuilder-3.0-mac-arm64.dmg` | macOS Apple Silicon |
 | `classbuilder_3.0_amd64-glibc2.35.deb` | x86_64, glibc 2.35 (**CI**-built) — recommended amd64 |
 | `classbuilder_3.0_arm64-glibc2.38.deb` | arm64, glibc 2.38 (**Pi**-built) — recommended arm64 |
 | `classbuilder_3.0_amd64.deb` / `_arm64.deb` | earlier Ubuntu-26.04 (glibc 2.43) builds; superseded |
 
-**Still to attach (both optional, on the Mac):** the **Intel `.dmg`** (macOS
-"Still open" #2) and, if arm64 Ubuntu 22.04 / Debian 12 coverage is wanted, the
-**arm64 `-glibc2.35` `.deb`** via the Parallels VM container (macOS "Still open"
-#4). Everything else is done.
+**Still to attach (both optional, on the Mac):** the **Intel `.dmg`**
+`ClassBuilder-3.0-mac-x64.dmg` — now BUILT and verified (macOS "Still open" #2),
+sitting in `installer/output/`, not yet uploaded:
+`gh release upload v3.0 installer/output/ClassBuilder-3.0-mac-x64.dmg --clobber`
+— and, if arm64 Ubuntu 22.04 / Debian 12 coverage is wanted, the **arm64
+`-glibc2.35` `.deb`** via the Parallels VM container (macOS "Still open" #4).
+Everything else is done.
 
 _Historical (2026-08-24): the release started as a DRAFT with the first four
 installers (the arm64 `.deb` then built on the Mac's Ubuntu 26.04 VM = newer
