@@ -1,8 +1,9 @@
 # ClassBuilder installers / packaging — cross-platform coordination
 
 Auto-memory does **not** sync between machines, so this tracked file is the
-handoff for per-platform installer work. **Windows and macOS are done; Linux is
-the open item.** Read this together with `PORTING_MAC.md` / `PORTING_LINUX.md`.
+handoff for per-platform installer work. Read this together with
+`PORTING_MAC.md` / `PORTING_LINUX.md`, and see **"Release" at the bottom** for
+the live v3.0 status (what is attached, what is still needed, and the order).
 
 App version: **3.0** — a new major release (the original ClassBuilder ~25 years
 ago was 2.x). Keep it in sync across all installers.
@@ -162,11 +163,28 @@ warn. That is fine for development; just never ship from it.
    app, re-assert the installed one with
    `lsregister -f /Applications/ClassBuilder.app`.
 
-## Linux — 🟡 SCRIPTED, not yet built (2026-08-14)
+## Linux — ✅ amd64 DONE (2026-08-24); arm64 still to build
 
-Script written on Windows and committed; **not run yet** — no Linux box was
-available at authoring time (JV). Build + test it on each target box. The whole
-thing is written but unverified, so treat the first run as a shakedown.
+`make-deb.sh` **run and verified on x86_64 Ubuntu 26.04**: builds
+`classbuilder_3.0_amd64.deb` (18 MB), installs under `/opt/classbuilder` with the
+`/usr/bin` symlink + desktop entry + `.cbz` association + app icon, and the
+in-app installer-dependent menus work once it runs installed (they show a clean
+"not installed" notice from a build tree, which is correct). The shakedown found
+two real bugs in the Depends derivation, both fixed (commit `b07df68`):
+
+- **dpkg-divert lines.** `libc6` diverts `ld-linux` (usr-merge migration), so
+  `dpkg -S` prints `diversion by libc6 from: /lib64/ld-linux…`; its `:` made the
+  bogus "diversion by libc6 from" land in Depends. Filtered with
+  `grep -v '^diversion '`. **Debian-wide, so the arm64/Pi build hits it too.**
+- **`paste -sd', '`.** `-d` takes a *cyclic* delimiter list, so it alternated
+  comma/space; dpkg rejects the space. Now `paste -sd,`.
+
+**arm64 `.deb` still to build** — on the Pi (oldest glibc), see the arch table
+below. **The amd64 build is already attached to the v3.0 draft release (see
+"Release" at the bottom).**
+
+Original authoring note (2026-08-14): script written on Windows and committed
+before any Linux box was available, hence the shakedown above.
 
 - Script: **`installer/make-deb.sh`** — the Linux counterpart of the `.iss` /
   `make-dmg.sh`, same payload. Build:
@@ -211,3 +229,36 @@ Build the arm64 `.deb` on the **oldest-glibc** arm64 box (the Pi's Debian, not a
 newer Ubuntu): a binary built against older glibc runs on the newer box, not the
 reverse. Build amd64 on the x86_64 box. No armhf build unless a 32-bit Pi OS
 actually has to run CB.
+
+## Release — v3.0 draft on GitHub (started 2026-08-24, Linux)
+
+All platform installers go into **ONE GitHub release** so they stay together
+under one version and out of the git history (the `.deb`/`.exe`/`.dmg` are
+gitignored build artifacts, never committed).
+
+**Current state:** a **DRAFT** release "ClassBuilder 3.0" (tag `v3.0`, target
+`main`) exists with the **Linux amd64 `.deb` already attached**. A draft does
+**not** create the git tag yet — that happens on Publish, so nothing is public
+and nothing is irreversible until then.
+
+**Handoff — the plan, in order (JV):**
+
+1. **Windows** — build the Inno Setup `.exe` (`installer/ClassBuilder.iss`),
+   attach it to the draft.
+2. **macOS** — build the `.dmg` (`./installer/make-dmg.sh`), attach it.
+3. **arm64 Linux** — on the Pi (oldest glibc), `cmake --build --preset
+   linux-release` then `./installer/make-deb.sh` → `classbuilder_3.0_arm64.deb`,
+   attach it. (The Mac's arm64 Ubuntu VM runs it too; build on the Pi.)
+4. When all are attached and checked, **Publish** the draft — that creates the
+   `v3.0` tag.
+
+**How to attach:**
+- While it is a **draft** the tag URL does not resolve yet, so `gh release
+  upload v3.0 <file>` FAILS. Use the web UI: repo → Releases → "ClassBuilder
+  3.0 (Draft)" → **Edit** → drag files into *Attach binaries*.
+- **After Publish**, further assets can go up with
+  `gh release upload v3.0 <file>` from any machine.
+
+The draft's notes already list all four downloads (Windows `.exe`, macOS `.dmg`,
+Linux amd64/arm64 `.deb`) with "added from …" markers on the missing ones —
+adjust the filenames there to match the actual Windows/macOS output.
