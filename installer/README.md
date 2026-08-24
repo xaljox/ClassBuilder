@@ -117,7 +117,7 @@ sudo apt remove classbuilder
 Each `.deb`'s glibc floor is set by the machine its **static Qt** was built on
 (the floor is baked into Qt, not into ClassBuilder's own code — so it can't be
 lowered by changing CB, only by building the stack on an older distro). See the
-[compatibility table](#which-build-runs-where) above; in short:
+compatibility table above; in short:
 
 - **`classbuilder_3.0_arm64-glibc2.35.deb`** — built in an **Ubuntu 22.04
   container** → **glibc ≥ 2.35**. Runs on Debian 12 / Ubuntu 22.04, Raspberry Pi
@@ -135,6 +135,9 @@ lowered by changing CB, only by building the stack on an older distro). See the
 A binary built against a given glibc does **not** run on an older one, so the
 lowest-glibc build reaches the most systems. Check yours with `ldd --version`.
 On a distro below the floor, [build from source](#need-an-older-distro).
+
+**Besides glibc**, a package needs only these — and any current desktop already
+has them:
 
 - **libstdc++6** providing `GLIBCXX_3.4.30` (GCC 12+) — present on any current
   desktop.
@@ -158,10 +161,7 @@ a Wayland session, for working title bars, cursors and window dragging). See
 Installer: `ClassBuilderSetup-3.0-x64.exe` (Inno Setup). Full-static build — no
 VC++ redistributable and no Qt DLLs required. Installs to
 `C:\Program Files\ClassBuilder`, adds a Start-menu shortcut and the `.cbz`
-association, and includes an uninstaller.
-
-*(Expand this section with the Windows minimum — e.g. Windows 10/11 x64 — when
-confirmed.)*
+association, and includes an uninstaller. Runs on **Windows 10 / 11 (x64)**.
 
 ## macOS (`.dmg`)
 
