@@ -29,6 +29,7 @@
 #include <functional>
 
 #include "QtModelText.h"            // toQ
+#include "QtCompact.h"              // compactItemSize (shared compact row height)
 #include "ClassBuilderInclude.h"    // model classes + iterators
 #include "CbViewLock.h"
 
@@ -126,9 +127,11 @@ void RunCleanup(DataModelDoc* pDoc, void* ownerHwnd,
         QListWidget* list = new QListWidget(&dlg);
         for (const std::string& n : items)
         {
-            QListWidgetItem* it = new QListWidgetItem(toQ(CbString(n.c_str())), list);
+            const QString t = toQ(CbString(n.c_str()));
+            QListWidgetItem* it = new QListWidgetItem(t, list);
             it->setFlags(it->flags() | Qt::ItemIsUserCheckable);
             it->setCheckState(defaultChecked ? Qt::Checked : Qt::Unchecked);
+            it->setSizeHint(compactItemSize(list, t, /*checkable*/ true));  // shared compact row height
         }
         v->addWidget(list);
 
