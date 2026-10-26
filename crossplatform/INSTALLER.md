@@ -5,19 +5,20 @@ handoff for per-platform installer work. Read this together with
 `PORTING_MAC.md` / `PORTING_LINUX.md`, and see **"Release" at the bottom** for
 the live v3.0 status (what is attached, what is still needed, and the order).
 
-App version: **3.0** — a new major release (the original ClassBuilder ~25 years
-ago was 2.x). Keep it in sync across all installers.
+App version: **3.1** (3.0 was the first MIT / cross-platform release; the
+original ClassBuilder ~25 years ago was 2.x).
 
-It lives in **two** hand-maintained places plus the model:
-`CB_VERSION` in [../CMakeLists.txt](../CMakeLists.txt) (drives the macOS bundle's
-`CFBundleShortVersionString`/`CFBundleVersion`) and `MyAppVersion` in
-[../installer/ClassBuilder.iss](../installer/ClassBuilder.iss) — Inno Setup can't
-read CMake, so that pair is manual. The **`Project: ClassBuilder v<N>` banner in
-every generated source header comes from the model**, so it only changes in CB
-itself (then regenerate); it is not editable on disk — bumped to **v3.0** in all
-281 generated headers on 2026-08-14 (commit 892aad6). The *default* header
-template for **new user projects** carries no version line on purpose (a new
-project's header belongs to the user).
+`CB_VERSION` in [../CMakeLists.txt](../CMakeLists.txt) is the **single source**:
+it generates `cb_version.h` (`CB_VERSION_STR`) that the **About box reads on every
+platform** (so the in-app version is bumped in ONE place), and it drives the macOS
+bundle's `CFBundleShortVersionString`/`CFBundleVersion`. The only place that can't
+read CMake is **`MyAppVersion` in [../installer/ClassBuilder.iss](../installer/ClassBuilder.iss)**
+(Inno Setup) — keep that one in sync with `CB_VERSION` by hand. Separately, the
+**`Project: ClassBuilder v<N>` banner in every generated source header comes from
+the model** (changes only in CB, then regenerate) — still **v3.0** in the 281
+generated headers (commit 892aad6); restamp it in-GUI if a 3.1 release should
+update them. The *default* header template for **new user projects** carries no
+version line on purpose (a new project's header belongs to the user).
 
 ## What every installer ships (mirror this across platforms)
 
