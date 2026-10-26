@@ -30,14 +30,14 @@ are flagged individually below — prefer the non-modal variants when scripting.
 
 ## Start here: ask the app what it supports
 
-`list_commands` returns every command the running build registers — **149** at
+`list_commands` returns every command the running build registers — **153** at
 the time of writing. It is the ground truth; this file documents the important
 ones in detail but is not guaranteed to cover all of them, and commands get added
 when a workflow needs one.
 
 ```sh
 echo '{"cmd":"list_commands"}' | nc 127.0.0.1 51777
-{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":149}}
+{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":153}}
 ```
 
 An agent should call this first and treat the result as the vocabulary for that
@@ -412,6 +412,38 @@ Removes an `OtherType`. Rejects if:
 - the type is actually a `Class` or `ExternClass` (use `delete_class` / `delete_extern_class`)
 
 **Returns:** `{name}`.
+
+### `set_type_declaration` `{name, declaration}`
+Sets an `OtherType`'s declaration text — the typedef/enum/struct body the codegen emits into the master include between `//@START_DECLARATION_<id>` markers. Rejects a `Class` / `ExternClass`.
+**Returns:** `{name, declaration}`.
+
+### `rename_type` `{name, value, declaration?, replace_in_code?}`
+Renames an `OtherType` in place, in **one call and one undo step**. Exposes the model's native type rename (`Type::SetName`, what the GUI's Type dialog calls), so every reference follows — this replaces the old `add_type` + `set_type_declaration` + `set_member_type`(on every usage) + `delete_type` dance.
+
+The rename **whole-word**-replaces the old name (C-identifier boundaries, so `int61` never matches inside `int618`) everywhere it occurs, coalesced under one view-lock:
+- member / argument / return types (they follow automatically via their `Type*`)
+- method **bodies** and notes — including inside template arguments, e.g. `BitIterator<int61>` → `BitIterator<bits64>`
+- **user blocks** (`//@START_USER*`) on every class and on the master include
+- constructor init-lists, argument defaults, and the type's own **declaration**
+
+**Params:**
+- `declaration` — given: set verbatim (applied *before* the rename, as the GUI does, so the auto-replace can't clobber it). Omitted: the old name is whole-word-replaced in the existing declaration.
+- `replace_in_code` *(default `false`)* — the native rename already covers bodies/user-blocks/init-lists/declaration/templates; this flag **additionally** whole-word-replaces the old name in per-member **initialization** expressions (the one surface `SetName` does not touch). Whole-word matching applies to opaque text too, so a hit inside a string literal or comment in a body *is* replaced.
+
+**Rejects:** a `Class` (hint: `set_class_name`), an `ExternClass` (OtherType only), a built-in (`"void"`/`"int"`), and a `value` that collides with any existing `Type` or is itself a built-in. `name == value` is a no-op success.
+
+**Returns:** `{name (old), value (new), variables_updated, declaration, code_replacements: {bodies, user_blocks, initializations}}` — the counts are per-occurrence replacements actually made.
+
+### `merge_types` `{from, to, replace_in_code?}`
+Folds `OtherType` **`from`** into the existing `OtherType` **`to`**, in one undo step — the collision case of `rename_type` (rename rejects a name that already exists; merge *is* that case, handled by retargeting then delete). Use: migrate `BOOL` → `bool`, then `BOOL` is deleted.
+
+1. **Re-points every usage** of `from` onto `to` — member, argument *and* method return types (a `Method` is a `Variable`, so the type's variable list covers all three). Modifiers ride on the variable, so `BOOL*` → `bool*`, `const BOOL&` → `const bool&` are preserved.
+2. **`replace_in_code`** *(default `true` here)* — whole-word-migrates `from`→`to` in method bodies+notes, constructor init-lists, every `OtherType` declaration, user blocks and templates (the model's `ReplaceInX` cascade) plus per-member initializations. Default is **on** because `from` is being deleted, so a leftover literal `from` in a body wouldn't compile. `false` re-points types only.
+3. **Deletes `from`** (now zero referencing variables).
+
+**v1 is `OtherType` → `OtherType`.** Rejects a `Class`/`ExternClass` on either side, a built-in (`void`/`int`) as `from`, and `from == to`. A `throw(from)` exception-spec entry is a separate owned relation that the delete cleanly cascade-removes (dropped, not migrated — rare).
+
+**Returns:** `{from, to, variables_moved, code_replacements: {bodies, user_blocks, initializations}}`.
 
 ---
 

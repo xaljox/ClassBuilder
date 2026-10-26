@@ -15,6 +15,7 @@
 #include "StdAfx.h"
 #include "CbCommandServer.h"
 #include "ClassBuilderDoc.h"
+#include "CbTypeMerge.h"
 #include "CbShellHooks.h"
 #include "CbColor.h"        // CbColorRef (set_*_color commands)
 #include "qt/QtClassDiagramView.h"     // Qt_ShowClassDiagramView / Qt_ExportClassDiagramSvg (Qt-free bridge)
@@ -667,6 +668,12 @@ static void RegisterBuiltinCommands()
             std::string name = params.value("name", std::string());
             if (name.empty()) { error = "missing 'name'"; return; }
 
+            // full=true → the clone/import detail set: members as full records
+            // (access/static/serialize/init/note/getter/setter) and methods
+            // carrying their body plus a method_kind tag. Default false keeps
+            // the lightweight shape every existing caller relies on.
+            bool full = params.value("full", false);
+
             Class* pClass = pDataModel->FindClass(CbString(name.c_str()));
             if (!pClass) { response = nullptr; return; }
 
@@ -699,13 +706,35 @@ static void RegisterBuiltinCommands()
             json members = json::array();
             BaseClass::MemberIterator iMember(pClass);
             while (++iMember)
-                members.push_back(ToJson(iMember));
+                members.push_back(full ? ToJsonFull(iMember) : ToJson(iMember));
             response["members"] = members;
 
             json methods = json::array();
             BaseClass::MethodIterator iMethod(pClass);
             while (++iMethod)
-                methods.push_back(ToJson(iMethod));
+            {
+                json m = ToJson(iMethod);
+                if (full)
+                {
+                    m["body"] = ToStd(iMethod->GetCode());
+                    // Classify with CB's own taxonomy (see
+                    // SelectMembersAndMethods: fixed=ClassBuilder-generated,
+                    // macro=relation accessors, getter/setter=member methods).
+                    // "user" = a hand-authored method, the only kind a clone
+                    // re-creates; every other kind regenerates from the class's
+                    // serialize flag / relations / members.
+                    const char* mk = "user";
+                    if      (iMethod->IsConstructor())     mk = "constructor";
+                    else if (iMethod->IsDestructor())      mk = "destructor";
+                    else if (iMethod->IsGetMemberMethod()) mk = "getter";
+                    else if (iMethod->IsSetMemberMethod()) mk = "setter";
+                    else if (iMethod->IsFindMethod())      mk = "find";
+                    else if (iMethod->IsMacroMethod())     mk = "macro";
+                    else if (iMethod->IsFixedMethod())     mk = "fixed";
+                    m["method_kind"] = mk;
+                }
+                methods.push_back(m);
+            }
             response["methods"] = methods;
         });
 
@@ -5607,6 +5636,237 @@ static void RegisterBuiltinCommands()
             pOT->SetDeclaration(CbString(decl.c_str()));
             response["name"]        = ToStd(pOT->GetName());
             response["declaration"] = ToStd(pOT->GetDeclaration());
+        });
+
+    // rename_type({name, value, declaration?, replace_in_code?}) — rename an
+    // OtherType in place, in one call and one undo step. Exposes the model's
+    // native type rename (Type::SetName, what the GUI TypeDialog calls), which
+    // whole-word-replaces the old name EVERYWHERE it is used: method bodies +
+    // notes, user blocks (//@START_USER*) on every class and the master include,
+    // constructor init-lists, the type's own declaration, template arguments and
+    // argument defaults — all coalesced under a single view-lock. Members,
+    // arguments and return types that reference the type follow automatically via
+    // their Type*. Replaces the old add_type + set_type_declaration +
+    // set_member_type(on every usage) + delete_type dance.
+    //
+    //   declaration     — given: set verbatim (before SetName, as the GUI does,
+    //                     so the rename's auto-replace won't clobber it).
+    //                     Omitted: the old name is whole-word-replaced in the
+    //                     existing declaration by SetName.
+    //   replace_in_code — default false. The native rename already covers bodies/
+    //                     user-blocks/init-lists/declaration/templates; this flag
+    //                     additionally whole-word-replaces the old name in per-
+    //                     member initialization expressions (the one surface
+    //                     SetName does not touch). Whole-word = C-identifier
+    //                     boundaries, so "int61" never hits inside "int618"; a
+    //                     match inside a string literal or comment in a body IS
+    //                     replaced (bodies are opaque text to the model).
+    //
+    // Returns {name(old), value(new), variables_updated, declaration,
+    //          code_replacements:{bodies, user_blocks, initializations}}.
+    CbCommandServer::Register("rename_type",
+        [](const json& params, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            DataModelDoc& dmd = pDoc->GetDataModelDoc();
+
+            std::string name  = params.value("name",  std::string());
+            std::string value = params.value("value", std::string());
+            if (name.empty() || value.empty())
+            { error = "missing 'name' or 'value'"; return; }
+
+            Type* pType = dmd.FindType(CbString(name.c_str()));
+            if (!pType) { error = "no such type: " + name; return; }
+
+            // OtherType only — a Class / ExternClass is renamed elsewhere.
+            if (BaseClass* pBC = dynamic_cast<BaseClass*>(pType))
+            {
+                if (pBC->IsClass())
+                    error = "'" + name + "' is a Class; use set_class_name";
+                else
+                    error = "'" + name + "' is an ExternClass; rename_type handles OtherType only";
+                return;
+            }
+            OtherType* pOT = dynamic_cast<OtherType*>(pType);
+            if (!pOT) { error = "'" + name + "' is not an OtherType"; return; }
+            if (name == "void" || name == "int")
+            { error = "cannot rename built-in type '" + name + "'"; return; }
+
+            bool replaceInCode = params.value("replace_in_code", false);
+
+            // Whole-word (C-identifier boundary) helpers over std::string; the
+            // model's FindStringInStr uses __iscsym (MSVC-only), these stay
+            // portable for the Mac/Linux build.
+            auto isIdent = [](char c) {
+                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                       (c >= '0' && c <= '9') || c == '_';
+            };
+            auto countWW = [&](const std::string& hay) {
+                int n = 0; size_t pos = 0;
+                while ((pos = hay.find(name, pos)) != std::string::npos)
+                {
+                    size_t end = pos + name.size();
+                    bool lOk = (pos == 0)        || !isIdent(hay[pos - 1]);
+                    bool rOk = (end >= hay.size()) || !isIdent(hay[end]);
+                    if (lOk && rOk) ++n;
+                    pos = end;
+                }
+                return n;
+            };
+            auto replaceWW = [&](std::string& hay) {
+                int n = 0; size_t pos = 0;
+                while ((pos = hay.find(name, pos)) != std::string::npos)
+                {
+                    size_t end = pos + name.size();
+                    bool lOk = (pos == 0)        || !isIdent(hay[pos - 1]);
+                    bool rOk = (end >= hay.size()) || !isIdent(hay[end]);
+                    if (lOk && rOk) { hay.replace(pos, name.size(), value); pos += value.size(); ++n; }
+                    else pos = end;
+                }
+                return n;
+            };
+
+            // No-op rename (valid target, nothing to do).
+            if (name == value)
+            {
+                response["name"]              = name;
+                response["value"]             = value;
+                response["variables_updated"] = 0;
+                response["declaration"]       = ToStd(pOT->GetDeclaration());
+                response["code_replacements"] =
+                    { {"bodies", 0}, {"user_blocks", 0}, {"initializations", 0} };
+                return;
+            }
+
+            // The new name must be free in the Type namespace and not a built-in.
+            if (dmd.FindType(CbString(value.c_str())))
+            { error = "a type named '" + value + "' already exists"; return; }
+            if (value == "void" || value == "int")
+            { error = "'" + value + "' is a built-in type name"; return; }
+
+            DataModel* pDataModel = dmd.GetDataModel();
+            if (!pDataModel) { error = "no active document"; return; }
+
+            // Pre-count the surfaces SetName rewrites (bodies + user blocks), so
+            // the report has honest per-occurrence numbers — ReplaceInStr only
+            // returns a changed/not-changed flag, not a count.
+            int bodies = 0, userBlocks = 0;
+            {
+                DataModel::ClassIterator iClass(pDataModel);
+                while (++iClass)
+                {
+                    BaseClass::MethodIterator iM(iClass);
+                    while (++iM) bodies += countWW(ToStd(iM->GetCode()));
+
+                    userBlocks += countWW(ToStd(iClass->GetHUser1()));
+                    userBlocks += countWW(ToStd(iClass->GetHUser2()));
+                    userBlocks += countWW(ToStd(iClass->GetHUser3()));
+                    userBlocks += countWW(ToStd(iClass->GetCppUser1()));
+                    userBlocks += countWW(ToStd(iClass->GetCppUser2()));
+                    userBlocks += countWW(ToStd(iClass->GetCppUser3()));
+                }
+                userBlocks += countWW(ToStd(pDataModel->GetHUser1()));
+                userBlocks += countWW(ToStd(pDataModel->GetHUser2()));
+            }
+
+            dmd.MarkLastUndo();
+
+            // Referencing variables (members + arguments) — they all follow via
+            // their Type* and have their tree-text cache refreshed by Update().
+            int variablesUpdated = 0;
+            { Type::VariableIterator iVar(pOT); while (++iVar) ++variablesUpdated; }
+
+            // Declaration override goes in BEFORE SetName (mirrors TypeDialog):
+            // SetName's auto-replace then has nothing to clobber.
+            if (params.contains("declaration"))
+                pOT->SetDeclaration(
+                    CbString(params["declaration"].get<std::string>().c_str()));
+
+            // The native rename: whole-word replace everywhere + convention
+            // variable renames, then Update() to refresh the serialized caches.
+            pOT->SetName(CbString(value.c_str()));
+            pOT->Update();
+
+            // replace_in_code: the one surface SetName misses — per-member
+            // initialization expressions. SetInitialization also keeps the
+            // constructor init-list in sync (which SetName already rewrote, so
+            // it is a no-op there).
+            int inits = 0;
+            if (replaceInCode)
+            {
+                DataModel::ClassIterator iClass(pDataModel);
+                while (++iClass)
+                {
+                    BaseClass::MemberIterator iMem(iClass);
+                    while (++iMem)
+                    {
+                        std::string s = ToStd(iMem->GetInitialization());
+                        int n = replaceWW(s);
+                        if (n)
+                        {
+                            iMem->SetInitialization(CbString(s.c_str()));
+                            iMem->Update();
+                            inits += n;
+                        }
+                    }
+                }
+            }
+
+            dmd.SetModifiedFlag(1);
+
+            response["name"]              = name;
+            response["value"]             = value;
+            response["variables_updated"] = variablesUpdated;
+            response["declaration"]       = ToStd(pOT->GetDeclaration());
+            response["code_replacements"] =
+                { {"bodies", bodies}, {"user_blocks", userBlocks}, {"initializations", inits} };
+        });
+
+    // merge_types({from, to, replace_in_code?}) — fold OtherType `from` into the
+    // existing OtherType `to`, in one undo step. The collision case of rename_type:
+    // rename rejects a target name that already exists; merge IS that case handled
+    // by retargeting + delete. Use: BOOL -> bool, then BOOL is gone.
+    //   1. re-point every member / argument / return typed `from` onto `to` (a
+    //      Method is a Variable, so the type's VariableIterator covers all three);
+    //      modifiers ride on the variable, so BOOL* -> bool*, const BOOL& ->
+    //      const bool& are preserved.
+    //   2. replace_in_code (default TRUE here — `from` is being DELETED, so a
+    //      leftover literal `from` in a body won't compile): whole-word-migrate
+    //      `from`->`to` in method bodies+notes, constructor init-lists, every
+    //      OtherType declaration, user blocks and templates (the model's ReplaceInX
+    //      cascade, exactly as Type::SetName runs it) plus per-member
+    //      initializations (the one surface ReplaceInX misses).
+    //   3. delete `from` (now zero referencing variables).
+    // v1 is OtherType -> OtherType. A `throw(from)` exception-spec entry is a
+    // separate owned relation; the delete cleanly cascade-removes it (dropped, not
+    // migrated) — rare, acceptable for v1.
+    // Returns {from, to, variables_moved, code_replacements:{bodies, user_blocks,
+    //          initializations}}.
+    CbCommandServer::Register("merge_types",
+        [](const json& params, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+
+            std::string from = params.value("from", std::string());
+            std::string to   = params.value("to",   std::string());
+            bool replaceInCode = params.value("replace_in_code", true);
+
+            // The whole operation lives in Cb_MergeOtherType (shared with the
+            // Merge Types GUI dialog). Validation + one undo step + modified flag
+            // are inside it.
+            CbMergeResult res;
+            if (!Cb_MergeOtherType(&pDoc->GetDataModelDoc(), from, to,
+                                   replaceInCode, res, error))
+                return;
+
+            response["from"]            = from;
+            response["to"]              = to;
+            response["variables_moved"] = res.variablesMoved;
+            response["code_replacements"] =
+                { {"bodies", res.bodies}, {"user_blocks", res.userBlocks},
+                  {"initializations", res.inits} };
         });
 
     // -- Source generation / read-back ------------------------------------
