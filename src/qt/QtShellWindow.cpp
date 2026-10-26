@@ -799,12 +799,16 @@ void QtShellWindow::buildMenus()
     _actCleanupExterns = project->addAction("&Clean Up Extern Classes...", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectCleanupExternClasses();
     });
+    _actCleanupOtherTypes = project->addAction("Clean Up &Other Types...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectCleanupOtherTypes();
+    });
     connect(project, &QMenu::aboutToShow, this, [this] {
         CClassBuilderDoc* doc = activeDoc();
         _actSettings->setEnabled(doc != nullptr);
         _actAddSerialize->setEnabled(doc && doc->CanAddSerialize());
         _actRefreshIds->setEnabled(doc != nullptr);
         _actCleanupExterns->setEnabled(doc != nullptr);
+        _actCleanupOtherTypes->setEnabled(doc != nullptr);
     });
 
     // --- View (zoom routes to the active diagram window) --------------------

@@ -181,6 +181,7 @@ private:
     QAction* _actAddSerialize = nullptr;
     QAction* _actRefreshIds   = nullptr;
     QAction* _actCleanupExterns = nullptr;
+    QAction* _actCleanupOtherTypes = nullptr;
 
     // ensureOnScreen() runs once, on the first show.
     void ensureOnScreen();

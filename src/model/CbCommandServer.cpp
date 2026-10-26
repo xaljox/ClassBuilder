@@ -5456,10 +5456,29 @@ static void RegisterBuiltinCommands()
             DataModelDoc::BaseClassIterator iBC(&pDoc->GetDataModelDoc());
             while (++iBC)
             {
-                if (iBC->IsExternClass() && !iBC->IsClass()
+                if (iBC->IsExternClass() && !iBC->IsClass() && iBC->GetAdded()
                     && iBC->GetInheritCount()  == 0   // nobody inherits it
                     && iBC->GetVariableCount() == 0)  // no member/argument typed as it
                     arr.push_back(ToStd(iBC->GetName()));
+            }
+            response = arr;
+        });
+
+    // list_unused_other_types() — the Clean Up Other Types analysis: every
+    // OtherType the model's own delete gate allows removing. OnDelete(true) is
+    // side-effect-free and returns false for a referenced type and for the
+    // protected built-ins (void/int), so this follows the model's rule exactly.
+    CbCommandServer::Register("list_unused_other_types",
+        [](const json& /*params*/, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            json arr = json::array();
+            DataModelDoc::TypeIterator iType(&pDoc->GetDataModelDoc());
+            while (++iType)
+            {
+                if (iType->IsOtherType() && iType->GetAdded() && iType->OnDelete(true))
+                    arr.push_back(ToStd(iType->GetName()));  // GetAdded skips internal "..." varargs type
             }
             response = arr;
         });

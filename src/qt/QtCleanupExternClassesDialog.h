@@ -13,3 +13,8 @@ class DataModelDoc;
 // externs (an extern used only by a now-deleted extern) -- offers to run again.
 // Shows an info box, and does nothing else, when none are unused.
 void Qt_ShowCleanupExternClassesDialog(DataModelDoc* pDoc, void* ownerHwnd);
+
+// Same, for unused OtherTypes (types no member/argument uses; the protected
+// built-ins like void/int are excluded by the model's own delete gate). No
+// re-run: other types reference nothing, so a deletion never frees more.
+void Qt_ShowCleanupOtherTypesDialog(DataModelDoc* pDoc, void* ownerHwnd);

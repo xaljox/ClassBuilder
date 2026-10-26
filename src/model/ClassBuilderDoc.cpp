@@ -581,6 +581,11 @@ void CClassBuilderDoc::ProjectCleanupExternClasses()
     Qt_ShowCleanupExternClassesDialog(&GetDataModelDoc(), Cb_GetMainHwnd());
 }
 
+void CClassBuilderDoc::ProjectCleanupOtherTypes()
+{
+    Qt_ShowCleanupOtherTypesDialog(&GetDataModelDoc(), Cb_GetMainHwnd());
+}
+
 void CClassBuilderDoc::ProjectAddSerialize()
 {
     std::string className;
