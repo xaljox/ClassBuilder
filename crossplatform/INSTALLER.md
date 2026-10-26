@@ -20,6 +20,13 @@ generated headers (commit 892aad6); restamp it in-GUI if a 3.1 release should
 update them. The *default* header template for **new user projects** carries no
 version line on purpose (a new project's header belongs to the user).
 
+**When a version is "done" and you cut the release — walk every platform (JV):**
+rebuild on each (all pick up `CB_VERSION` from git), then check that platform's
+version artifact — macOS bundle `CFBundleShortVersionString` (`otool`/Finder),
+Linux `.deb` `Version:` + asset name (`classbuilder_<ver>_<arch>…deb`), Windows
+`.iss` `MyAppVersion` + `ClassBuilderSetup-<ver>-x64.exe` — and publish ONE
+GitHub release carrying all the installers (see "Release" at the bottom).
+
 ## What every installer ships (mirror this across platforms)
 
 | Item | Path in repo | Notes |
