@@ -5440,6 +5440,30 @@ static void RegisterBuiltinCommands()
             response = arr;
         });
 
+    // list_unused_extern_classes() — the Cleanup analysis: every pure ExternClass
+    // that NOTHING uses, i.e. no class inherits from it (incoming inherit == 0)
+    // AND no member/argument is typed as it (the Type's owned Variable count == 0).
+    // Reverse lookup straight off each extern (no full-model scan). A client
+    // deletes the ones it wants via delete_extern_class, then re-runs this: a
+    // deletion can free further candidates, and because only currently-unused
+    // externs are ever deleted the removals always happen in a valid order.
+    CbCommandServer::Register("list_unused_extern_classes",
+        [](const json& /*params*/, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            json arr = json::array();
+            DataModelDoc::BaseClassIterator iBC(&pDoc->GetDataModelDoc());
+            while (++iBC)
+            {
+                if (iBC->IsExternClass() && !iBC->IsClass()
+                    && iBC->GetInheritCount()  == 0   // nobody inherits it
+                    && iBC->GetVariableCount() == 0)  // no member/argument typed as it
+                    arr.push_back(ToStd(iBC->GetName()));
+            }
+            response = arr;
+        });
+
     // set_extern_class_suppress_forward({name, value:bool})
     CbCommandServer::Register("set_extern_class_suppress_forward",
         [](const json& params, json& response, std::string& error)

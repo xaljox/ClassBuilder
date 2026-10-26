@@ -9,6 +9,7 @@
 #include "qt/QtSaveSourceDialog.h"
 #include "qt/QtReadSourceDialog.h"
 #include "qt/QtProjectSettingsDialog.h"
+#include "qt/QtCleanupExternClassesDialog.h"
 #include "qt/QtAddSerializeDialog.h"
 #include "CbCommandServer.h"
 #include "MainFrm.h"
@@ -573,6 +574,11 @@ void CClassBuilderDoc::ProjectRefreshObjectIds()
             pGti->Add();
         }
     }
+}
+
+void CClassBuilderDoc::ProjectCleanupExternClasses()
+{
+    Qt_ShowCleanupExternClassesDialog(&GetDataModelDoc(), Cb_GetMainHwnd());
 }
 
 void CClassBuilderDoc::ProjectAddSerialize()
