@@ -187,11 +187,20 @@ public:\
     void RemoveAll##NameTo();\
     void DeleteAll##NameTo();\
     void Replace##NameTo(ClassTo* item, ClassTo* newItem);\
-    ClassTo* GetFirst##NameTo() const;\
-    ClassTo* GetLast##NameTo() const;\
+    ClassTo* GetFirst##NameTo() const\
+    {\
+        METHOD_MULTI_GETFIRST(ClassFrom, NameFrom, ClassTo, NameTo) \
+    }\
+    ClassTo* GetLast##NameTo() const\
+    {\
+        METHOD_MULTI_GETLAST(ClassFrom, NameFrom, ClassTo, NameTo) \
+    }\
     ClassTo* GetNext##NameTo(ClassTo* pos) const;\
     ClassTo* GetPrev##NameTo(ClassTo* pos) const;\
-    int Get##NameTo##Count() const;\
+    int Get##NameTo##Count() const\
+    {\
+        METHOD_MULTI_GETCOUNT(ClassFrom, NameFrom, ClassTo, NameTo) \
+    }\
     void Move##NameTo##First(ClassTo* item);\
     void Move##NameTo##Last(ClassTo* item);\
     void Move##NameTo##After(ClassTo* item, ClassTo* pos);\
@@ -217,11 +226,20 @@ public:\
     void RemoveAll##NameTo();\
     void DeleteAll##NameTo();\
     void Replace##NameTo(ClassTo* item, ClassTo* newItem);\
-    ClassTo* GetFirst##NameTo() const;\
-    ClassTo* GetLast##NameTo() const;\
+    ClassTo* GetFirst##NameTo() const\
+    {\
+        METHOD_MULTI_GETFIRST(ClassFrom, NameFrom, ClassTo, NameTo) \
+    }\
+    ClassTo* GetLast##NameTo() const\
+    {\
+        METHOD_MULTI_GETLAST(ClassFrom, NameFrom, ClassTo, NameTo) \
+    }\
     ClassTo* GetNext##NameTo(ClassTo* pos) const;\
     ClassTo* GetPrev##NameTo(ClassTo* pos) const;\
-    int Get##NameTo##Count() const;\
+    int Get##NameTo##Count() const\
+    {\
+        METHOD_MULTI_GETCOUNT(ClassFrom, NameFrom, ClassTo, NameTo) \
+    }\
     void Move##NameTo##First(ClassTo* item);\
     void Move##NameTo##Last(ClassTo* item);\
     void Move##NameTo##After(ClassTo* item, ClassTo* pos);\
@@ -486,16 +504,6 @@ void ClassFrom::Replace##NameTo(ClassTo* item, ClassTo* newItem)\
     METHOD_MULTI_REPLACE(ClassFrom, NameFrom, ClassTo, NameTo) \
 }\
 \
-ClassTo* ClassFrom::GetFirst##NameTo() const\
-{\
-    METHOD_MULTI_GETFIRST(ClassFrom, NameFrom, ClassTo, NameTo) \
-}\
-\
-ClassTo* ClassFrom::GetLast##NameTo() const\
-{\
-    METHOD_MULTI_GETLAST(ClassFrom, NameFrom, ClassTo, NameTo) \
-}\
-\
 ClassTo* ClassFrom::GetNext##NameTo(ClassTo* pos) const\
 {\
     METHOD_MULTI_GETNEXT(ClassFrom, NameFrom, ClassTo, NameTo) \
@@ -504,11 +512,6 @@ ClassTo* ClassFrom::GetNext##NameTo(ClassTo* pos) const\
 ClassTo* ClassFrom::GetPrev##NameTo(ClassTo* pos) const\
 {\
     METHOD_MULTI_GETPREV(ClassFrom, NameFrom, ClassTo, NameTo) \
-}\
-\
-int ClassFrom::Get##NameTo##Count() const\
-{\
-    METHOD_MULTI_GETCOUNT(ClassFrom, NameFrom, ClassTo, NameTo) \
 }\
 \
 void ClassFrom::Move##NameTo##First(ClassTo* item)\

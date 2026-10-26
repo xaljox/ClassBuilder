@@ -496,9 +496,13 @@
         bool IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
         bool IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
         \
-        static void Check(ClassTo* item##NameTo);\
-        static void CheckAll(ClassFrom* item##NameFrom);\
-        static void Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo);\
+        static void Check(ClassTo* item##NameTo) { if (_first) CheckIterators(item##NameTo); }\
+        static void CheckAll(ClassFrom* item##NameFrom) { if (_first) CheckAllIterators(item##NameFrom); }\
+        static void Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo) { if (_first) CheckIterators(item##NameTo, newItem##NameTo); }\
+    private:\
+        static void CheckIterators(ClassTo* item##NameTo);\
+        static void CheckAllIterators(ClassFrom* item##NameFrom);\
+        static void CheckIterators(ClassTo* item##NameTo, ClassTo* newItem##NameTo);\
     };
 
 #define METHODS_ITERATOR_MULTI_ACTIVE(ClassFrom, NameFrom, ClassTo, NameTo) \
@@ -589,7 +593,7 @@ ClassFrom::NameTo##Iterator::~NameTo##Iterator()\
         _first = _next;\
 }\
 \
-void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo)\
+void ClassFrom::NameTo##Iterator::CheckIterators(ClassTo* item##NameTo)\
 {\
     if (_first)\
     {\
@@ -611,7 +615,7 @@ void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo)\
     }\
 }\
 \
-void ClassFrom::NameTo##Iterator::CheckAll(ClassFrom* item##NameFrom)\
+void ClassFrom::NameTo##Iterator::CheckAllIterators(ClassFrom* item##NameFrom)\
 {\
     if (_first)\
     {\
@@ -629,7 +633,7 @@ void ClassFrom::NameTo##Iterator::CheckAll(ClassFrom* item##NameFrom)\
     }\
 }\
 \
-void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo)\
+void ClassFrom::NameTo##Iterator::CheckIterators(ClassTo* item##NameTo, ClassTo* newItem##NameTo)\
 {\
     if (_first)\
     {\
@@ -712,9 +716,13 @@ void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo, ClassTo* newItem#
         bool IsLast() { return (_iter##NameFrom->GetLast##NameTo() == _ref##NameTo); }\
         bool IsFirst() { return (_iter##NameFrom->GetFirst##NameTo() == _ref##NameTo); }\
         \
-        static void Check(ClassTo* item##NameTo);\
-        static void CheckAll(ClassFrom* item##NameFrom);\
-        static void Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo);\
+        static void Check(ClassTo* item##NameTo) { if (_first) CheckIterators(item##NameTo); }\
+        static void CheckAll(ClassFrom* item##NameFrom) { if (_first) CheckAllIterators(item##NameFrom); }\
+        static void Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo) { if (_first) CheckIterators(item##NameTo, newItem##NameTo); }\
+    private:\
+        static void CheckIterators(ClassTo* item##NameTo);\
+        static void CheckAllIterators(ClassFrom* item##NameFrom);\
+        static void CheckIterators(ClassTo* item##NameTo, ClassTo* newItem##NameTo);\
     };
 
 #define METHODS_ITERATOR_NOFILTER_MULTI_ACTIVE(ClassFrom, NameFrom, ClassTo, NameTo) \
@@ -797,7 +805,7 @@ ClassFrom::NameTo##Iterator::~NameTo##Iterator()\
         _first = _next;\
 }\
 \
-void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo)\
+void ClassFrom::NameTo##Iterator::CheckIterators(ClassTo* item##NameTo)\
 {\
     if (_first)\
     {\
@@ -819,7 +827,7 @@ void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo)\
     }\
 }\
 \
-void ClassFrom::NameTo##Iterator::CheckAll(ClassFrom* item##NameFrom)\
+void ClassFrom::NameTo##Iterator::CheckAllIterators(ClassFrom* item##NameFrom)\
 {\
     if (_first)\
     {\
@@ -837,7 +845,7 @@ void ClassFrom::NameTo##Iterator::CheckAll(ClassFrom* item##NameFrom)\
     }\
 }\
 \
-void ClassFrom::NameTo##Iterator::Check(ClassTo* item##NameTo, ClassTo* newItem##NameTo)\
+void ClassFrom::NameTo##Iterator::CheckIterators(ClassTo* item##NameTo, ClassTo* newItem##NameTo)\
 {\
     if (_first)\
     {\
