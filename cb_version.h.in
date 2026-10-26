@@ -1,0 +1,10 @@
+// cb_version.h -- GENERATED from cb_version.h.in by CMake. DO NOT EDIT.
+//
+// CB_VERSION in CMakeLists.txt is the single source of truth for the app
+// version, on every platform. It feeds this header (the About box), the macOS
+// bundle version, and -- as a documented manual pair, since Inno Setup can't read
+// CMake -- the installer's MyAppVersion. To change the version, bump CB_VERSION
+// and reconfigure.
+#pragma once
+
+#define CB_VERSION_STR "@CB_VERSION@"

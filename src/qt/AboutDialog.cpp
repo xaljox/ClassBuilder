@@ -6,6 +6,7 @@
 #include "AboutDialog.h"
 #include "QtAbout.h"
 #include "QtApp.h"
+#include "cb_version.h"   // CB_VERSION_STR -- generated from CB_VERSION (one source, all platforms)
 
 #include <QDialogButtonBox>
 #include <QFont>
@@ -39,7 +40,7 @@ AboutDialog::AboutDialog(QWidget* parent)
         title->setFont(f);
     }
 
-    auto* version = new QLabel(QStringLiteral("Version 3.0"), this);
+    auto* version = new QLabel(QStringLiteral("Version " CB_VERSION_STR), this);
 
     auto* blurb = new QLabel(
         QStringLiteral("A refreshed, multi-platform release "

@@ -20,7 +20,12 @@ project(ClassBuilder LANGUAGES CXX)
 # App version -- ONE source of truth for every platform's packaging. Keep in
 # sync with installer/ClassBuilder.iss (MyAppVersion) and crossplatform/
 # INSTALLER.md; Inno Setup can't read this file, so that one is a manual pair.
-set(CB_VERSION "3.0")
+set(CB_VERSION "3.1")
+
+# Single source of truth for the app version: generate a header the code reads
+# (the About box, on every platform) from CB_VERSION. Bump CB_VERSION + reconfigure.
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cb_version.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/generated/cb_version.h" @ONLY)
 
 # WIN32_LEAN_AND_MEAN gates out winspool.h (its DocumentProperties A/W macro
 # otherwise clobbers Qt's QIcon::ThemeIcon::DocumentProperties); NOMINMAX keeps
@@ -101,6 +106,7 @@ set(CB_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/json"
     "${ZSTD_DIR}/include"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"       # generated cb_version.h (CB_VERSION_STR)
 )
 
 # --- Qt : the ported dialogs (quarantined static lib) ---------------------
