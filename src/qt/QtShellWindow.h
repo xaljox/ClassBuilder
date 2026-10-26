@@ -182,6 +182,7 @@ private:
     QAction* _actRefreshIds   = nullptr;
     QAction* _actCleanupExterns = nullptr;
     QAction* _actCleanupOtherTypes = nullptr;
+    QAction* _actMergeTypes = nullptr;
 
     // ensureOnScreen() runs once, on the first show.
     void ensureOnScreen();

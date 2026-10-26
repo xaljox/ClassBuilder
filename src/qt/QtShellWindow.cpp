@@ -802,6 +802,9 @@ void QtShellWindow::buildMenus()
     _actCleanupOtherTypes = project->addAction("Clean Up &Other Types...", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectCleanupOtherTypes();
     });
+    _actMergeTypes = project->addAction("&Merge Types...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectMergeTypes();
+    });
     connect(project, &QMenu::aboutToShow, this, [this] {
         CClassBuilderDoc* doc = activeDoc();
         _actSettings->setEnabled(doc != nullptr);
@@ -809,6 +812,7 @@ void QtShellWindow::buildMenus()
         _actRefreshIds->setEnabled(doc != nullptr);
         _actCleanupExterns->setEnabled(doc != nullptr);
         _actCleanupOtherTypes->setEnabled(doc != nullptr);
+        _actMergeTypes->setEnabled(doc != nullptr);
     });
 
     // --- View (zoom routes to the active diagram window) --------------------

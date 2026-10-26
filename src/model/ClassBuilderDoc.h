@@ -87,6 +87,7 @@ public:
     void ProjectAddSerialize();
     void ProjectCleanupExternClasses();
     void ProjectCleanupOtherTypes();
+    void ProjectMergeTypes();
     bool CanAddSerialize();
 
     // The Qt shell registers a hook to learn about title / dirty changes
