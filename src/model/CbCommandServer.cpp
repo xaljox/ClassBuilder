@@ -4253,9 +4253,9 @@ static void RegisterBuiltinCommands()
 
             if (wantGetter)
             {
+                // static / const follow the member (GetMemberMethod ctor).
                 GetMemberMethod* pGet = new GetMemberMethod(pMember);
                 pGet->SetAccess(getAcc);
-                pGet->SetStatic(pMember->GetStatic());
             }
             if (wantSetter)
             {
@@ -4406,17 +4406,22 @@ static void RegisterBuiltinCommands()
             if (!pMember) { error = "no such member"; return; }
 
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMember->SaveState();
             pMember->SetStatic(value ? 1 : 0);
-            // Mirror the dialog: keep getter/setter static-flag in sync.
-            if (pMember->GetGetMemberMethod())
+            // Mirror the dialog: keep getter/setter static-flag in sync; a
+            // static getter is never const, a non-static one always is.
+            if (GetMemberMethod* pGet = pMember->GetGetMemberMethod())
             {
-                pMember->GetGetMemberMethod()->SetStatic(value ? 1 : 0);
-                pMember->GetGetMemberMethod()->Update();
+                pGet->SaveState();
+                pGet->SetStatic(value ? 1 : 0);
+                pGet->SetConst(value ? 0 : 1);
+                pGet->Update();
             }
-            if (pMember->GetSetMemberMethod())
+            if (SetMemberMethod* pSet = pMember->GetSetMemberMethod())
             {
-                pMember->GetSetMemberMethod()->SetStatic(value ? 1 : 0);
-                pMember->GetSetMemberMethod()->Update();
+                pSet->SaveState();
+                pSet->SetStatic(value ? 1 : 0);
+                pSet->Update();
             }
             pMember->Update();
             response = ToJsonFull(pMember);
@@ -4584,18 +4589,29 @@ static void RegisterBuiltinCommands()
                 {
                     if (isGetter)
                     {
-                        if (!pMember->GetGetMemberMethod())
-                            (void)new GetMemberMethod(pMember);
-                        pMember->GetGetMemberMethod()->SetAccess(acc);
-                        pMember->GetGetMemberMethod()->SetStatic(pMember->GetStatic());
+                        // A new getter takes static / const from the member
+                        // (GetMemberMethod ctor); an existing one is resynced.
+                        GetMemberMethod* pGet = pMember->GetGetMemberMethod();
+                        if (!pGet)
+                            pGet = new GetMemberMethod(pMember);
+                        else
+                            pGet->SaveState();
+                        pGet->SetAccess(acc);
+                        pGet->SetStatic(pMember->GetStatic());
+                        pGet->SetConst(!pMember->GetStatic());
                     }
                     else
                     {
-                        if (!pMember->GetSetMemberMethod())
-                            (void)new SetMemberMethod(pMember);
-                        pMember->GetSetMemberMethod()->SetAccess(acc);
-                        pMember->GetSetMemberMethod()->SetStatic(pMember->GetStatic());
+                        SetMemberMethod* pSet = pMember->GetSetMemberMethod();
+                        if (!pSet)
+                            pSet = new SetMemberMethod(pMember);
+                        else
+                            pSet->SaveState();
+                        pSet->SetAccess(acc);
+                        pSet->SetStatic(pMember->GetStatic());
                     }
+                    // Adds a newly created accessor, refreshes an existing one.
+                    pMember->Update();
                 }
                 response = ToJsonFull(pMember);
             });
@@ -4825,6 +4841,14 @@ static void RegisterBuiltinCommands()
             Type* pRet = dmd.FindType(CbString(ptRet.bareName.c_str()));
             if (!pRet) { error = "return type not found: " + ptRet.bareName; return; }
 
+            // Same rule as the Method dialog: static excludes const/virtual/pure.
+            if (params.value("static", false))
+            {
+                for (const char* flag : { "const", "virtual", "pure" })
+                    if (params.value(flag, false))
+                    { error = std::string("a static method cannot be ") + flag; return; }
+            }
+
             Method* pMethod = new Method(pBC, pRet);
             ApplyTypeModifiers(pMethod, ptRet);
             pMethod->SetName(CbString(methodName.c_str()));
@@ -5008,8 +5032,12 @@ static void RegisterBuiltinCommands()
 
     // Helper macro: registers `cmd` as a method-attribute setter that calls
     // `setterCall` on the resolved method (taking one bool/int from `value`).
-    // Usage: METHOD_BOOL_SETTER("set_method_virtual", SetVirtual)
-#define METHOD_BOOL_SETTER(CMDNAME, SETTERFN)                                  \
+    // Same rule as the Method dialog: static excludes const / virtual / pure.
+    // NOT_STATIC names the flag for the refusal when turning it on for a
+    // static method (nullptr for set_method_static, which instead clears the
+    // three). Update() refreshes the cached item text = the header declaration.
+    // Usage: METHOD_BOOL_SETTER("set_method_virtual", SetVirtual, "virtual")
+#define METHOD_BOOL_SETTER(CMDNAME, SETTERFN, NOT_STATIC)                      \
     CbCommandServer::Register(CMDNAME,                                         \
         [](const json& params, json& response, std::string& error)             \
         {                                                                      \
@@ -5024,15 +5052,27 @@ static void RegisterBuiltinCommands()
             if (!pBC) { error = "no such class"; return; }                     \
             Method* pMethod = ResolveMethod(pBC, params, error);               \
             if (!pMethod) return;                                              \
+            const char* notStatic = NOT_STATIC;                                \
+            if (notStatic && value && pMethod->GetStatic())                    \
+            { error = std::string("a static method cannot be ") + notStatic;   \
+              return; }                                                        \
             pDoc->GetDataModelDoc().MarkLastUndo();                            \
+            pMethod->SaveState();                                              \
             pMethod->SETTERFN(value ? 1 : 0);                                  \
+            if (pMethod->GetStatic())                                          \
+            {                                                                  \
+                pMethod->SetConst(0);                                          \
+                pMethod->SetVirtual(0);                                        \
+                pMethod->SetPure(0);                                           \
+            }                                                                  \
+            pMethod->Update();                                                 \
             response = ToJson(pMethod);                                        \
         });
 
-    METHOD_BOOL_SETTER("set_method_virtual",  SetVirtual);
-    METHOD_BOOL_SETTER("set_method_static",   SetStatic);
-    METHOD_BOOL_SETTER("set_method_const",    SetConst);
-    METHOD_BOOL_SETTER("set_method_pure",     SetPure);
+    METHOD_BOOL_SETTER("set_method_virtual",  SetVirtual, "virtual");
+    METHOD_BOOL_SETTER("set_method_static",   SetStatic,  nullptr);
+    METHOD_BOOL_SETTER("set_method_const",    SetConst,   "const");
+    METHOD_BOOL_SETTER("set_method_pure",     SetPure,    "pure");
 #undef METHOD_BOOL_SETTER
 
     // SetDllExport takes bool (not int) — bespoke handler.

@@ -291,7 +291,7 @@ Renames the member; rejects collisions with other members on the same class.
 Changes the member's type. `value` accepts modifiers like `add_member`. Re-parents the member onto the new `Type` (matches the dialog's `Type::MoveVariableLast` path). Existing getter/setter are **not** auto-regenerated — call `set_member_getter` / `set_member_setter` explicitly if signatures need to refresh.
 
 ### `set_member_access` `{class, name, value}` — `"public"` / `"protected"` / `"private"`
-### `set_member_static` `{class, name, value}` — bool. Keeps getter/setter static-flag in sync (mirrors dialog).
+### `set_member_static` `{class, name, value}` — bool. Keeps getter/setter static-flag in sync (mirrors dialog); the getter is `const` exactly when the member is not static.
 ### `set_member_serialize` `{class, name, value}` — bool
 ### `set_member_initialization` `{class, name, value}` — string (use `""` to clear)
 ### `set_member_note` `{class, name, value}` — string
@@ -300,7 +300,7 @@ Changes the member's type. `value` accepts modifiers like `add_member`. Re-paren
 ### `set_member_setter` `{class, name, access}`
 Manage the member's `GetMemberMethod` / `SetMemberMethod`.
 
-`access`: `"none"` deletes the existing method (if any); `"public"` / `"protected"` / `"private"` creates the method if absent and sets its access. Mirrors `CMemberDialog::Update`'s create/delete/update flow.
+`access`: `"none"` deletes the existing method (if any); `"public"` / `"protected"` / `"private"` creates the method if absent and sets its access. Mirrors `CMemberDialog::Update`'s create/delete/update flow. Static follows the member; a getter is `const` unless the member is static.
 
 **Returns:** the rich `get_member` record.
 
@@ -316,7 +316,7 @@ Creates a new method on the class. Goes through the same path as a GUI add — u
 | `return_type` | string | `"void"` | type modifiers (`*`, `&`, `[]`, `[N]`) parsed from string |
 | `args` | array | `[]` | each `{name, type, default?}` |
 | `access` | `"public"`\|`"protected"`\|`"private"` | `"public"` | |
-| `virtual`, `static`, `const`, `pure` | bool | `false` | |
+| `virtual`, `static`, `const`, `pure` | bool | `false` | `static` excludes the other three (error), as in the Method dialog |
 | `body` | string | empty | code for the `//@CODE_NNNN` user region |
 
 **Returns:** the created `MethodRecord`.
@@ -349,6 +349,7 @@ Appends one argument to an existing method.
 
 ### Method attribute setters
 All accept either `id` (preferred for overloads) or `name` to identify the method on the class.
+Same rule as the Method dialog: `set_method_static true` clears `const` / `virtual` / `pure`; turning one of those on for a static method is an error. Each setter records undo and refreshes the method (the header declaration follows on the next `write_source`).
 
 - `set_method_access` `{class, id|name, value}` — `"public"` / `"protected"` / `"private"`
 - `set_method_virtual` `{class, id|name, value:bool}`

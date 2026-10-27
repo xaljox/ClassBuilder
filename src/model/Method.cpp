@@ -796,7 +796,8 @@ const CbString Method::GetInterfaceCpp()
     }
     str += ")";
 
-    if (GetConst())
+    // Never emit `static ... const` (ill-formed), whatever the model flags say.
+    if (GetConst() && !GetStatic())
         str += " const";
 
     if (GetExceptionSpecification())
@@ -1622,7 +1623,8 @@ void Method::SetItemText()
     }
     itemText += ")";
 
-    if (GetConst())
+    // The header declaration is this text: never `static ... const`.
+    if (GetConst() && !GetStatic())
         itemText += " const";
 
     if (GetExceptionSpecification())

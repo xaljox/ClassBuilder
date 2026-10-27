@@ -46,7 +46,10 @@ GetMemberMethod::GetMemberMethod(Member* pMember) //@INIT_904
 
     // Put in your own code
     SetInline(1);
-    SetConst(1);
+    // A static getter can't be const (no this); every creator (dialog, command
+    // API, import) gets the right pair from here.
+    SetStatic(pMember->GetStatic());
+    SetConst(!pMember->GetStatic());
 
     SetPointer(pMember->GetPointer());
     SetConstPointer(pMember->GetConstPointer());
