@@ -284,35 +284,31 @@ break it. Do not "helpfully" reinstall `libicu-dev` and reintroduce the coupling
 its next major upgrade. Verify after any distro upgrade with the `ldd | grep "not found"`
 one-liner above.
 
-## 7. macOS: no check boxes in `CbTreeWidget` lists — OPEN (reported 2026-10-27)
+## 7. macOS: no check boxes in item-view lists — FIXED (macOS, 2026-10-27)
 
-**Symptom (macOS, build Aug 14 2026):** the Replace dialog (`qt/SelectReplace.cpp`,
-"Replace '<old>', with '<new>'", shown when renaming a method / a member with a getter)
-lists class -> method rows **without check boxes**. Select All / Unselect All seem to do
-nothing, and you cannot see which methods OK will rewrite. **On Windows the boxes are
-there** (JV verified the same dialog, 2026-10-27), so the code is right: the method rows
-get `setCheckState` (and `QTreeWidgetItem`'s default flags include `ItemIsUserCheckable`).
-The state is set — it is just not painted.
+**Symptom (macOS):** the Replace dialog (`qt/SelectReplace.cpp`, "Replace '<old>', with
+'<new>'", shown when renaming a method / a member with a getter) listed class -> method
+rows **without check boxes** -- the space for the box was reserved but empty, so Select
+All / Unselect All seemed to do nothing. On Windows the boxes are there. Same for every
+checkable tree / list (`CbMultiDeleteDialog`, `ImportDialog`, `SelectClassesDialog`,
+`SelectMembersAndMethods`, `UpdateExternClassesDialog`, the `QListWidget`s in
+`ClassShapeDialog`, `CleanupExternClassesDialog`, `SimilarLinesDialog`, ...).
 
-**Suspected cause (not verified — needs a Mac):** `CbTreeWidget` gives every tree a
-style sheet that styles `QTreeView::item` (row height, soft selection / hover tint; see
-`CbTreeWidget.cpp` ~84-119). With an `::item` rule Qt paints items through
-`QStyleSheetStyle`, and on macOS that path apparently drops the item check indicator
-(`PE_IndicatorItemViewItemCheck`). Windows' style draws it fine.
+**Not the style sheet** (the first suspicion): a bare checkable `QTreeWidget` with no
+style sheet at all showed the same empty space (Qt 6.11.1, macOS 27).
 
-**Also affected on Mac (same widget + check boxes):** `CbMultiDeleteDialog`,
-`ImportDialog` (Import / Clone form columns), `SelectClassesDialog`,
-`SelectMembersAndMethods`, `UpdateExternClassesDialog`.
+**Root cause (measured with a logging proxy style):** `QMacStyle` paints
+`PE_IndicatorItemViewItemCheck` (a native `NSButton` cell) at the painter **origin**,
+ignoring the position of `opt->rect`. `QCommonStyle`'s `CE_ItemViewItem` clips the
+painter to the row before drawing the indicator, so every box landed at the viewport's
+top-left corner and was clipped away. `QCheckBox` is unaffected only because its
+indicator already sits at (0,0).
 
-**To pin it down on the Mac:**
-1. Temporarily skip the `::item` part of the `CbTreeWidget` style sheet under
-   `#ifdef __APPLE__` -> do the boxes appear? Then it is the QSS path.
-2. If so, candidate fixes (in `CbTreeWidget`, so all six dialogs follow):
-   - give the sheet an explicit `QTreeView::indicator` rule with theme-aware unchecked /
-     checked / indeterminate images (all three states, or it looks broken), or
-   - paint the indicator in a delegate with the *base* style (as
-     `ImportDialog`'s `SuggestionDelegate` already paints a tick with `drawPrimitive`).
-3. Re-check selection / hover tint afterwards — that sheet exists for them.
+**Fix:** `qt/QtFieldStyle.cpp` -- the per-widget `CbFieldFrameStyle` proxy now also goes
+on every `QAbstractItemView` (macOS only) and, for `PE_IndicatorItemViewItemCheck`,
+translates the painter to the indicator rect and hands the base style a rect at (0,0).
+Everything else passes through to the native style unchanged. Checked, unchecked and
+partially-checked all paint correctly, selected rows included.
 
 Unrelated to the dialog being unresponsive in the same report: that was the command
 server re-entering a request inside the dialog's nested event loop (fixed f365dff).

@@ -15,6 +15,7 @@
 #include <QWidget>
 #ifdef __APPLE__
 #include "QtSoftSelection.h"     // Qt_ThemeLineColor (the resting hairline)
+#include <QAbstractItemView>
 #include <QAbstractScrollArea>
 #include <QAbstractSpinBox>
 #include <QColor>
@@ -66,6 +67,18 @@ bool isProxyField(const QWidget* w)
 #endif
 }
 
+// An item view (tree / list) whose rows may carry check boxes. macOS only: the
+// proxy repositions their indicator (see PE_IndicatorItemViewItemCheck below).
+bool isCheckableView(const QWidget* w)
+{
+#ifdef __APPLE__
+    return qobject_cast<const QAbstractItemView*>(w) != nullptr;
+#else
+    (void)w;
+    return false;
+#endif
+}
+
 class CbFieldFrameStyle : public QProxyStyle
 {
 public:
@@ -74,6 +87,28 @@ public:
     void drawPrimitive(PrimitiveElement pe, const QStyleOption* opt,
                        QPainter* p, const QWidget* w) const override
     {
+#ifdef __APPLE__
+        // Item-view check box (tree / list rows): QMacStyle paints the native
+        // NSButton at the painter ORIGIN, ignoring opt->rect's position, and the
+        // item painter clips to the row -- so every box landed at the viewport's
+        // top-left and was clipped away (measured, Qt 6.11.1: KNOWN_ISSUES #7).
+        // Move the origin to the box and hand the style a rect at (0,0).
+        if (pe == PE_IndicatorItemViewItemCheck)
+        {
+            const auto* v = qstyleoption_cast<const QStyleOptionViewItem*>(opt);
+            QStyleOptionViewItem o;
+            if (v)
+                o = *v;
+            else
+                o.QStyleOption::operator=(*opt);
+            o.rect.moveTopLeft(QPoint(0, 0));
+            p->save();
+            p->translate(opt->rect.topLeft());
+            QProxyStyle::drawPrimitive(pe, &o, p, w);
+            p->restore();
+            return;
+        }
+#endif
         if (pe == PE_Frame && isMultiLineField(w) && !_inPanel)
         {
 #ifdef __APPLE__
@@ -248,7 +283,8 @@ protected:
         if (e->type() == QEvent::Polish)
         {
             auto* w = qobject_cast<QWidget*>(o);
-            if (isProxyField(w) && w->style() != fieldStyle())
+            if ((isProxyField(w) || isCheckableView(w))
+                && w->style() != fieldStyle())
                 w->setStyle(fieldStyle());   // pointer check: no re-entry
 #ifdef __APPLE__
             // Round the multi-line field's white area so its corners match the
