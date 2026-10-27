@@ -284,6 +284,39 @@ break it. Do not "helpfully" reinstall `libicu-dev` and reintroduce the coupling
 its next major upgrade. Verify after any distro upgrade with the `ldd | grep "not found"`
 one-liner above.
 
+## 7. macOS: no check boxes in `CbTreeWidget` lists — OPEN (reported 2026-10-27)
+
+**Symptom (macOS, build Aug 14 2026):** the Replace dialog (`qt/SelectReplace.cpp`,
+"Replace '<old>', with '<new>'", shown when renaming a method / a member with a getter)
+lists class -> method rows **without check boxes**. Select All / Unselect All seem to do
+nothing, and you cannot see which methods OK will rewrite. **On Windows the boxes are
+there** (JV verified the same dialog, 2026-10-27), so the code is right: the method rows
+get `setCheckState` (and `QTreeWidgetItem`'s default flags include `ItemIsUserCheckable`).
+The state is set — it is just not painted.
+
+**Suspected cause (not verified — needs a Mac):** `CbTreeWidget` gives every tree a
+style sheet that styles `QTreeView::item` (row height, soft selection / hover tint; see
+`CbTreeWidget.cpp` ~84-119). With an `::item` rule Qt paints items through
+`QStyleSheetStyle`, and on macOS that path apparently drops the item check indicator
+(`PE_IndicatorItemViewItemCheck`). Windows' style draws it fine.
+
+**Also affected on Mac (same widget + check boxes):** `CbMultiDeleteDialog`,
+`ImportDialog` (Import / Clone form columns), `SelectClassesDialog`,
+`SelectMembersAndMethods`, `UpdateExternClassesDialog`.
+
+**To pin it down on the Mac:**
+1. Temporarily skip the `::item` part of the `CbTreeWidget` style sheet under
+   `#ifdef __APPLE__` -> do the boxes appear? Then it is the QSS path.
+2. If so, candidate fixes (in `CbTreeWidget`, so all six dialogs follow):
+   - give the sheet an explicit `QTreeView::indicator` rule with theme-aware unchecked /
+     checked / indeterminate images (all three states, or it looks broken), or
+   - paint the indicator in a delegate with the *base* style (as
+     `ImportDialog`'s `SuggestionDelegate` already paints a tick with `drawPrimitive`).
+3. Re-check selection / hover tint afterwards — that sheet exists for them.
+
+Unrelated to the dialog being unresponsive in the same report: that was the command
+server re-entering a request inside the dialog's nested event loop (fixed f365dff).
+
 ## Working rule this file encodes
 
 UI/layout changes have non-obvious sibling states (single / tabbed / side-by-side
