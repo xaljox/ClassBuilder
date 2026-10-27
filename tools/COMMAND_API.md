@@ -30,14 +30,14 @@ are flagged individually below — prefer the non-modal variants when scripting.
 
 ## Start here: ask the app what it supports
 
-`list_commands` returns every command the running build registers — **153** at
+`list_commands` returns every command the running build registers — **155** at
 the time of writing. It is the ground truth; this file documents the important
 ones in detail but is not guaranteed to cover all of them, and commands get added
 when a workflow needs one.
 
 ```sh
 echo '{"cmd":"list_commands"}' | nc 127.0.0.1 51777
-{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":153}}
+{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":155}}
 ```
 
 An agent should call this first and treat the result as the vocabulary for that
@@ -444,6 +444,30 @@ Folds `OtherType` **`from`** into the existing `OtherType` **`to`**, in one undo
 **v1 is `OtherType` → `OtherType`.** Rejects a `Class`/`ExternClass` on either side, a built-in (`void`/`int`) as `from`, and `from == to`. A `throw(from)` exception-spec entry is a separate owned relation that the delete cleanly cascade-removes (dropped, not migrated — rare).
 
 **Returns:** `{from, to, variables_moved, code_replacements: {bodies, user_blocks, initializations}}`.
+
+---
+
+## Import / Clone (cross-project)
+
+Copy classes and types from another **open** project into the target — the same engine (`model/CbImport`) as *Project > Import / Clone…*. **Target** = the active document (`select_document`); **source** = another open project by title or path.
+
+Candidates are the source's classes, extern classes and other types whose **names the target lacks** (present names are reused, never duplicated). Each is imported in one **form**:
+
+| form | what arrives |
+|---|---|
+| `class` | full **plain** clone — members (+ getters/setters), user methods, normal constructors (exact signature + body + init list), destructor body, user blocks, bases, and relations to classes imported in the same batch. Serialize never travels: add it afterwards in the target. |
+| `extern_class` | a non-recursive stub: name, template, struct, forward-declaration flag |
+| `other_type` | a stub type; an other-type source carries its declaration (typedef) |
+
+A `class` pick puts **requirements** on other rows: member / argument / return / exception types → `other_type` minimum, **mandatory** (a member or argument is never dropped); bases → `extern_class` minimum, **optional** (`opt_out` drops the inheritance); relation partners → `class` **suggested** (a relation is recreated only when both ends are newly imported classes — the import never edits a class the target already had). Requirements never reach `class`, so only explicit picks recurse.
+
+### `import_plan` `{source, picks?, opt_out?, all?}`
+Resolve without changing anything. `picks: [{name, form}]` with form `class` / `extern_class` / `other_type`; `opt_out: [name]`.
+**Returns:** `{candidates, rows: [{name, source_kind, form, picked?, required?, mandatory?, suggested?, opt_out?, required_by?}], classes, extern_classes, other_types, relations_kept, relations_dropped, notes}` — `rows` lists only the involved candidates unless `all: true`.
+
+### `import_execute` `{source, picks?, opt_out?}`
+Resolve and import, as **one undo step**.
+**Returns:** `{classes, extern_classes, other_types, members, methods, constructors, inherits, relations, notes}`. `notes` names every dropped relation and lapsed base.
 
 ---
 

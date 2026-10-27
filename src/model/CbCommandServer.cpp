@@ -16,6 +16,7 @@
 #include "CbCommandServer.h"
 #include "ClassBuilderDoc.h"
 #include "CbTypeMerge.h"
+#include "CbImport.h"
 #include "CbShellHooks.h"
 #include "CbColor.h"        // CbColorRef (set_*_color commands)
 #include "qt/QtClassDiagramView.h"     // Qt_ShowClassDiagramView / Qt_ExportClassDiagramSvg (Qt-free bridge)
@@ -5867,6 +5868,138 @@ static void RegisterBuiltinCommands()
             response["code_replacements"] =
                 { {"bodies", res.bodies}, {"user_blocks", res.userBlocks},
                   {"initializations", res.inits} };
+        });
+
+    // ----- Import / Clone (cross-project) ---------------------------------
+    //
+    // import_plan({source, picks?, opt_out?, all?}) and
+    // import_execute({source, picks?, opt_out?}) drive the CbImport engine (shared
+    // with the Import / Clone dialog). TARGET = the active document (see
+    // select_document); SOURCE = another open project, by title or path.
+    //   picks   [{name, form}]  form = "class" | "extern_class" | "other_type"
+    //   opt_out [name]          decline an optional (base) requirement
+    // Candidates are the source's classes / extern classes / other types whose
+    // names the target lacks. A Class pick pulls requirements on other rows:
+    // member / argument / return types (mandatory, min other_type), bases
+    // (optional, min extern_class), relation partners (suggested class).
+    auto buildImportPlan = [](const json& params, DataModelDoc*& pSrc,
+                              DataModelDoc*& pTgt, CbImportPlan& plan,
+                              std::string& error) -> bool
+    {
+        CClassBuilderDoc* pDoc = GetActiveDoc();
+        if (!pDoc) { error = "no active document"; return false; }
+        pTgt = &pDoc->GetDataModelDoc();
+
+        const std::string source = params.value("source", std::string());
+        if (source.empty())
+        { error = "missing 'source' (title or path of an open project)"; return false; }
+        pSrc = nullptr;
+        for (int i = 0; i < Cb_DocumentCount(); ++i)
+        {
+            CClassBuilderDoc* p = Cb_DocumentAt(i);
+            if (p && (ToStd(p->GetTitle()) == source || ToStd(p->GetPathName()) == source))
+            { pSrc = &p->GetDataModelDoc(); break; }
+        }
+        if (!pSrc) { error = "no open project matches 'source': " + source; return false; }
+        if (pSrc == pTgt)
+        { error = "'source' is the target project; select_document the target first"; return false; }
+
+        Cb_ImportCandidates(pSrc, pTgt, plan);
+        std::map<std::string, size_t> idx;
+        for (size_t i = 0; i < plan.rows.size(); ++i)
+            idx[plan.rows[i].name] = i;
+
+        if (params.contains("picks") && params["picks"].is_array())
+            for (const json& p : params["picks"])
+            {
+                const std::string n = p.value("name", std::string());
+                const std::string f = p.value("form", std::string());
+                const int form = Cb_ImportFormFromName(f);
+                auto it = idx.find(n);
+                if (it == idx.end())
+                { error = "not an import candidate: " + n + " (absent in the source, or already in the target)"; return false; }
+                if (form == CB_IMPORT_NONE)
+                { error = "invalid form '" + f + "' for " + n + " (class / extern_class / other_type)"; return false; }
+                if (form > plan.rows[it->second].sourceKind)
+                { error = n + " is a " + Cb_ImportFormName(plan.rows[it->second].sourceKind) +
+                          " in the source and cannot be imported as " + f; return false; }
+                plan.rows[it->second].explicitForm = form;
+            }
+        if (params.contains("opt_out") && params["opt_out"].is_array())
+            for (const json& n : params["opt_out"])
+            {
+                auto it = idx.find(n.get<std::string>());
+                if (it != idx.end())
+                    plan.rows[it->second].optOut = true;
+            }
+        Cb_ImportResolve(pSrc, pTgt, plan);
+        return true;
+    };
+
+    auto importRowToJson = [](const CbImportRow& r) -> json
+    {
+        json j;
+        j["name"]        = r.name;
+        j["source_kind"] = Cb_ImportFormName(r.sourceKind);
+        j["form"]        = Cb_ImportFormName(r.effectiveForm);
+        if (r.explicitForm)  j["picked"]    = Cb_ImportFormName(r.explicitForm);
+        if (r.requiredForm)  { j["required"] = Cb_ImportFormName(r.requiredForm);
+                               j["mandatory"] = r.mandatory; }
+        if (r.suggestedForm) j["suggested"] = Cb_ImportFormName(r.suggestedForm);
+        if (r.optOut)        j["opt_out"]   = true;
+        if (!r.requiredBy.empty()) j["required_by"] = r.requiredBy;
+        return j;
+    };
+
+    // import_plan -> {candidates, rows:[...], classes, extern_classes,
+    //                 other_types, relations_kept, relations_dropped, notes}
+    // rows lists only the involved candidates unless all:true.
+    CbCommandServer::Register("import_plan",
+        [buildImportPlan, importRowToJson]
+        (const json& params, json& response, std::string& error)
+        {
+            DataModelDoc* pSrc = nullptr;
+            DataModelDoc* pTgt = nullptr;
+            CbImportPlan plan;
+            if (!buildImportPlan(params, pSrc, pTgt, plan, error))
+                return;
+            const bool all = params.value("all", false);
+            json rows = json::array();
+            for (const CbImportRow& r : plan.rows)
+                if (all || r.effectiveForm || r.suggestedForm || r.explicitForm || r.optOut)
+                    rows.push_back(importRowToJson(r));
+            response["candidates"]        = (int)plan.rows.size();
+            response["rows"]              = rows;
+            response["classes"]           = plan.classes;
+            response["extern_classes"]    = plan.externClasses;
+            response["other_types"]       = plan.otherTypes;
+            response["relations_kept"]    = plan.relationsKept;
+            response["relations_dropped"] = plan.relationsDropped;
+            response["notes"]             = plan.notes;
+        });
+
+    // import_execute -> {classes, extern_classes, other_types, members, methods,
+    //                    constructors, inherits, relations, notes}. One undo step.
+    CbCommandServer::Register("import_execute",
+        [buildImportPlan](const json& params, json& response, std::string& error)
+        {
+            DataModelDoc* pSrc = nullptr;
+            DataModelDoc* pTgt = nullptr;
+            CbImportPlan plan;
+            if (!buildImportPlan(params, pSrc, pTgt, plan, error))
+                return;
+            CbImportResult res;
+            if (!Cb_ImportExecute(pSrc, pTgt, plan, res, error))
+                return;
+            response["classes"]        = res.classes;
+            response["extern_classes"] = res.externClasses;
+            response["other_types"]    = res.otherTypes;
+            response["members"]        = res.members;
+            response["methods"]        = res.methods;
+            response["constructors"]   = res.constructors;
+            response["inherits"]       = res.inherits;
+            response["relations"]      = res.relations;
+            response["notes"]          = res.notes;
         });
 
     // -- Source generation / read-back ------------------------------------
