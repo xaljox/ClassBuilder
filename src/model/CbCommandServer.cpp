@@ -244,6 +244,7 @@ namespace
         j["virtual"]     = (bool)pMethod->GetVirtual();
         j["const"]       = (bool)pMethod->GetConst();
         j["pure"]        = (bool)pMethod->GetPure();
+        j["inline"]      = (bool)pMethod->GetInline();
         j["dll_export"]  = (bool)pMethod->GetDllExport();
 
         json args = json::array();
@@ -303,6 +304,94 @@ namespace
 
     // Resolve a Method by either {id:N} (preferred for overloads) or
     // {name:"X"}. Sets `error` and returns NULL on miss / bad params.
+    // Same rule as the Method dialog's Inline check box: only an implemented,
+    // non-pure, non-deleted method of a Class (an extern class has no
+    // definitions). Returns the refusal, or nullptr when inline is allowed.
+    const char* InlineRefusal(Method* pMethod)
+    {
+        if (!pMethod->GetBaseClass()->IsClass())
+            return "only a method of a class (not an extern class) can be inline";
+        if (pMethod->GetPure())
+            return "a pure method cannot be inline";
+        if (pMethod->GetDelete())
+            return "a deleted (= delete) method cannot be inline";
+        if (!pMethod->GetImplement())
+            return "a method that is not implemented cannot be inline";
+        return nullptr;
+    }
+
+    // add_constructor `init`: a comma list "_a(0), Base(x, y)" is laid out like
+    // Constructor::InitInit -- "<indent>: _a(0)" NL "<indent>, Base(x, y)" NL.
+    // Splits on TOP-LEVEL commas only: not inside (), [], {} or literals, nor
+    // inside a template argument list in an item's name ("Base<A, B>(x)": '<'
+    // and '>' count as brackets only before the item's first '(' or '{').
+    // Text that already starts with ':' is the caller's own layout: unchanged.
+    CbString FormatConstructorInit(Constructor* pCtor, const std::string& init)
+    {
+        const size_t b = init.find_first_not_of(" \t\r\n");
+        if (b == std::string::npos)
+            return CbString();
+        if (init[b] == ':')
+            return CbString(init.c_str());
+
+        std::vector<std::string> items;
+        std::string cur;
+        int  depth = 0;
+        bool inArgs = false;                // past the item's first '(' / '{'
+        char quote = 0;
+        for (size_t i = b; i < init.size(); ++i)
+        {
+            const char c = init[i];
+            if (quote)
+            {
+                cur += c;
+                if (c == '\\' && i + 1 < init.size())
+                    cur += init[++i];
+                else if (c == quote)
+                    quote = 0;
+                continue;
+            }
+            if (c == '"' || c == '\'')
+                quote = c;
+            else if (c == '(' || c == '[' || c == '{')
+            {
+                if (c != '[')
+                    inArgs = true;
+                ++depth;
+            }
+            else if (c == ')' || c == ']' || c == '}')
+                --depth;
+            else if (!inArgs && c == '<')
+                ++depth;
+            else if (!inArgs && c == '>')
+                --depth;
+            else if (c == ',' && depth == 0)
+            {
+                items.push_back(cur);
+                cur.clear();
+                inArgs = false;
+                continue;
+            }
+            cur += c;
+        }
+        items.push_back(cur);
+
+        CbString out;
+        bool first = true;
+        for (std::string& item : items)
+        {
+            const size_t s0 = item.find_first_not_of(" \t\r\n");
+            if (s0 == std::string::npos)
+                continue;                   // "a(0), , b(1)" or a trailing comma
+            const size_t s1 = item.find_last_not_of(" \t\r\n");
+            out += pCtor->GetIndent() + (first ? ": " : ", ");
+            out += CbString(item.substr(s0, s1 - s0 + 1).c_str());
+            out += NL;
+            first = false;
+        }
+        return out;
+    }
+
     Method* ResolveMethod(BaseClass* pBC, const json& params, std::string& error)
     {
         if (params.contains("id"))
@@ -4974,6 +5063,12 @@ static void RegisterBuiltinCommands()
                     if (params.value(flag, false))
                     { error = std::string("a static method cannot be ") + flag; return; }
             }
+            // ... and inline needs a class and a definition (see InlineRefusal).
+            const bool isInline = params.value("inline", false);
+            if (isInline && !pBC->IsClass())
+            { error = "only a method of a class (not an extern class) can be inline"; return; }
+            if (isInline && params.value("pure", false))
+            { error = "a pure method cannot be inline"; return; }
 
             Method* pMethod = new Method(pBC, pRet);
             ApplyTypeModifiers(pMethod, ptRet);
@@ -4990,6 +5085,7 @@ static void RegisterBuiltinCommands()
             pMethod->SetStatic (params.value("static",  false) ? 1 : 0);
             pMethod->SetConst  (params.value("const",   false) ? 1 : 0);
             pMethod->SetPure   (params.value("pure",    false) ? 1 : 0);
+            pMethod->SetInline (isInline);
 
             if (params.contains("body"))
                 pMethod->SetCode(CbString(params["body"].get<std::string>().c_str()));
@@ -5202,6 +5298,34 @@ static void RegisterBuiltinCommands()
     METHOD_BOOL_SETTER("set_method_pure",     SetPure,    "pure");
 #undef METHOD_BOOL_SETTER
 
+    // set_method_inline({class, id|name, value:bool}) -- the Method dialog's
+    // Inline check box. On the next write_source the definition moves from the
+    // .cpp into the header's CB_INLINES section (and back when cleared).
+    // Bespoke rather than METHOD_BOOL_SETTER: the refusal is not about static.
+    CbCommandServer::Register("set_method_inline",
+        [](const json& params, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            std::string className = params.value("class", std::string());
+            if (className.empty()) { error = "missing 'class'"; return; }
+            if (!params.contains("value")) { error = "missing 'value'"; return; }
+            bool value = params["value"].get<bool>();
+            BaseClass* pBC = pDoc->GetDataModelDoc().FindBaseClass(
+                                                CbString(className.c_str()));
+            if (!pBC) { error = "no such class"; return; }
+            Method* pMethod = ResolveMethod(pBC, params, error);
+            if (!pMethod) return;
+            if (value)
+                if (const char* refusal = InlineRefusal(pMethod))
+                { error = refusal; return; }
+            pDoc->GetDataModelDoc().MarkLastUndo();
+            pMethod->SaveState();
+            pMethod->SetInline(value);
+            pMethod->Update();
+            response = ToJson(pMethod);
+        });
+
     // SetDllExport takes bool (not int) — bespoke handler.
     CbCommandServer::Register("set_method_dll_export",
         [](const json& params, json& response, std::string& error)
@@ -5317,13 +5441,15 @@ static void RegisterBuiltinCommands()
             response = ToJson(pMethod);
         });
 
-    // add_constructor({class, init?, explicit?, args?, access?, body?})
+    // add_constructor({class, init?, explicit?, args?, access?, body?,
+    //                  replace_body?, seed_args?})
     //
     // Mirrors BaseClass::OnAddConstructor: `new Constructor(class)` → set
     // name auto = class name, access = PUBLIC, type = empty (the
     // Constructor ctor handles all that). Then CreateArguments() runs the
-    // CB default-arg setup, then any user-supplied `args` are appended in
-    // addition (GUI flow appends after CreateArguments via the dialog).
+    // CB default-arg setup (skipped with seed_args:false), then any
+    // user-supplied `args` are appended in addition (GUI flow appends after
+    // CreateArguments via the dialog).
     CbCommandServer::Register("add_constructor",
         [](const json& params, json& response, std::string& error)
         {
@@ -5344,8 +5470,10 @@ static void RegisterBuiltinCommands()
             // with ConstructorInclude(p<FromName>...) and "// Put in your
             // own code". Caller-supplied `args` are EXTRAS appended after
             // the auto-generated parent pointers; caller-supplied `body`
-            // is appended after the auto stub (goes after ConstructorInclude).
-            pCtor->CreateArguments();
+            // is appended after the auto stub (goes after ConstructorInclude)
+            // unless replace_body:true.
+            if (params.value("seed_args", true))
+                pCtor->CreateArguments();
             pCtor->InitCode();
 
             // Optional overrides — the Constructor ctor already set name
@@ -5360,12 +5488,18 @@ static void RegisterBuiltinCommands()
             if (params.contains("explicit"))
                 pCtor->SetExplicit(params["explicit"].get<bool>() ? 1 : 0);
             if (params.contains("init"))
-                pCtor->SetInit(CbString(params["init"].get<std::string>().c_str()));
-            // Append caller body to the auto stub (after ConstructorInclude).
-            if (params.contains("body"))
+                pCtor->SetInit(FormatConstructorInit(
+                    pCtor, params["init"].get<std::string>()));
+            // Append caller body to the auto stub (after ConstructorInclude),
+            // or replace the stub with it.
+            const bool replaceBody = params.value("replace_body", false);
+            std::string body = params.value("body", std::string());
+            if (replaceBody)
+                pCtor->SetCode(CbString(body.c_str()));
+            else if (params.contains("body"))
             {
                 CbString combined = pCtor->GetCode();
-                combined += CbString(params["body"].get<std::string>().c_str());
+                combined += CbString(body.c_str());
                 pCtor->SetCode(combined);
             }
 
@@ -5398,6 +5532,37 @@ static void RegisterBuiltinCommands()
             pBC->NotifyAddMethod(pCtor);
 
             response = ToJson(pCtor);
+            // Same warning as set_method_body: a replaced stub must keep the
+            // ConstructorInclude(...) call for the relation wiring.
+            if (replaceBody && body.find("ConstructorInclude(") == std::string::npos)
+                response["warning"] =
+                    "constructor body has no ConstructorInclude(...) call — "
+                    "relation wiring will be missing";
+            // seed_args:false keeps the stub's ConstructorInclude(pX, ...) call,
+            // whose arguments then have to come from `args` -- name the missing
+            // ones rather than leave a body that does not compile.
+            else if (Class* pClass = dynamic_cast<Class*>(pBC);
+                     pClass && pClass->GetConstructorIncludeMethod())
+            {
+                std::string missing;
+                const bool callsInclude = ToStd(pCtor->GetCode()).find(
+                    "ConstructorInclude(") != std::string::npos;
+                Method::ArgumentIterator iInc(pClass->GetConstructorIncludeMethod());
+                while (callsInclude && ++iInc)
+                {
+                    bool found = false;
+                    Method::ArgumentIterator iArg(pCtor);
+                    while (!found && ++iArg)
+                        found = iArg->GetName() == iInc->GetName();
+                    if (!found)
+                        missing += (missing.empty() ? "" : ", ") + ToStd(iInc->GetName());
+                }
+                if (!missing.empty())
+                    response["warning"] =
+                        "the body calls ConstructorInclude(...) but the constructor "
+                        "has no argument(s) " + missing + " -- add them to 'args' "
+                        "or leave seed_args on";
+            }
         });
 
     // set_method_note({class, id|name, value}) — Method inherits SetNote

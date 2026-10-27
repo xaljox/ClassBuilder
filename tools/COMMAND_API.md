@@ -341,7 +341,7 @@ Manage the member's `GetMemberMethod` / `SetMemberMethod`.
 
 ---
 
-### `add_method` `{class, name, return_type?, args?, access?, virtual?, static?, const?, pure?, body?}`
+### `add_method` `{class, name, return_type?, args?, access?, virtual?, static?, const?, pure?, inline?, body?}`
 Creates a new method on the class. Goes through the same path as a GUI add — undo, view refresh, `NotifyAddMethod` all run.
 
 | param | type | default | notes |
@@ -352,6 +352,7 @@ Creates a new method on the class. Goes through the same path as a GUI add — u
 | `args` | array | `[]` | each `{name, type, default?}` |
 | `access` | `"public"`\|`"protected"`\|`"private"` | `"public"` | |
 | `virtual`, `static`, `const`, `pure` | bool | `false` | `static` excludes the other three (error), as in the Method dialog |
+| `inline` | bool | `false` | definition goes into the header's `CB_INLINES` section instead of the `.cpp`; refused for a `pure` method and on an extern class (see `set_method_inline`) |
 | `body` | string | empty | code for the `//@CODE_NNNN` user region |
 
 **Returns:** the created `MethodRecord`.
@@ -364,17 +365,21 @@ Replaces the user-region body of an existing method. Prefer `id` when overloads 
 Removes the method (NotifyRemoveMethod, full GUI-equivalent path). Prefer `id` for overloads.
 **Returns:** `{id, name, class}` (captured before deletion).
 
-### `add_constructor` `{class, init?, explicit?, args?, access?, body?}`
-Creates a `Constructor` (Method subclass with `_init` initializer list and `_explicit` flag). Mirrors `BaseClass::OnAddConstructor`: name is auto-set to the class name, return-type is empty (constructor convention), and `Constructor::CreateArguments` runs to seed any default arguments. Caller-supplied `args` are appended after that.
+### `add_constructor` `{class, init?, explicit?, args?, access?, body?, replace_body?, seed_args?}`
+Creates a `Constructor` (Method subclass with `_init` initializer list and `_explicit` flag). Mirrors `BaseClass::OnAddConstructor`: name is auto-set to the class name, return-type is empty (constructor convention), and `Constructor::CreateArguments` runs to seed the default arguments -- as in the GUI, one per `ConstructorInclude` argument (the owning parents), per base-class constructor argument and per member without an initialization. Caller-supplied `args` are appended after that.
+
+The body starts as the GUI's stub: `ConstructorInclude(<parents>);` + `// Put in your own code`. A caller `body` is **appended after** that stub (so do not put your own `ConstructorInclude(...)` in it -- you would get it twice), unless `replace_body:true`.
 
 | param | type | default | notes |
 |-------|------|---------|-------|
 | `class` | string | required | |
-| `init` | string | empty | initializer list, e.g. `"_count(0), _flag(false)"` |
+| `init` | string | empty | initializer list, e.g. `"_count(0), _flag(false)"` -- laid out like the GUI (`: _count(0)` / `, _flag(false)`, one per line). Splits on top-level commas only (not inside `()`, `[]`, `{}`, literals or a template argument list such as `Base<A, B>(x)`). Text that already starts with `:` is taken as-is |
 | `explicit` | bool | `false` | C++ `explicit` keyword |
 | `args` | array | `[]` | extra args appended after `CreateArguments` |
 | `access` | `"public"`/`"protected"`/`"private"` | `"public"` | overrides the default |
-| `body` | string | empty | constructor body (`@CODE_NNNN` region) |
+| `body` | string | empty | constructor body (`@CODE_NNNN` region), appended after the `ConstructorInclude` stub |
+| `replace_body` | bool | `false` | `true` = `body` replaces the stub instead; the result then carries a `warning` when it lacks `ConstructorInclude(...)` (relation wiring missing), as `set_method_body` does |
+| `seed_args` | bool | `true` | `false` = skip `CreateArguments`: the constructor gets only the given `args`. The stub still calls `ConstructorInclude(<parents>)`, so the result carries a `warning` naming any parent argument missing from `args` |
 
 **Returns:** the `MethodRecord` for the new constructor.
 
@@ -391,6 +396,7 @@ Same rule as the Method dialog: `set_method_static true` clears `const` / `virtu
 - `set_method_static` `{class, id|name, value:bool}`
 - `set_method_const` `{class, id|name, value:bool}`
 - `set_method_pure` `{class, id|name, value:bool}`
+- `set_method_inline` `{class, id|name, value:bool}` — the Method dialog's Inline box: on the next `write_source` the definition moves from the `.cpp` into the header's `CB_INLINES` section (and back on `false`). Turning it on is refused, as in the dialog, for a pure, `= delete` or not-implemented method and for a method of an extern class
 - `set_method_dll_export` `{class, id|name, value:bool}`
 - `set_method_name` `{class, id, value, replace_references?}` — rename; prefer `id` since name lookup is ambiguous with overloads. Method bodies that call the old name are what the GUI's Replace dialog lists: `replace_references:true` rewrites them all (whole word), `false` (default) leaves them. The reply adds `call_sites` (bodies mentioning the old name) and `references_replaced`
 - `set_method_return_type` `{class, id|name, value}` — accepts modifiers; re-parents onto the new `Type`
@@ -1093,6 +1099,7 @@ Replaces the active doc's contents from `path` via the CbArchive code path. **Cr
   "virtual": false,
   "const": false,
   "pure": false,
+  "inline": false,
   "dll_export": false,
   "args": [ { "name": "x", "type": "int", "default": "" } ]
 }

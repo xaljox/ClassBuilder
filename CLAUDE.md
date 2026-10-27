@@ -73,7 +73,7 @@ Single inheritance is enforced for any class with `Serialize` enabled. The `Seri
 
 ## Pipe API
 
-`ClassBuilder` runs a JSON-over-TCP server on `127.0.0.1:51777` (`CB_CMD_PORT` to override; loopback only, all three platforms) ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/COMMAND_API.md](tools/COMMAND_API.md); `list_commands` on a running build is the authoritative list (149 registered). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The command API is also the intended way to drive port-related model migrations without modifying CB itself.
+`ClassBuilder` runs a JSON-over-TCP server on `127.0.0.1:51777` (`CB_CMD_PORT` to override; loopback only, all three platforms) ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/COMMAND_API.md](tools/COMMAND_API.md); `list_commands` on a running build is the authoritative list (162 registered). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The command API is also the intended way to drive port-related model migrations without modifying CB itself.
 
 ## Conventions
 
