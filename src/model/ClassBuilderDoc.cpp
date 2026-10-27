@@ -11,6 +11,7 @@
 #include "qt/QtProjectSettingsDialog.h"
 #include "qt/QtCleanupExternClassesDialog.h"
 #include "qt/QtMergeTypesDialog.h"
+#include "qt/QtImportDialog.h"
 #include "qt/QtAddSerializeDialog.h"
 #include "CbCommandServer.h"
 #include "MainFrm.h"
@@ -590,6 +591,11 @@ void CClassBuilderDoc::ProjectCleanupOtherTypes()
 void CClassBuilderDoc::ProjectMergeTypes()
 {
     Qt_ShowMergeTypesDialog(&GetDataModelDoc(), Cb_GetMainHwnd());
+}
+
+void CClassBuilderDoc::ProjectImport()
+{
+    Qt_ShowImportDialog(&GetDataModelDoc(), Cb_GetMainHwnd());
 }
 
 void CClassBuilderDoc::ProjectAddSerialize()
