@@ -808,6 +808,9 @@ void QtShellWindow::buildMenus()
     _actImport = project->addAction("&Import / Clone...", this, [this] {
         if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectImport();
     });
+    _actUpdateExternClasses = project->addAction("&Update Extern Classes...", this, [this] {
+        if (CClassBuilderDoc* doc = activeDoc()) doc->ProjectUpdateExternClasses();
+    });
     connect(project, &QMenu::aboutToShow, this, [this] {
         CClassBuilderDoc* doc = activeDoc();
         _actSettings->setEnabled(doc != nullptr);
@@ -817,6 +820,7 @@ void QtShellWindow::buildMenus()
         _actCleanupOtherTypes->setEnabled(doc != nullptr);
         _actMergeTypes->setEnabled(doc != nullptr);
         _actImport->setEnabled(doc != nullptr);
+        _actUpdateExternClasses->setEnabled(doc != nullptr);
     });
 
     // --- View (zoom routes to the active diagram window) --------------------

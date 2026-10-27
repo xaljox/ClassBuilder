@@ -17,6 +17,8 @@
 #include "ClassBuilderDoc.h"
 #include "CbTypeMerge.h"
 #include "CbImport.h"
+#include "CbUpdate.h"
+#include "CbTemplateRef.h"
 #include "CbShellHooks.h"
 #include "CbColor.h"        // CbColorRef (set_*_color commands)
 #include "qt/QtClassDiagramView.h"     // Qt_ShowClassDiagramView / Qt_ExportClassDiagramSvg (Qt-free bridge)
@@ -293,6 +295,9 @@ namespace
         if (pBaseClass->IsClass())            kind = "Class";
         else if (pBaseClass->IsExternClass()) kind = "ExternClass";
         j["kind"] = kind;
+        // The name above already ends in the reference ("BitIterator<T>").
+        j["template_declaration"] = ToStd(pBaseClass->GetTemplateDeclaration());
+        j["template"]             = ToStd(pBaseClass->GetTemplate());
         return j;
     }
 
@@ -686,6 +691,8 @@ static void RegisterBuiltinCommands()
             response["dll_export"]    = (bool)pClass->GetDllExport();
             response["note"]          = ToStd(pClass->GetNote());
             response["member_prefix"] = ToStd(pClass->GetMemberPrefix());
+            response["template_declaration"] = ToStd(pClass->GetTemplateDeclaration());
+            response["template"]             = ToStd(pClass->GetTemplate());
 
             json inherits = json::array();
             // Outgoing edges (the bases this class inherits from) live on
@@ -795,7 +802,7 @@ static void RegisterBuiltinCommands()
             response = arr;
         });
 
-    // add_class({name, serialize?, h_file?}) — creates a new Class on the
+    // add_class({name, serialize?, h_file?, cpp_file?}) — creates a new Class on the
     // active model. `serialize` defaults to the model's own serialize flag.
     // When serialize=true the new class auto-inherits the model's
     // DocumentObject (which transitively inherits CbObject), mirroring the
@@ -819,7 +826,8 @@ static void RegisterBuiltinCommands()
             if (wantSerialize && !modelHasSerialize)
             { error = "cannot create a serialize class in a non-serialize model"; return; }
 
-            std::string hFile = params.value("h_file", std::string());
+            std::string hFile   = params.value("h_file", std::string());
+            std::string cppFile = params.value("cpp_file", std::string());
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
 
@@ -844,6 +852,8 @@ static void RegisterBuiltinCommands()
             pClass->SetName(cname);
             if (!hFile.empty())
                 pClass->SetHFile(CbString(hFile.c_str()));
+            if (!cppFile.empty())
+                pClass->SetCppFile(CbString(cppFile.c_str()));
 
             pClass->Add();
 
@@ -851,6 +861,7 @@ static void RegisterBuiltinCommands()
             response["kind"]      = "Class";
             response["serialize"] = (bool)pClass->GetSerialize();
             response["h_file"]    = ToStd(pClass->GetHFile());
+            response["cpp_file"]  = ToStd(pClass->GetCppFile());
         });
 
     // delete_class({name}) — removes a Class from the active model. Honors
@@ -912,7 +923,8 @@ static void RegisterBuiltinCommands()
             response["serialize"] = (bool)pClass->GetSerialize();
         });
 
-    // set_class_h_file({name, value}), set_class_note({name, value}),
+    // set_class_h_file({name, value}), set_class_cpp_file({name, value}),
+    // set_class_note({name, value}),
     // set_class_dll_export({name, value}) — small attribute setters.
     CbCommandServer::Register("set_class_h_file",
         [](const json& params, json& response, std::string& error)
@@ -932,6 +944,68 @@ static void RegisterBuiltinCommands()
             response["name"]   = ToStd(pClass->GetName());
             response["h_file"] = ToStd(pClass->GetHFile());
         });
+
+    CbCommandServer::Register("set_class_cpp_file",
+        [](const json& params, json& response, std::string& error)
+        {
+            DataModel* pDataModel = GetActiveDataModel();
+            if (!pDataModel) { error = "no active document"; return; }
+            std::string name = params.value("name", std::string());
+            if (name.empty()) { error = "missing 'name'"; return; }
+            if (!params.contains("value")) { error = "missing 'value'"; return; }
+            std::string value = params["value"].get<std::string>();
+
+            Class* pClass = pDataModel->FindClass(CbString(name.c_str()));
+            if (!pClass) { error = "no such class"; return; }
+
+            pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SetCppFile(CbString(value.c_str()));
+            response["name"]     = ToStd(pClass->GetName());
+            response["cpp_file"] = ToStd(pClass->GetCppFile());
+        });
+
+    // set_class_template({name, declaration, reference?}) — the template
+    // declaration ("template <class T>", also a C++20 constrained form such as
+    // "template <UnsignedBits T>") and the reference the class is referred to
+    // with ("<T>"; omitted = derived from the declaration, exactly as the Class /
+    // Extern Class dialogs do). declaration "" = not a template. Class or extern
+    // class (set_extern_class_template is the same command). As the Class
+    // dialog: a serialize class cannot be a template, and a class's related
+    // classes take the same template (Class::SetTemplate). A template class's
+    // NAME includes the reference -- the response carries the new name.
+    auto setClassTemplate = [](const json& params, json& response, std::string& error)
+    {
+        CClassBuilderDoc* pDoc = GetActiveDoc();
+        if (!pDoc) { error = "no active document"; return; }
+        std::string name = params.value("name", std::string());
+        if (name.empty()) { error = "missing 'name'"; return; }
+        if (!params.contains("declaration")) { error = "missing 'declaration'"; return; }
+
+        DataModelDoc& dmd = pDoc->GetDataModelDoc();
+        BaseClass* pBC = dmd.FindBaseClass(CbString(name.c_str()));
+        if (!pBC) { error = "no such class: " + name; return; }
+
+        const std::string decl = params["declaration"].get<std::string>();
+        std::string ref;
+        if (!decl.empty())
+        {
+            ref = params.contains("reference") ? params["reference"].get<std::string>()
+                                               : Cb_DeriveTemplateReference(decl);
+            if (ref.empty())
+            { error = "not a template declaration (expected \"template<...>\"): " + decl; return; }
+            Class* pClass = dynamic_cast<Class*>(pBC);
+            if (pClass && pClass->GetSerialize())
+            { error = "a serialize class cannot be a template"; return; }
+        }
+
+        dmd.MarkLastUndo();
+        pBC->SaveState();
+        if (pBC->SetTemplate(CbString(decl.c_str()), CbString(ref.c_str())))
+            pBC->Update();
+        response = ToJson(pBC);
+    };
+    CbCommandServer::Register("set_class_template",        setClassTemplate);
+    CbCommandServer::Register("set_extern_class_template", setClassTemplate);
 
     CbCommandServer::Register("set_class_note",
         [](const json& params, json& response, std::string& error)
@@ -5922,9 +5996,10 @@ static void RegisterBuiltinCommands()
     // names the target lacks. A Class pick pulls requirements on other rows:
     // member / argument / return types (mandatory, min other_type), bases
     // (optional, min extern_class), relation partners (suggested class).
-    auto buildImportPlan = [](const json& params, DataModelDoc*& pSrc,
-                              DataModelDoc*& pTgt, CbImportPlan& plan,
-                              std::string& error) -> bool
+    // TARGET = the active document; SOURCE = params.source, another open project
+    // by title or path. Shared by the Import / Clone and Update commands.
+    auto resolveSourceTarget = [](const json& params, DataModelDoc*& pSrc,
+                                  DataModelDoc*& pTgt, std::string& error) -> bool
     {
         CClassBuilderDoc* pDoc = GetActiveDoc();
         if (!pDoc) { error = "no active document"; return false; }
@@ -5943,6 +6018,15 @@ static void RegisterBuiltinCommands()
         if (!pSrc) { error = "no open project matches 'source': " + source; return false; }
         if (pSrc == pTgt)
         { error = "'source' is the target project; select_document the target first"; return false; }
+        return true;
+    };
+
+    auto buildImportPlan = [resolveSourceTarget](const json& params, DataModelDoc*& pSrc,
+                                                 DataModelDoc*& pTgt, CbImportPlan& plan,
+                                                 std::string& error) -> bool
+    {
+        if (!resolveSourceTarget(params, pSrc, pTgt, error))
+            return false;
 
         Cb_ImportCandidates(pSrc, pTgt, plan);
         std::map<std::string, size_t> idx;
@@ -6040,6 +6124,94 @@ static void RegisterBuiltinCommands()
             response["inherits"]       = res.inherits;
             response["relations"]      = res.relations;
             response["notes"]          = res.notes;
+        });
+
+    // ----- Update Extern Classes (cross-project) ----------------------------
+    //
+    // update_plan({source, all?}) and update_execute({source, names?}) drive the
+    // CbUpdate engine (shared with the Update Extern Classes dialog). Each target
+    // ExternClass with a same-named source Class takes that class's interface
+    // (non-private members and methods, no relation/macro methods), applied in
+    // place. TARGET / SOURCE as for import.
+
+    // update_plan -> {externs, out_of_date, rows:[{name, changes:[{what, op,
+    //                 before?, after?, sd_uses?}], notes?}]}
+    // rows lists only out-of-date externs unless all:true.
+    CbCommandServer::Register("update_plan",
+        [resolveSourceTarget](const json& params, json& response, std::string& error)
+        {
+            DataModelDoc* pSrc = nullptr;
+            DataModelDoc* pTgt = nullptr;
+            if (!resolveSourceTarget(params, pSrc, pTgt, error))
+                return;
+            CbUpdatePlan plan;
+            Cb_UpdatePlan(pSrc, pTgt, plan);
+            const bool all = params.value("all", false);
+            int outOfDate = 0;
+            json rows = json::array();
+            for (const CbUpdateRow& r : plan.rows)
+            {
+                if (!r.changes.empty())
+                    ++outOfDate;
+                if (!all && r.changes.empty() && r.notes.empty())
+                    continue;
+                json j;
+                j["name"] = r.name;
+                json changes = json::array();
+                for (const CbUpdateChange& c : r.changes)
+                {
+                    json cj;
+                    cj["what"] = c.what;
+                    cj["op"]   = std::string(1, c.op);
+                    if (!c.before.empty()) cj["before"]  = c.before;
+                    if (!c.after.empty())  cj["after"]   = c.after;
+                    if (c.sdUses)          cj["sd_uses"] = c.sdUses;
+                    changes.push_back(cj);
+                }
+                j["changes"] = changes;
+                if (!r.notes.empty())
+                    j["notes"] = r.notes;
+                rows.push_back(j);
+            }
+            response["externs"]     = (int)plan.rows.size();
+            response["out_of_date"] = outOfDate;
+            response["rows"]        = rows;
+        });
+
+    // update_execute -> {externs, added, removed, changed, types, notes}.
+    // names defaults to every out-of-date extern. One undo step.
+    CbCommandServer::Register("update_execute",
+        [resolveSourceTarget](const json& params, json& response, std::string& error)
+        {
+            DataModelDoc* pSrc = nullptr;
+            DataModelDoc* pTgt = nullptr;
+            if (!resolveSourceTarget(params, pSrc, pTgt, error))
+                return;
+            std::vector<std::string> names;
+            if (params.contains("names") && params["names"].is_array())
+            {
+                for (const json& n : params["names"])
+                    names.push_back(n.get<std::string>());
+            }
+            else
+            {
+                CbUpdatePlan plan;
+                Cb_UpdatePlan(pSrc, pTgt, plan);
+                for (const CbUpdateRow& r : plan.rows)
+                    if (!r.changes.empty())
+                        names.push_back(r.name);
+                if (names.empty())
+                { error = "every extern class is up to date with the source"; return; }
+            }
+            CbUpdateResult res;
+            if (!Cb_UpdateExecute(pSrc, pTgt, names, res, error))
+                return;
+            response["externs"] = res.externs;
+            response["added"]   = res.added;
+            response["removed"] = res.removed;
+            response["changed"] = res.changed;
+            response["types"]   = res.types;
+            response["notes"]   = res.notes;
         });
 
     // -- Source generation / read-back ------------------------------------

@@ -30,14 +30,14 @@ are flagged individually below — prefer the non-modal variants when scripting.
 
 ## Start here: ask the app what it supports
 
-`list_commands` returns every command the running build registers — **155** at
+`list_commands` returns every command the running build registers — **160** at
 the time of writing. It is the ground truth; this file documents the important
 ones in detail but is not guaranteed to cover all of them, and commands get added
 when a workflow needs one.
 
 ```sh
 echo '{"cmd":"list_commands"}' | nc 127.0.0.1 51777
-{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":155}}
+{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":160}}
 ```
 
 An agent should call this first and treat the result as the vocabulary for that
@@ -122,7 +122,7 @@ Typed `Class` lookup (excludes ExternClass). Lightweight existence probe.
 Member names are stored **without** the prefix. The Class's `member_prefix` (default `"_"`, often `"m_"`) is added uniformly at codegen time. This matches the GUI: you type `id` in the dialog and the tool emits `_id` (or `m_id`). Same rule applies to the API — pass `name:"id"`, not `name:"_id"`. `set_class_member_prefix` overrides the Class-level prefix; `get_member` exposes both the bare `name` and the rendered `prefixed_name`.
 
 ### `get_class` `{name}`
-Rich record for a `Class`: serialize flag, files, note, inheritances, members, methods, member_prefix.
+Rich record for a `Class`: serialize flag, files, note, template, inheritances, members, methods, member_prefix.
 
 **Returns:** or `null` if not found:
 ```json
@@ -134,6 +134,8 @@ Rich record for a `Class`: serialize flag, files, note, inheritances, members, m
   "cpp_file": "Foo.cpp",
   "dll_export": false,
   "note": "...",
+  "template_declaration": "",
+  "template": "",
   "inherits": [{"name":"FooDocObject","virtual":true}, ...],
   "members": [MemberRecord, ...],
   "methods": [MethodRecord, ...]
@@ -179,7 +181,7 @@ Walk: `BaseClass` (which IS-A `Type`) → iterate `Variable` children → filter
 
 ## Mutate
 
-### `add_class` `{name, serialize?, h_file?}`
+### `add_class` `{name, serialize?, h_file?, cpp_file?}`
 Creates a new `Class` on the active model. Mirrors the GUI's `DataModel::OnAddClass` path.
 
 | param | type | default | notes |
@@ -187,8 +189,9 @@ Creates a new `Class` on the active model. Mirrors the GUI's `DataModel::OnAddCl
 | `name` | string | required | must be unique across BaseClasses in the model |
 | `serialize` | bool | model's serialize flag | when `true` the class auto-inherits the model's `DocumentObject` (which transitively inherits `CbObject`) |
 | `h_file` | string | empty | header filename; CB derives a default at codegen if blank |
+| `cpp_file` | string | empty | implementation filename; leave empty only for a class that needs no `.cpp` (e.g. a header-only template) |
 
-**Returns:** `{name, kind:"Class", serialize, h_file}`.
+**Returns:** `{name, kind:"Class", serialize, h_file, cpp_file}`.
 **Errors:** duplicate name; `serialize:true` on a non-serialize model (no `DocumentObject` to inherit from).
 
 ### `delete_class` `{name}`
@@ -210,6 +213,26 @@ Rejects `value:true` when the model itself is not serialize-on (no `DocumentObje
 
 ### `set_class_h_file` `{name, value}`
 **Returns:** `{name, h_file}`.
+
+### `set_class_cpp_file` `{name, value}`
+**Returns:** `{name, cpp_file}`.
+
+### `set_class_template` `{name, declaration, reference?}`
+### `set_extern_class_template` `{name, declaration, reference?}`
+One command under two names; works on a class or an extern class. `declaration` is the free-text template declaration (`"template<class T>"`, also a C++20 constrained form such as `"template<UnsignedBits T>"`); `reference` is how the class is referred to (`"<T>"`) — **omitted = derived from the declaration**, by the same code the Class / Extern Class dialogs use (`model/CbTemplateRef`: defaults dropped, each parameter's name = its last identifier, a pack keeps `...`):
+
+| declaration | reference |
+|---|---|
+| `template<class T>` | `<T>` |
+| `template<typename T, int N = 4>` | `<T, N>` |
+| `template<std::unsigned_integral T>` | `<T>` |
+| `template<class T, const int* P>` | `<T, P>` |
+| `template<typename... Ts>` | `<Ts...>` |
+| `template<template<class> class C, class T>` | `<C, T>` |
+
+`declaration: ""` = not a template any more. As the Class dialog: a **serialize** class cannot be a template (error), and a class's **related** classes (relations) take the same template. One undo step.
+**Note:** a template class's **name includes its reference** (`BaseClass::GetName()` = name + reference) — after this call address it as `"BitIterator<T>"` in every command.
+**Returns:** the `BaseClassRecord` of the class, with its new name.
 
 ### `set_class_note` `{name, value}`
 **Returns:** `{name, note}`.
@@ -469,6 +492,20 @@ Resolve without changing anything. `picks: [{name, form}]` with form `class` / `
 ### `import_execute` `{source, picks?, opt_out?}`
 Resolve and import, as **one undo step**.
 **Returns:** `{classes, extern_classes, other_types, members, methods, constructors, inherits, relations, notes}`. `notes` names every dropped relation and lapsed base.
+
+## Update Extern Classes (cross-project)
+
+Refresh the target's **extern classes** from the same-named **classes** of another open project — the same engine (`model/CbUpdate`) as *Project > Update Extern Classes…*. Matched **by name**; target / source as for import. Import brings in what is missing; update refreshes what is already there.
+
+An updated extern takes the source class's **shape**: **every** member (private ones too) with its getter / setter (same access; static / const follow the member; a retyped member gets fresh accessors, as in the Member dialog), and the non-private methods — **no** relation or macro methods (as CB's own Class → Extern conversion), empty bodies and init lists; plus bases (except `CbObject`), template / struct, and the member prefix (when there are members). Differences are applied **in place**: a changed member or method keeps its object (and id), so sequence-diagram messages and class-diagram shapes on it survive. Methods match on overload identity (name + parameter types + `const`); a leftover whose name is unique on both sides is a **changed signature**, not a remove + add. The extern's destructor is never removed. Types the new interface needs that the target lacks are created: a source other type as an other type (with its declaration), a source class as a bare extern class.
+
+### `update_plan` `{source, all?}`
+Diff without changing anything.
+**Returns:** `{externs, out_of_date, rows: [{name, changes: [{what, op, before?, after?, sd_uses?}], notes?}]}` — `what` = `member` / `method` / `base` / `class` / `type`; `op` = `+` (add) / `-` (remove) / `~` (change, `before` → `after`); `sd_uses` = sequence-diagram messages on a method that would be removed. `rows` lists only out-of-date externs (and ones with notes) unless `all: true`.
+
+### `update_execute` `{source, names?}`
+Update the named externs (default: every out-of-date one), as **one undo step**.
+**Returns:** `{externs, added, removed, changed, types, notes}`.
 
 ---
 
@@ -1053,9 +1090,9 @@ Replaces the active doc's contents from `path` via the CbArchive code path. **Cr
 
 ### `BaseClassRecord`
 ```json
-{ "name": "Foo", "kind": "Class" }
+{ "name": "Foo", "kind": "Class", "template_declaration": "", "template": "" }
 ```
-`kind` is `"Class"`, `"ExternClass"`, or `"BaseClass"`.
+`kind` is `"Class"`, `"ExternClass"`, or `"BaseClass"`. For a template class `name` ends in the reference (`"BitIterator<T>"`), `template_declaration` is e.g. `"template<UnsignedBits T>"` and `template` the reference `"<T>"`.
 
 ### `Argument` (inside `MethodRecord.args`)
 ```json

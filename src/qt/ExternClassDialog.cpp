@@ -21,6 +21,10 @@
 #define FORWARD_ONLY
 #include "ClassBuilderInclude.h"
 
+#include "CbTemplateRef.h"           // Cb_DeriveTemplateReference
+
+#include <string>
+
 ExternClassDialog::ExternClassDialog(ExternClass* pExternClass,
                                      QWidget* parent)
     : QDialog(parent)
@@ -105,49 +109,13 @@ void ExternClassDialog::onTemplateToggled()
 }
 
 // Derive the template *reference* ("<T, N>") from the *declaration*
-// ("template<class T, int N>") -- the MFC OnChangeTemplatedeclaration.
+// ("template<class T, int N>") -- shared with the Class dialog and
+// set_class_template.
 void ExternClassDialog::onTemplateDeclChanged()
 {
-    CbString stripped(_ui->editTemplateDecl->text().trimmed()
-                          .toLocal8Bit().constData());
-    BaseClass::StripTemplateDeclaration(stripped);
-    QString decl = toQ(stripped);
-
-    QString ref;
-    if (decl.startsWith("template"))
-    {
-        decl = decl.mid(8).trimmed();
-        if (decl.startsWith("<"))
-        {
-            ref = "<";
-            decl = decl.mid(1).trimmed();
-
-            int start = decl.indexOf(' ');
-            while (start != -1)
-            {
-                decl = decl.mid(start).trimmed();
-
-                const int stop = decl.indexOf(',');
-                if (stop != -1)
-                {
-                    ref += decl;
-                    decl = decl.mid(stop + 1).trimmed();
-                    ref = ref.left(ref.length() - decl.length());
-                }
-                else
-                {
-                    ref += decl;
-                    decl.clear();
-                }
-                start = decl.indexOf(' ');
-            }
-
-            if (!ref.endsWith('>'))
-                ref += ">";
-        }
-    }
-
-    _ui->editTemplate->setText(ref);
+    const std::string ref = Cb_DeriveTemplateReference(
+        _ui->editTemplateDecl->text().toLocal8Bit().constData());
+    _ui->editTemplate->setText(QString::fromLocal8Bit(ref.c_str()));
 }
 
 // OK -- validate the name (the MFC DDV_Name), then apply.

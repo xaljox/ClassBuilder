@@ -184,6 +184,7 @@ private:
     QAction* _actCleanupOtherTypes = nullptr;
     QAction* _actMergeTypes = nullptr;
     QAction* _actImport = nullptr;
+    QAction* _actUpdateExternClasses = nullptr;
 
     // ensureOnScreen() runs once, on the first show.
     void ensureOnScreen();
