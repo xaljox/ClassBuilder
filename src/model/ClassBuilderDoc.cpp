@@ -45,6 +45,15 @@ namespace {
         for (char& c : ext) c = (char)tolower((unsigned char)c);
         return ext == "cbz";
     }
+
+    // The .cbz format level this build writes. A NEW project starts at this
+    // DataModelDoc::_version, because every field is always stored but the read
+    // side gates newer fields on the file's version. Keep it at the highest such
+    // gate: 2 = Method::_delete (Method.cpp read gate), 3 = DataModel::_crlf is a
+    // real choice (OnOpenDocument forces CRLF below 3). A fresh doc left at the
+    // ctor default 1 and saved before its first source write would reopen
+    // misaligned ("file is corrupt") and lose an LF choice.
+    const int kCurrentFormatVersion = 3;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -237,6 +246,11 @@ int CClassBuilderDoc::OnNewDocument()
     DeleteContents();
     m_pathName = "";
     m_firstSave = true;
+
+    // Before any object is created: Gti stamps each new object with
+    // doc version + 1 (its modified-since-last-write marker).
+    if (m_impl->dataModelDoc.GetVersion() < kCurrentFormatVersion)
+        m_impl->dataModelDoc.SetVersion(kCurrentFormatVersion);
 
     DataModel* pDataModel = new DataModel(&m_impl->dataModelDoc);
 
