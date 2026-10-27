@@ -504,6 +504,41 @@ static void RegisterBuiltinCommands()
             response["canRedo"]  = pDoc->CanRedo();
         });
 
+    // undo_stack({limit?}) -- diagnostic: the undo entries from the TOP down
+    // (index 0 = what Undo restores first). `last` is the step marker on the
+    // entry: 1 = end of a user step (Undo stops before an entry marked 1 once it
+    // has restored at least one), 2 = sub-step, 0 = none. `entry` / `object` are
+    // the C++ classes (UndoChange / UndoNew / ... and the snapshotted object).
+    CbCommandServer::Register("undo_stack",
+        [](const json& params, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            const int limit = params.value("limit", 60);
+            DataModelDoc& dmd = pDoc->GetDataModelDoc();
+            json entries = json::array();
+            int index = 0;
+            DataModelDoc::UndoBaseIterator iUndo(&dmd);
+            while (--iUndo && index < limit)
+            {
+                UndoBase* u = iUndo;
+                json e;
+                e["index"] = index++;
+                e["last"]  = u->GetLast();
+                e["entry"] = typeid(*u).name();
+                if (DataModelDocObject* o = u->GetDataModelDocObject())
+                {
+                    e["object"] = typeid(*o).name();
+                    e["id"]     = (unsigned)o->GetId();
+                    if (Gti* g = dynamic_cast<Gti*>(o))
+                        e["text"] = ToStd(g->GetItemText());
+                }
+                entries.push_back(e);
+            }
+            response["count"]   = (int)dmd.GetUndoBaseCount();
+            response["entries"] = entries;
+        });
+
     // Creates a new untitled document. Mirrors File / New in the menu.
     CbCommandServer::Register("new_model",
         [](const json& /*params*/, json& response, std::string& error)
@@ -6459,6 +6494,23 @@ void CbCommandServer::DispatchOnUiThread(CbCommandRequest* pRequest)
         pRequest->ok    = false;
         pRequest->error = "unknown command: " + pRequest->command;
         return;
+    }
+
+    // Every command starts its own undo step: close whatever the previous one
+    // left open. Commands mark at their START (and several mutators do not mark
+    // at all), so without this a command's changes merged into the previous
+    // command's step -- one undo then reverted both. Skipped when the top entry
+    // already ends a step, so read-only commands stay free. write_source is no
+    // user edit: its codegen method sort rides along with the previous step, as
+    // File > Save Source does (else the first Undo after it only reverts an
+    // invisible method reorder).
+    CClassBuilderDoc* pDoc = pRequest->command == "write_source" ? 0 : GetActiveDoc();
+    if (pDoc)
+    {
+        DataModelDoc& dmd = pDoc->GetDataModelDoc();
+        UndoBase* pTop = dmd.GetLastUndoBase();
+        if (pTop && pTop->GetLast() != 1)
+            dmd.MarkLastUndo();
     }
 
     try

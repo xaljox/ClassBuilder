@@ -30,14 +30,14 @@ are flagged individually below — prefer the non-modal variants when scripting.
 
 ## Start here: ask the app what it supports
 
-`list_commands` returns every command the running build registers — **160** at
+`list_commands` returns every command the running build registers — **161** at
 the time of writing. It is the ground truth; this file documents the important
 ones in detail but is not guaranteed to cover all of them, and commands get added
 when a workflow needs one.
 
 ```sh
 echo '{"cmd":"list_commands"}' | nc 127.0.0.1 51777
-{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":160}}
+{"ok":true,"result":{"commands":["active_doc","add_actor",...],"count":161}}
 ```
 
 An agent should call this first and treat the result as the vocabulary for that
@@ -98,6 +98,18 @@ Creates a new model with **serialize ON**, bypassing the wizard. `InitSerialize`
 
 **Returns:** `{"title":"...","path":"..."}`
 **Invariant:** once created with serialize ON it cannot be turned off; once `undo_redo` is enabled it cannot be disabled.
+
+---
+
+## Undo
+
+**Every command is its own undo step** on the active document: the server closes the step the previous command left open before it runs the next one (a no-op when the top entry already ends a step, so read-only commands cost nothing). Exception: `write_source` — Save Source's codegen method sort rides along with the preceding step, as in the GUI, so the next Undo reverts that edit and the reorder together.
+
+### `undo` / `redo`
+The same model funnel the Undo / Redo buttons use. **Returns:** `{restored, canUndo, canRedo}` — `restored` = undo entries replayed.
+
+### `undo_stack` `{limit?}`
+Diagnostic: the undo entries from the top down (index 0 is restored first), default `limit` 60. **Returns:** `{count, entries: [{index, last, entry, object?, id?, text?}]}` — `last` is the entry's step marker: `1` ends a user step (Undo stops there), `2` a sub-step (Undo walks past it), `0` none; `entry` / `object` are the C++ classes (e.g. `UndoChange` of a `Method`).
 
 ---
 

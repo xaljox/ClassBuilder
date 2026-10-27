@@ -430,8 +430,12 @@ UndoBase* DataModelDoc::MarkLastUndo(int level)
     UndoBase* pTop = GetLastUndoBase();
     if (!pTop) return NULL;
 
+    // Precedence is 1 (user step) > 2 (sub-step) > 0 (none) -- NOT numeric: a
+    // `level <= oldLevel` test let MarkLastUndo(1) bail out on a level-2 top, so
+    // a step ending in a sub-batch (Save Source's method sort, a multi-swap
+    // reorder) never closed and merged with the next user step.
     int oldLevel = pTop->GetLast();
-    if (level <= oldLevel) return pTop;
+    if (oldLevel == 1 || oldLevel == level) return pTop;
 
     pTop->SetLast(level);
 
