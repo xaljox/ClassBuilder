@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <functional>
+#include <vector>
 
 struct CbCommandRequest
 {
@@ -14,6 +15,7 @@ struct CbCommandRequest
     nlohmann::json response;      // filled by the command function
     bool           ok;            // success flag (set by DispatchOnUiThread)
     std::string    error;         // error message when !ok
+    std::vector<std::string> suppressed;  // message boxes the request did not show
 };
 
 // A command handler runs on the UI thread. It reads `params`, fills `response`

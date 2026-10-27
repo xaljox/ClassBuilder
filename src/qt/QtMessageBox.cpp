@@ -15,8 +15,37 @@
 #include <QApplication>
 #include <QMessageBox>
 
+namespace {
+    int                      g_nonInteractive = 0;   // nesting depth
+    std::vector<std::string> g_suppressed;
+}
+
+CbNonInteractiveScope::CbNonInteractiveScope()  { ++g_nonInteractive; }
+CbNonInteractiveScope::~CbNonInteractiveScope() { --g_nonInteractive; }
+
+bool Cb_IsNonInteractive() { return g_nonInteractive > 0; }
+
+std::vector<std::string> Cb_TakeSuppressedMessages()
+{
+    std::vector<std::string> out;
+    out.swap(g_suppressed);
+    return out;
+}
+
 int CbMessageBox(const char* text, unsigned int type)
 {
+    if (Cb_IsNonInteractive())
+    {
+        g_suppressed.push_back(text ? text : "");
+        switch (type & CBMB_TYPEMASK)
+        {
+        case CBMB_YESNO:        return CBMB_IDNO;
+        case CBMB_YESNOCANCEL:
+        case CBMB_OKCANCEL:     return CBMB_IDCANCEL;
+        default:                return CBMB_IDOK;
+        }
+    }
+
     Qt_EnsureApplication();
 
     QMessageBox box(QApplication::activeWindow());

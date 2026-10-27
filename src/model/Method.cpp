@@ -1668,7 +1668,10 @@ void Method::SetName(const CbString& rName)
                 }
             }
             
-            if (used)
+            // Ask which call sites to rewrite -- never from a command-server
+            // request (no modal there; set_method_name passes
+            // replace_references and uses SetNameAlways for "all").
+            if (used && !Cb_IsNonInteractive())
             {
                 void* ownerHwnd = Cb_OwnerHwnd();
                 Qt_ShowSelectReplace(GetDataModelDoc()->GetDataModel(),

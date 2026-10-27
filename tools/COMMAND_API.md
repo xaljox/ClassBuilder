@@ -392,7 +392,7 @@ Same rule as the Method dialog: `set_method_static true` clears `const` / `virtu
 - `set_method_const` `{class, id|name, value:bool}`
 - `set_method_pure` `{class, id|name, value:bool}`
 - `set_method_dll_export` `{class, id|name, value:bool}`
-- `set_method_name` `{class, id, value}` — rename; prefer `id` since name lookup is ambiguous with overloads
+- `set_method_name` `{class, id, value, replace_references?}` — rename; prefer `id` since name lookup is ambiguous with overloads. Method bodies that call the old name are what the GUI's Replace dialog lists: `replace_references:true` rewrites them all (whole word), `false` (default) leaves them. The reply adds `call_sites` (bodies mentioning the old name) and `references_replaced`
 - `set_method_return_type` `{class, id|name, value}` — accepts modifiers; re-parents onto the new `Type`
 - `set_method_note` `{class, id|name, value}` — the `@NOTE_NNNN` comment above the method, distinct from the `@CODE_NNNN` body managed by `set_method_body`
 
@@ -1035,13 +1035,16 @@ so an API-driven workflow can edit the model (`set_method_body`,
 hand-edits without touching the GUI. Both `_chdir` to the project directory
 first (codegen uses paths relative to it), exactly like the menu handlers.
 
-### `write_source` `{modified_only?}`
+### `write_source` `{modified_only?, force?}`
 Regenerates `.h`/`.cpp` from the model (`DataModel::SaveModifiedFiles` /
 `SaveAllFiles`).
 
 | param | type | default | notes |
 |-------|------|---------|-------|
 | `modified_only` | bool | `true` | `true` = only classes whose model changed since the last save (the dialog's "Save modifications"); `false` = rewrite every file |
+| `force` | bool | `false` | `modified_only` only: write even when source files were edited outside ClassBuilder since the last write |
+
+**Refused** (error, nothing written) when the project has no file yet (save it first), and — for `modified_only` — when a source file was modified outside ClassBuilder since the last write: the GUI asks "reload them?" there; run `read_source` first, or pass `force:true` to overwrite those edits. The error result lists `changed_files`.
 
 **Returns:** `{modified_only, warnings, errors, warning_messages?, error_messages?}`.
 **Note:** `set_method_body` and the other mutators update the *model* only; call
@@ -1164,6 +1167,8 @@ Roughly ordered by leverage for tool-driven workflows.
 ## Transport — localhost TCP socket
 
 The server listens on a **TCP socket at `127.0.0.1:51777`** (loopback only — never exposed off-box). Override the port with the `CB_CMD_PORT` environment variable (a DEV build typically uses a different port, e.g. `51778`, so it can run beside a stable instance). TCP replaced the old Windows named pipe so the connection method and these docs are **identical on Windows, macOS, and Linux** — connect from any language/tool that speaks TCP, one newline-terminated JSON request per line, one reply per line.
+
+**One request at a time, never a dialog.** Requests are handled strictly one after another (across all connections): a request that arrives while another runs waits its turn — it is never run inside the running one. A request never shows a message box: the box answers cautiously by itself (OK, otherwise No / Cancel) and its text comes back in the reply as top-level `"suppressed_dialogs": [...]` — read it, it is how e.g. a failed `open_doc` explains itself. A client that disconnects while its request runs is simply not answered. (The only commands that still open a window are the explicitly interactive ones, such as `new_model`'s wizard.)
 
 ### Connecting from PowerShell (example)
 

@@ -50,3 +50,24 @@ enum
 // MFC/Win32-free message box. `type` is a CBMB_* flag combination; the return
 // value is a CBMB_ID* code. Backed by Qt (qt/QtMessageBox.cpp).
 int CbMessageBox(const char* text, unsigned int type = CBMB_OK);
+
+// Non-interactive mode -- the command server runs every request in it. Nothing
+// a request triggers may open a modal: its nested event loop would dispatch the
+// next request inside the running one, and nobody may be there to answer. While
+// active, CbMessageBox shows nothing, returns the cautious answer (OK for a
+// plain box, otherwise No / Cancel) and records the text; model code that would
+// open a dialog asks Cb_IsNonInteractive() first.
+#include <string>
+#include <vector>
+
+class CbNonInteractiveScope
+{
+public:
+    CbNonInteractiveScope();
+    ~CbNonInteractiveScope();
+    CbNonInteractiveScope(const CbNonInteractiveScope&) = delete;
+    CbNonInteractiveScope& operator=(const CbNonInteractiveScope&) = delete;
+};
+bool Cb_IsNonInteractive();
+// The message texts suppressed since the last call (and forget them).
+std::vector<std::string> Cb_TakeSuppressedMessages();

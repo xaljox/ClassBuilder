@@ -952,7 +952,9 @@ static void RegisterBuiltinCommands()
             { error = "cannot enable serialize in a non-serialize model"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SaveState();
             pClass->SetSerialize(value ? 1 : 0);
+            pClass->Update();
 
             response["name"]      = ToStd(pClass->GetName());
             response["serialize"] = (bool)pClass->GetSerialize();
@@ -975,7 +977,9 @@ static void RegisterBuiltinCommands()
             if (!pClass) { error = "no such class"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SaveState();
             pClass->SetHFile(CbString(value.c_str()));
+            pClass->Update();
             response["name"]   = ToStd(pClass->GetName());
             response["h_file"] = ToStd(pClass->GetHFile());
         });
@@ -994,7 +998,9 @@ static void RegisterBuiltinCommands()
             if (!pClass) { error = "no such class"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SaveState();
             pClass->SetCppFile(CbString(value.c_str()));
+            pClass->Update();
             response["name"]     = ToStd(pClass->GetName());
             response["cpp_file"] = ToStd(pClass->GetCppFile());
         });
@@ -1056,7 +1062,9 @@ static void RegisterBuiltinCommands()
             if (!pClass) { error = "no such class"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SaveState();
             pClass->SetNote(CbString(value.c_str()));
+            pClass->Update();
             response["name"] = ToStd(pClass->GetName());
             response["note"] = ToStd(pClass->GetNote());
         });
@@ -4490,6 +4498,7 @@ static void RegisterBuiltinCommands()
             if (!pMember) { error = "no such member"; return; }
 
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMember->SaveState();
             pMember->SetAccess(acc);
             pMember->Update();
             response = ToJsonFull(pMember);
@@ -4557,7 +4566,9 @@ static void RegisterBuiltinCommands()
             if (!pMember) { error = "no such member"; return; }
 
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMember->SaveState();
             pMember->SetSerialize(value ? 1 : 0);
+            pMember->Update();
             response = ToJsonFull(pMember);
         });
 
@@ -4583,7 +4594,9 @@ static void RegisterBuiltinCommands()
             if (!pMember) { error = "no such member"; return; }
 
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMember->SaveState();
             pMember->SetInitialization(CbString(value.c_str()));
+            pMember->Update();
             response = ToJsonFull(pMember);
         });
 
@@ -4746,7 +4759,9 @@ static void RegisterBuiltinCommands()
             if (!pClass) { error = "no such class"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SaveState();
             pClass->SetMemberPrefix(CbString(value.c_str()));
+            pClass->Update();
             response["name"]          = ToStd(pClass->GetName());
             response["member_prefix"] = ToStd(pClass->GetMemberPrefix());
         });
@@ -4765,7 +4780,9 @@ static void RegisterBuiltinCommands()
             if (!pClass) { error = "no such class"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
+            pClass->SaveState();
             pClass->SetDllExport(value);
+            pClass->Update();
             response["name"]       = ToStd(pClass->GetName());
             response["dll_export"] = (bool)pClass->GetDllExport();
         });
@@ -5035,6 +5052,7 @@ static void RegisterBuiltinCommands()
             if (!pMethod) { error = "method not found"; return; }
 
             std::string body = params.value("body", std::string());
+            pMethod->SaveState();
             pMethod->SetCode(CbString(body.c_str()));
             pMethod->Update();
 
@@ -5200,7 +5218,9 @@ static void RegisterBuiltinCommands()
             Method* pMethod = ResolveMethod(pBC, params, error);
             if (!pMethod) return;
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMethod->SaveState();
             pMethod->SetDllExport(value);
+            pMethod->Update();
             response = ToJson(pMethod);
         });
 
@@ -5222,13 +5242,18 @@ static void RegisterBuiltinCommands()
             Method* pMethod = ResolveMethod(pBC, params, error);
             if (!pMethod) return;
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMethod->SaveState();
             pMethod->SetAccess(acc);
             pMethod->Update();
             response = ToJson(pMethod);
         });
 
-    // set_method_name({class, id, value}) — rename. `id` is preferred over
-    // `name` here since renaming by old-name is ambiguous with overloads.
+    // set_method_name({class, id, value, replace_references?}) — rename. `id`
+    // is preferred over `name` here since renaming by old-name is ambiguous with
+    // overloads. Method bodies that mention the old name are the GUI's "Replace"
+    // dialog; here (never a dialog) replace_references:true rewrites them all
+    // (whole-word, Method::SetNameAlways), false (default) leaves them. The
+    // reply's call_sites counts the method bodies that mentioned the old name.
     CbCommandServer::Register("set_method_name",
         [](const json& params, json& response, std::string& error)
         {
@@ -5238,15 +5263,32 @@ static void RegisterBuiltinCommands()
             if (className.empty()) { error = "missing 'class'"; return; }
             if (!params.contains("value")) { error = "missing 'value'"; return; }
             std::string value = params["value"].get<std::string>();
+            const bool replace = params.value("replace_references", false);
             BaseClass* pBC = pDoc->GetDataModelDoc().FindBaseClass(
                                                 CbString(className.c_str()));
             if (!pBC) { error = "no such class"; return; }
             Method* pMethod = ResolveMethod(pBC, params, error);
             if (!pMethod) return;
+
+            int callSites = 0;
+            DataModel::ClassIterator iClass(pDoc->GetDataModelDoc().GetDataModel());
+            while (++iClass)
+            {
+                BaseClass::MethodIterator iM(iClass);
+                while (++iM)
+                    if (iM.Get() != pMethod && iM->HasStringInCode(pMethod->GetName()))
+                        ++callSites;
+            }
+
             pDoc->GetDataModelDoc().MarkLastUndo();
-            pMethod->SetName(CbString(value.c_str()));
+            if (replace && !pMethod->IsConstructor() && !pMethod->IsDestructor())
+                pMethod->SetNameAlways(CbString(value.c_str()));
+            else
+                pMethod->SetName(CbString(value.c_str()));   // no dialog in a request
             pMethod->Update();
             response = ToJson(pMethod);
+            response["call_sites"]          = callSites;
+            response["references_replaced"] = replace && callSites > 0;
         });
 
     // set_method_return_type({class, id|name, value}) — value accepts
@@ -5376,7 +5418,9 @@ static void RegisterBuiltinCommands()
             Method* pMethod = ResolveMethod(pBC, params, error);
             if (!pMethod) return;
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pMethod->SaveState();
             pMethod->SetNote(CbString(value.c_str()));
+            pMethod->Update();
             response = ToJson(pMethod);
         });
 
@@ -5399,7 +5443,8 @@ static void RegisterBuiltinCommands()
             { error = "a class with that name already exists"; return; }
 
             pDataModel->GetDataModelDoc()->MarkLastUndo();
-            pClass->SetName(CbString(value.c_str()));
+            pClass->SetName(CbString(value.c_str()));   // SaveStates itself
+            pClass->Update();
             response["name"] = ToStd(pClass->GetName());
         });
 
@@ -5465,6 +5510,7 @@ static void RegisterBuiltinCommands()
                 if (!pArg) return;
 
                 dmd.MarkLastUndo();
+                pArg->SaveState();
                 apply(pArg, value, dmd, error);
                 if (!error.empty()) return;
                 // The argument has its own tree node; Argument::Update()
@@ -5678,7 +5724,9 @@ static void RegisterBuiltinCommands()
             if (!pBC) { error = "no such class"; return; }
 
             pDoc->GetDataModelDoc().MarkLastUndo();
+            pBC->SaveState();
             pBC->SetSuppressForwardDeclaration(value);
+            pBC->Update();
             response["name"]             = ToStd(pBC->GetName());
             response["suppress_forward"] = (bool)pBC->GetSuppressForwardDeclaration();
         });
@@ -5783,7 +5831,9 @@ static void RegisterBuiltinCommands()
             if (!pOT) { error = "type is a Class or ExternClass, not an OtherType"; return; }
 
             dmd.MarkLastUndo();
+            pOT->SaveState();
             pOT->SetDeclaration(CbString(decl.c_str()));
+            pOT->Update();
             response["name"]        = ToStd(pOT->GetName());
             response["declaration"] = ToStd(pOT->GetDeclaration());
         });
@@ -6266,7 +6316,41 @@ static void RegisterBuiltinCommands()
             if (!pDataModel) { error = "no active document"; return; }
 
             bool modifiedOnly = params.value("modified_only", true);
+            // Codegen ends by saving the .cbz; an untitled project would open
+            // the Save-As dialog (and write sources into the current directory).
+            if (pDoc->GetPathName().IsEmpty())
+            { error = "the project has no file yet; save it first (save_cb, then open_doc)"; return; }
             _chdir(pDoc->GetDataModelDoc().GetPath());
+
+            // Save Modifications first asks "source files were modified outside
+            // ClassBuilder -- reload them?" (DataModel::CheckUpdates). A request
+            // never shows that box, and its cautious "No" would overwrite those
+            // edits -- so refuse instead (read_source first), unless force:true.
+            if (modifiedOnly && !params.value("force", false))
+            {
+                const CbTime lastSave = pDataModel->GetLastSave();
+                std::vector<std::string> changed;
+                auto check = [&](const CbString& file) {
+                    struct _stat buf;
+                    if (!file.IsEmpty() && _stat(file, &buf) == 0 && lastSave < CbTime(buf.st_mtime))
+                        changed.push_back(ToStd(file));
+                };
+                check(pDataModel->GetHFile());
+                DataModel::ClassIterator iClass(pDataModel);
+                while (++iClass)
+                {
+                    check(iClass->GetHFile());
+                    check(iClass->GetCppFile());
+                }
+                if (!changed.empty())
+                {
+                    error = "source files were modified outside ClassBuilder since the last "
+                            "write (" + changed.front() + (changed.size() > 1 ? ", ..." : "") +
+                            "); run read_source first, or pass force:true to overwrite them";
+                    response["changed_files"] = changed;
+                    return;
+                }
+            }
 
             PipeSourceLog log;
             if (modifiedOnly) pDataModel->SaveModifiedFiles(&log);
@@ -6482,6 +6566,8 @@ std::string CbCommandServer::ProcessRequestLine(const std::string& jsonLine)
         resp["error"] = req.error;
     if (!req.response.is_null())
         resp["result"] = req.response;
+    if (!req.suppressed.empty())
+        resp["suppressed_dialogs"] = req.suppressed;
     return resp.dump();
 }
 
@@ -6513,6 +6599,10 @@ void CbCommandServer::DispatchOnUiThread(CbCommandRequest* pRequest)
             dmd.MarkLastUndo();
     }
 
+    // No modal may open while a request runs (see CbNonInteractiveScope):
+    // message boxes answer cautiously and are reported back to the client.
+    CbNonInteractiveScope nonInteractive;
+    Cb_TakeSuppressedMessages();             // drop anything stale
     try
     {
         it->second(pRequest->params, pRequest->response, pRequest->error);
@@ -6528,4 +6618,5 @@ void CbCommandServer::DispatchOnUiThread(CbCommandRequest* pRequest)
         pRequest->ok    = false;
         pRequest->error = "unknown exception";
     }
+    pRequest->suppressed = Cb_TakeSuppressedMessages();
 }
