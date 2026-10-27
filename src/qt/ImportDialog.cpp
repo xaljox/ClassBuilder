@@ -12,8 +12,11 @@
 //     suggestion, e.g. Class on a relation partner (a relation only comes along
 //     when both ends are imported as Class).
 // Pre-ticked (required) rows are shown in italics with the reason in "Needed
-// by". All rules live in the shared model engine; this file only renders the
-// plan and forwards clicks.
+// by". Source entities that are themselves Other types are not listed: an
+// Other type is only ever worth importing as the type of something imported,
+// and the engine already brings those along automatically (they still count in
+// the summary). All rules live in the shared model engine; this file only
+// renders the plan and forwards clicks.
 #include "QtImportDialog.h"
 #include "QtApp.h"                  // Qt_EnsureApplication / Qt_ExecModal
 
@@ -186,7 +189,8 @@ void Qt_ShowImportDialog(DataModelDoc* pTgt, void* ownerHwnd)
         "Tick the form each item is imported as. A <b>Class</b> brings its members, "
         "methods, constructors and bases, and pre-ticks what it needs (<i>italic</i>): "
         "member and argument types at least as <b>Other type</b> (cannot be dropped), "
-        "bases as <b>Extern class</b> (untick to drop the inheritance). A grey tick is a "
+        "bases as <b>Extern class</b> (untick to drop the inheritance). Other types "
+        "used by what you import come along automatically. A grey tick is a "
         "suggestion: a relation only comes along when both ends are imported as Class. "
         "Serialize is never imported; add it afterwards with Project &gt; Add Serialize."),
         &dlg);
@@ -253,8 +257,9 @@ void Qt_ShowImportDialog(DataModelDoc* pTgt, void* ownerHwnd)
         for (size_t i = 0; i < items.size(); ++i)
         {
             const CbImportRow& r = plan.rows[i];
-            bool show = text.isEmpty() ||
-                        QString::fromStdString(r.name).contains(text, Qt::CaseInsensitive);
+            bool show = r.sourceKind != CB_IMPORT_OTHERTYPE &&   // automatic, never listed
+                        (text.isEmpty() ||
+                         QString::fromStdString(r.name).contains(text, Qt::CaseInsensitive));
             if (involvedOnly->isChecked() &&
                 r.effectiveForm == CB_IMPORT_NONE && r.suggestedForm == CB_IMPORT_NONE)
                 show = false;
@@ -319,9 +324,13 @@ void Qt_ShowImportDialog(DataModelDoc* pTgt, void* ownerHwnd)
         }
 
         int total = plan.classes + plan.externClasses + plan.otherTypes;
+        int listed = 0;
+        for (const CbImportRow& r : plan.rows)
+            if (r.sourceKind != CB_IMPORT_OTHERTYPE)
+                ++listed;
         if (total == 0)
             summary->setText(QStringLiteral("%1 in <b>%2</b> that <b>%3</b> does not have. Nothing ticked yet.")
-                .arg(Plural((int)plan.rows.size(), "item", "items"),
+                .arg(Plural(listed, "item", "items"),
                      sourceCombo->currentText().toHtmlEscaped(), targetTitle.toHtmlEscaped()));
         else
             summary->setText(QStringLiteral("Import: <b>%1</b>, <b>%2</b>, <b>%3</b> &nbsp;&middot;&nbsp; "
