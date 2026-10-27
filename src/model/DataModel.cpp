@@ -2129,6 +2129,8 @@ void DataModel::SaveAllFiles(SourceLogInterface* pDialog)
 
         iClass->WriteHFile(pDialog, true);
         iClass->WriteCppFile(pDialog, true);
+        // Both headers have logged the deletions now (see SaveModifiedFiles).
+        iClass->SetModified("");
         pDialog->StepProgress();
     }
 
@@ -2172,9 +2174,17 @@ void DataModel::SaveModifiedFiles(SourceLogInterface* pDialog)
         }
         iClass->SortMethod(Method::CompareFileSaveState);
 
-        if (iClass->WriteHFile(pDialog))
+        const bool hWritten = iClass->WriteHFile(pDialog) != 0;
+        if (hWritten)
             writeMaster = true;
         iClass->WriteCppFile(pDialog);
+        // The pending "Deleted ..." log (_modified) is consumed by a written
+        // .cpp (UpdateCppHeader); a written .h only copies it. Clear it once the
+        // .h logged it too -- else a class whose .cpp is not rewritten (header-
+        // only template, or an unchanged .cpp) repeats the same block in its .h
+        // header on every later write. Nothing written: the log stays pending.
+        if (hWritten)
+            iClass->SetModified("");
         pDialog->StepProgress();
     }
 
