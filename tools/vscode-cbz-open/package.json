@@ -1,0 +1,21 @@
+{
+    "name": "cbz-open",
+    "publisher": "xaljox",
+    "displayName": "ClassBuilder: open .cbz",
+    "description": "Klik op een .cbz-bestand in VS Code en het opent in ClassBuilder (via de bestandskoppeling van het systeem).",
+    "version": "1.0.0",
+    "license": "MIT",
+    "engines": { "vscode": "^1.80.0" },
+    "categories": ["Other"],
+    "main": "./extension.js",
+    "contributes": {
+        "customEditors": [
+            {
+                "viewType": "xaljox.cbzOpen",
+                "displayName": "ClassBuilder",
+                "selector": [ { "filenamePattern": "*.cbz" } ],
+                "priority": "default"
+            }
+        ]
+    }
+}

@@ -1,0 +1,3 @@
+# Shellscript moet LF hebben; de .vsix is een zip
+*.sh   text eol=lf
+*.vsix binary
