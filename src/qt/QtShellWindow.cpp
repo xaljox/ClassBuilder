@@ -819,8 +819,11 @@ void QtShellWindow::buildMenus()
         _actCleanupExterns->setEnabled(doc != nullptr);
         _actCleanupOtherTypes->setEnabled(doc != nullptr);
         _actMergeTypes->setEnabled(doc != nullptr);
-        _actImport->setEnabled(doc != nullptr);
-        _actUpdateExternClasses->setEnabled(doc != nullptr);
+        // Import and Update read from ANOTHER open project: disabled until a
+        // second one is open, like the other entries that cannot apply yet.
+        const bool hasOtherDoc = doc && documentCount() > 1;
+        _actImport->setEnabled(hasOtherDoc);
+        _actUpdateExternClasses->setEnabled(hasOtherDoc);
     });
 
     // --- View (zoom routes to the active diagram window) --------------------
