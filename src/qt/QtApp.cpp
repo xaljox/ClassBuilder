@@ -142,12 +142,68 @@ void Cb_SetEmergencySaveHandler(void (*fn)()) { g_cbEmergencySave = fn; }
 
 #ifdef _WIN32
 
-static int cbGuiCrashFilter(DWORD code)
+// Append the fault address and the faulting stack (module!+offset per frame) to
+// %TEMP%\ClassBuilder-crash.log. Runs inside the SEH filter, where the faulting
+// frames are still on the stack, so RtlCaptureStackBackTrace sees them. Offsets
+// symbolize offline against the build's .pdb (dbghelp SymFromAddr). Plain C I/O,
+// no Qt: the GUI state is corrupt here.
+static void cbWriteCrashLog(EXCEPTION_POINTERS* info)
+{
+    char path[MAX_PATH];
+    DWORD n = ::GetTempPathA(MAX_PATH, path);
+    if (n == 0 || n + 24 > MAX_PATH)
+        return;
+    strcat_s(path, "ClassBuilder-crash.log");
+    FILE* f = nullptr;
+    if (fopen_s(&f, path, "a") != 0 || !f)
+        return;
+
+    auto writeFrame = [f](int index, void* addr) {
+        HMODULE mod = nullptr;
+        char name[MAX_PATH] = "?";
+        if (::GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                 GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                 (LPCSTR)addr, &mod) && mod)
+        {
+            ::GetModuleFileNameA(mod, name, MAX_PATH);
+            const char* base = strrchr(name, '\\');
+            fprintf(f, "  #%02d %s+0x%llx\n", index, base ? base + 1 : name,
+                    (unsigned long long)((char*)addr - (char*)mod));
+        }
+        else
+            fprintf(f, "  #%02d %p\n", index, addr);
+    };
+
+    SYSTEMTIME t;
+    ::GetLocalTime(&t);
+    fprintf(f, "=== %04d-%02d-%02d %02d:%02d:%02d  code 0x%08lx\n",
+            t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond,
+            info && info->ExceptionRecord ? info->ExceptionRecord->ExceptionCode : 0);
+    if (info && info->ExceptionRecord)
+    {
+        const EXCEPTION_RECORD* r = info->ExceptionRecord;
+        if (r->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && r->NumberParameters >= 2)
+            fprintf(f, "  %s address 0x%llx\n", r->ExceptionInformation[0] ? "write" : "read",
+                    (unsigned long long)r->ExceptionInformation[1]);
+        fprintf(f, "  fault at:\n");
+        writeFrame(-1, r->ExceptionAddress);
+    }
+    void* frames[62];
+    const USHORT count = ::RtlCaptureStackBackTrace(0, 62, frames, nullptr);
+    fprintf(f, "  stack:\n");
+    for (USHORT i = 0; i < count; ++i)
+        writeFrame(i, frames[i]);
+    fclose(f);
+}
+
+static int cbGuiCrashFilter(DWORD code, EXCEPTION_POINTERS* info)
 {
     // Only an access violation (the dock-reparent fault). Everything else --
     // C++ exceptions (0xE06D7363), breakpoints, stack overflow -- propagates.
-    return (code == EXCEPTION_ACCESS_VIOLATION)
-         ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH;
+    if (code != EXCEPTION_ACCESS_VIOLATION)
+        return EXCEPTION_CONTINUE_SEARCH;
+    cbWriteCrashLog(info);
+    return EXCEPTION_EXECUTE_HANDLER;
 }
 
 // The crash dialog runs on its OWN thread (see cbHandleFatalGuiCrash): pumping a
@@ -155,9 +211,10 @@ static int cbGuiCrashFilter(DWORD code)
 static DWORD WINAPI cbDialogThread(LPVOID)
 {
     ::MessageBoxW(nullptr,
-        L"ClassBuilder hit a fatal Qt dock error and must close.\n\n"
+        L"ClassBuilder hit a fatal error and must close.\n\n"
         L"Your open models were saved next to their files as\n"
-        L"\"<name>.recovered.cbz\" -- reopen those to continue.",
+        L"\"<name>.recovered.cbz\" -- reopen those to continue.\n\n"
+        L"Details: %TEMP%\\ClassBuilder-crash.log",
         L"ClassBuilder - work saved",
         MB_OK | MB_ICONERROR | MB_TOPMOST | MB_SETFOREGROUND);
     return 0;
@@ -204,7 +261,10 @@ static LONG WINAPI cbUnhandledExceptionFilter(EXCEPTION_POINTERS* info)
 {
     if (info && info->ExceptionRecord &&
         info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION)
+    {
+        cbWriteCrashLog(info);
         cbHandleFatalGuiCrash();   // save + dialog + ExitProcess -- never returns
+    }
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -217,7 +277,7 @@ bool cbGuardedNotify(QApplication* app, QObject* receiver, QEvent* event)
     {
         return app->QApplication::notify(receiver, event);   // base, not the override
     }
-    __except (cbGuiCrashFilter(GetExceptionCode()))
+    __except (cbGuiCrashFilter(GetExceptionCode(), GetExceptionInformation()))
     {
         cbHandleFatalGuiCrash();   // native dialog + save + ExitProcess -- never returns
         return false;              // unreachable; satisfies the compiler
