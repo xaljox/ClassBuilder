@@ -1687,7 +1687,15 @@ CClassBuilderDoc* QtShellWindow::openDocument(const QString& path)
     doc->SetPostFlushHook(&QtShellWindow::docPostFlushThunk, this);
     if (!doc->OnOpenDocument(path.toLocal8Bit().constData()))
     {
-        delete doc;
+        // Deliberately NOT deleted: a load that failed mid-stream leaves a half-
+        // deserialized object graph whose relation pointers were read from a
+        // misaligned stream, and the destructor cascade walks them -> access
+        // violation (proven 2026-10-27: corrupt .cbz -> OK on the error box ->
+        // crash; without the delete, none). Leaking on this rare path beats a
+        // crash. Pristine failures (missing / legacy file) never got that far,
+        // so they can be deleted.
+        if (!doc->LoadStarted())
+            delete doc;
         return nullptr;
     }
     DocEntry* entry = addDocument(doc);

@@ -61,6 +61,9 @@ public:
     // as the MFC OnNewDocument).
     int  OnNewDocument();
     int  OnOpenDocument(const char* path);    // .cbz only
+    // True once OnOpenDocument began deserializing: after a FAILED open such a
+    // doc holds a half-built object graph that must not be destroyed.
+    bool LoadStarted() const { return m_loadStarted; }
     int  OnSaveDocument(const char* path);    // .cbz only (with backup dance)
     // Bare model write for crash recovery ONLY: serialize straight to a fresh
     // .cbz with NO backup dance and NO SetModifiedFlag/view notification (which
@@ -134,6 +137,7 @@ private:
     CbString m_title;
     int      m_modified  = 0;
     bool     m_firstSave = true;
+    bool     m_loadStarted = false;
 
     // View-refresh coalescing, tracked per view type so a pure CD edit need not
     // rebuild the trees or repaint SD (the precision lives in the Touches

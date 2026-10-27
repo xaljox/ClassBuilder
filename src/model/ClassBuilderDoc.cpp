@@ -345,6 +345,7 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
         CbZstdInBuf zbuf(is);
         std::istream zis(&zbuf);
         CbArchive ar(zis);
+        m_loadStarted = true;
         m_impl->dataModelDoc.Serialize(ar);
         // Line-ending default for pre-v3 .cbz. _crlf reuses the dead _mfcSerialize
         // slot, so an old file's byte is the stale MFC value, not a real CRLF/LF
@@ -368,6 +369,9 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
     }
     catch (int code)
     {
+        // The read set the SHARED static to this file's version; every other
+        // open document reads its undo snapshots with it. Restore "current".
+        m_impl->dataModelDoc._objectVersion = INT_MAX;
         Cb_EndWaitCursor();
         char buf[768];
         if (code == CB_ARCHIVE_BAD_STREAM)
@@ -381,6 +385,7 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
     }
     catch (...)
     {
+        m_impl->dataModelDoc._objectVersion = INT_MAX;   // see catch (int)
         Cb_EndWaitCursor();
         std::string msg = std::string("CbArchive load failed for '") + path +
                           "' (unknown exception).";
