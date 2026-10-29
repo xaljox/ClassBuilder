@@ -7,6 +7,10 @@
 * Purpose:       Declaration of class 'Method'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* October 29, 2026 12:11 
+*     Added method 'SetConstexpr'
+*     Added method 'GetConstexpr'
+*     Added member '_constexpr'
 *
 * Copyright 2026, Jimmy Venema
 * Licensed under the MIT License (see the LICENSE file).
@@ -50,6 +54,7 @@ private:
     bool _declare;
     bool _implement;
     bool _delete;
+    bool _constexpr;
 
 protected:
     CbString _code;
@@ -150,6 +155,8 @@ public:
     void SetCode(const CbString& rCode);
     bool GetConst();
     void SetConst(bool val);
+    bool GetConstexpr() const;
+    void SetConstexpr(bool val);
     bool GetDeclare() const;
     void SetDeclare(bool declare);
     bool GetDelete() const;
@@ -201,6 +208,26 @@ inline void Method::SetCallingConvention(const CbString& rCallingConvention)
 {//@CODE_19530
     _callingConvention = rCallingConvention;
 }//@CODE_19530
+
+
+
+/*@NOTE_41509
+Returns the value of member '_constexpr'.
+*/
+inline bool Method::GetConstexpr() const
+{//@CODE_41509
+    return _constexpr;
+}//@CODE_41509
+
+
+
+/*@NOTE_41510
+Set the value of member '_constexpr' to 'val'.
+*/
+inline void Method::SetConstexpr(bool val)
+{//@CODE_41510
+    _constexpr = val;
+}//@CODE_41510
 
 
 

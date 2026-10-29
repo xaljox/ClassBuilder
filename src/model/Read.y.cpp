@@ -475,6 +475,11 @@ static void CheckInitStaticMembers(CbString initStaticMembers)
 		BaseClass::MemberIterator iMember(g_pClass, &Member::GetStatic);
 		while (++iMember)
 		{
+			// A static constexpr member is defined in the class declaration,
+			// not in this block (Class::WriteCppFile skips it).
+			if (iMember->GetConstexpr())
+				continue;
+
 			CbString str;
 			str += iMember->GetTypeName() + g_pClass->GetName() + "::" 
 				+ g_pClass->GetMemberPrefix() + iMember->GetVariableName();

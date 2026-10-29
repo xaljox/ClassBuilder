@@ -7,6 +7,10 @@
 * Purpose:       Method implementations of class 'Member'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* October 29, 2026 12:11 
+*     Added method 'SetConstexpr'
+*     Added method 'GetConstexpr'
+*     Added member '_constexpr'
 *
 * Copyright 2026, Jimmy Venema
 * Licensed under the MIT License (see the LICENSE file).
@@ -42,6 +46,7 @@ Member::Member(BaseClass* pBaseClass, Type* pType) //@INIT_831
     , _bitField(false)
     , _bitFieldSize(0)
     , _mutable(0)
+    , _constexpr(false)
 {//@CODE_831
     ConstructorInclude(pBaseClass);
 
@@ -71,6 +76,7 @@ Member::Member(BaseClass* pBaseClass, Member* pMember) //@INIT_1386
     , _bitField(pMember->_bitField)
     , _bitFieldSize(pMember->_bitFieldSize)
     , _mutable(pMember->_mutable)
+    , _constexpr(pMember->_constexpr)
 {//@CODE_1386
     // Rename while the name already exists
     while (pBaseClass->FindMember(Variable::GetName()))
@@ -108,6 +114,7 @@ Member::Member(BaseClass* pBaseClass, Type* pType, Member* pMember) //@INIT_7562
     , _bitField(pMember->_bitField)
     , _bitFieldSize(pMember->_bitFieldSize)
     , _mutable(pMember->_mutable)
+    , _constexpr(pMember->_constexpr)
 {//@CODE_7562
     // Rename while the name already exists
     while (pBaseClass->FindMember(Variable::GetName()))
@@ -140,6 +147,7 @@ Member::Member() //@INIT_178
     , _bitField(false)
     , _bitFieldSize(0)
     , _mutable(0)
+    , _constexpr(false)
 {//@CODE_178
     SerializeConstructorInclude();
 
@@ -209,6 +217,7 @@ Member& Member::CopyValuesFrom(Member& rMember)
     _bitField = rMember._bitField;
     _bitFieldSize = rMember._bitFieldSize;
     _mutable = rMember._mutable;
+    _constexpr = rMember._constexpr;
     
     if (_serialize)
     {
@@ -904,6 +913,11 @@ void Member::SetItemText()
     if (GetStatic())
         itemText += "static ";
 
+    // constexpr exists for STATIC data members only (C++ has no non-static
+    // constexpr member); the in-class initializer is added by the header writer.
+    if (GetStatic() && GetConstexpr())
+        itemText += "constexpr ";
+
     if (GetMutable())
         itemText += "mutable ";
 
@@ -1292,6 +1306,7 @@ void Member::Serialize(CbArchive& archive)
         archive << _bitField;
         archive << _bitFieldSize;
         archive << _mutable;
+        archive << _constexpr;
     }
     else
     {
@@ -1305,6 +1320,10 @@ void Member::Serialize(CbArchive& archive)
             archive >> _bitField;
             archive >> _bitFieldSize;
             archive >> _mutable;
+        }
+        if (4 <= _objectVersion)
+        {
+            archive >> _constexpr;
         }
     }
 }

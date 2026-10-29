@@ -7,6 +7,16 @@
 * Purpose:       Declaration of class 'CbStringBuilder'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* October 29, 2026 11:58 
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
+*     Update comment header
 * August 24, 2026 14:03 JV License text updated
 *     Update comment header
 *     Update comment header

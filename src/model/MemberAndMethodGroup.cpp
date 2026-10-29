@@ -308,6 +308,7 @@ int MemberAndMethodGroup::OnAddMethod(bool checkOnly)
             pMethod->SetStatic(iMethod->GetStatic());
             pMethod->SetConst(iMethod->GetConst());
             pMethod->SetInline(iMethod->GetInline());
+            pMethod->SetConstexpr(iMethod->GetConstexpr());
         }
 
         AddMethodLast(pMethod);

@@ -289,6 +289,7 @@ Rich record for a member: type, access, flags, initialization, note, getter/sett
   "type": "int",
   "access": "private",
   "static": false,
+  "constexpr": false,         // static members only
   "serialize": true,
   "initialization": "0",
   "note": "...",
@@ -297,7 +298,7 @@ Rich record for a member: type, access, flags, initialization, note, getter/sett
 }
 ```
 
-### `add_member` `{class, name, type, access?, static?, serialize?, initialization?, note?, getter?, setter?}`
+### `add_member` `{class, name, type, access?, static?, constexpr?, serialize?, initialization?, note?, getter?, setter?}`
 Creates a new member.
 
 | param | type | default | notes |
@@ -307,6 +308,7 @@ Creates a new member.
 | `type` | string | required | accepts modifiers (`Foo*`, `Foo&`, `Foo[]`, `Foo[N]`); bare type must already exist |
 | `access` | `"public"` \| `"protected"` \| `"private"` | `"private"` | |
 | `static` | bool | `false` | |
+| `constexpr` | bool | `false` | `static constexpr T _x = <initialization>;` in the class, no definition in the `.cpp`. Static members only (refused otherwise). The result carries a `warning` when the initialization is empty or calls a method of the same class (see `set_member_constexpr`) |
 | `serialize` | bool | `true` | include in generated `Serialize` body |
 | `initialization` | string | empty | C++ initializer expression |
 | `note` | string | empty | |
@@ -326,7 +328,8 @@ Renames the member; rejects collisions with other members on the same class.
 Changes the member's type. `value` accepts modifiers like `add_member`. Re-parents the member onto the new `Type` (matches the dialog's `Type::MoveVariableLast` path). Existing getter/setter are **not** auto-regenerated — call `set_member_getter` / `set_member_setter` explicitly if signatures need to refresh.
 
 ### `set_member_access` `{class, name, value}` — `"public"` / `"protected"` / `"private"`
-### `set_member_static` `{class, name, value}` — bool. Keeps getter/setter static-flag in sync (mirrors dialog); the getter is `const` exactly when the member is not static.
+### `set_member_static` `{class, name, value}` — bool. Keeps getter/setter static-flag in sync (mirrors dialog); the getter is `const` exactly when the member is not static. `false` also clears `constexpr` (static members only).
+### `set_member_constexpr` `{class, name, value}` — bool. The Member dialog's Constexpr box: `static constexpr T _x = <initialization>;` in the class declaration, no definition in the `.cpp`; `read_source` then skips the member in the `.cpp`'s static-member block. Refused for a non-static member. Warns (does not refuse) when the initialization is empty -- the declaration then has no value and does not compile -- or calls a method of the **same** class: in the class declaration the class is still incomplete, so that does not compile either; keep a `const` static member with its value in the `.cpp` for it (a `constexpr` builder still gives constant initialization). `set_member_initialization` and `add_member` give the same warnings.
 ### `set_member_serialize` `{class, name, value}` — bool
 ### `set_member_initialization` `{class, name, value}` — string (use `""` to clear)
 ### `set_member_note` `{class, name, value}` — string
@@ -341,7 +344,7 @@ Manage the member's `GetMemberMethod` / `SetMemberMethod`.
 
 ---
 
-### `add_method` `{class, name, return_type?, args?, access?, virtual?, static?, const?, pure?, inline?, body?}`
+### `add_method` `{class, name, return_type?, args?, access?, virtual?, static?, const?, pure?, inline?, constexpr?, body?}`
 Creates a new method on the class. Goes through the same path as a GUI add — undo, view refresh, `NotifyAddMethod` all run.
 
 | param | type | default | notes |
@@ -353,12 +356,13 @@ Creates a new method on the class. Goes through the same path as a GUI add — u
 | `access` | `"public"`\|`"protected"`\|`"private"` | `"public"` | |
 | `virtual`, `static`, `const`, `pure` | bool | `false` | `static` excludes the other three (error), as in the Method dialog |
 | `inline` | bool | `false` | definition goes into the header's `CB_INLINES` section instead of the `.cpp`; refused for a `pure` method and on an extern class (see `set_method_inline`) |
-| `body` | string | empty | code for the `//@CODE_NNNN` user region |
+| `constexpr` | bool | `false` | `constexpr` on declaration and definition; constexpr is implicitly inline, so the definition goes into the header's `CB_INLINES` section (the separate `inline` flag is left as given). Refused for a `pure` method and on an extern class (see `set_method_constexpr`) |
+| `body` | string | empty | code for the `//@CODE_NNNN` user region -- the code INSIDE the method's braces, which CB writes itself. A body that is one whole `{ ... }` block has those outer braces removed (the reply then carries a `note`) |
 
 **Returns:** the created `MethodRecord`.
 
 ### `set_method_body` `{class, name | id, body}`
-Replaces the user-region body of an existing method. Prefer `id` when overloads exist.
+Replaces the user-region body of an existing method. Prefer `id` when overloads exist. As in `add_method`, a body that is one whole `{ ... }` block has its outer braces removed (`note` in the reply).
 **Returns:** `MethodRecord`. If the method is a constructor or destructor and the new body lacks `ConstructorInclude(...)` / `DestructorInclude(...)`, the result also includes a `warning` field — the operation still succeeds, but relation wiring / cascade-delete will be missing in the generated code.
 
 ### `delete_method` `{class, name | id}`
@@ -379,7 +383,7 @@ The body starts as the GUI's stub: `ConstructorInclude(<parents>);` + `// Put in
 | `access` | `"public"`/`"protected"`/`"private"` | `"public"` | overrides the default |
 | `body` | string | empty | constructor body (`@CODE_NNNN` region), appended after the `ConstructorInclude` stub |
 | `replace_body` | bool | `false` | `true` = `body` replaces the stub instead; the result then carries a `warning` when it lacks `ConstructorInclude(...)` (relation wiring missing), as `set_method_body` does |
-| `seed_args` | bool | `true` | `false` = skip `CreateArguments`: the constructor gets only the given `args`. The stub still calls `ConstructorInclude(<parents>)`, so the result carries a `warning` naming any parent argument missing from `args` |
+| `seed_args` | bool | `true` | `false` = skip `CreateArguments`: the constructor gets only the given `args`. The stub still calls `ConstructorInclude(<parents>)`, so the result carries a `warning` naming any parent argument missing from `args`. Without an `init`, the generated initializer list passes only arguments the constructor has: a member without one is value-initialized (`_x()`), a base / member-class constructor argument without one is left out |
 
 **Returns:** the `MethodRecord` for the new constructor.
 
@@ -396,6 +400,7 @@ Same rule as the Method dialog: `set_method_static true` clears `const` / `virtu
 - `set_method_static` `{class, id|name, value:bool}`
 - `set_method_const` `{class, id|name, value:bool}`
 - `set_method_pure` `{class, id|name, value:bool}`
+- `set_method_constexpr` `{class, id|name, value:bool}` — the Method dialog's Constexpr box: `constexpr` on the declaration and the definition, which goes into the header's `CB_INLINES` section like an inline method (constexpr is implicitly inline; the Inline flag itself is left alone). Refused as `set_method_inline` is, and for constructors / destructors (not supported yet)
 - `set_method_inline` `{class, id|name, value:bool}` — the Method dialog's Inline box: on the next `write_source` the definition moves from the `.cpp` into the header's `CB_INLINES` section (and back on `false`). Turning it on is refused, as in the dialog, for a pure, `= delete` or not-implemented method and for a method of an extern class
 - `set_method_dll_export` `{class, id|name, value:bool}`
 - `set_method_name` `{class, id, value, replace_references?}` — rename; prefer `id` since name lookup is ambiguous with overloads. Method bodies that call the old name are what the GUI's Replace dialog lists: `replace_references:true` rewrites them all (whole word), `false` (default) leaves them. The reply adds `call_sites` (bodies mentioning the old name) and `references_replaced`
@@ -1073,6 +1078,18 @@ Imports on-disk hand-edits back into the model — `//@CODE` bodies and
 
 ---
 
+## Project version
+
+### `get_version` `{}`
+The active project's version (Project Settings) and what Compact Version would make of it.
+**Returns:** `{version, highest_gate, proposed}` -- `highest_gate` is the highest `N` of every `if (N <= _objectVersion)` read gate in the model's `Serialize` / `SerializeRelations` bodies (`null` when none), `proposed` = `highest_gate + 1`. A member added now gets `InitialVersion = version + 1`; its read gate is generated once the version has grown to it, i.e. on the **second** `write_source` after adding it (the first one writes the field but does not read it yet -- check the `.cpp` before building). For ClassBuilder's **own** model a new field's gate must stay `<= kCbzFormatVersion` in `src/model/CbCbzFile.h` (raise that with it): the gates of CB's own classes are compared with the **format** of the file, not with the project version.
+
+### `compact_version` `{}`
+The Compact Version button: when `version > highest_gate + 1`, sets it to `highest_gate + 1` and clamps every object's `InitialVersion` above that down to it. Run it before adding a field to ClassBuilder's own model, so the field gets the next format number.
+**Returns:** `{changed, version, previous, highest_gate, clamped}`.
+
+---
+
 ## CBZ round-trip (test only — see warning)
 
 > **WARNING:** `load_cb` / `save_cb` are parity-test conveniences, not production-quality. `load_cb` corrupts views holding pointers into the swapped-out model — typically crashes the process within seconds (`ucrtbase` __fastfail). Use only against an inactive doc you can throw away. A clean rewrite is deferred to the Qt port.
@@ -1083,7 +1100,7 @@ Writes the active doc as `.cbz` (CbArchive + Zstd). Does not change the doc's mo
 
 ### `load_cb` `{path}`
 Replaces the active doc's contents from `path` via the CbArchive code path. **Crashes the GUI shortly after** — see warning above.
-**Returns:** `{title, path, bytes_logical, objects_loaded}`.
+**Returns:** `{title, path, bytes_logical, objects_loaded, format}` -- `format` is the .cbz format the file was read as (3 for every file without the format header, see `CbCbzFile.h`).
 
 ---
 
@@ -1100,6 +1117,7 @@ Replaces the active doc's contents from `path` via the CbArchive code path. **Cr
   "const": false,
   "pure": false,
   "inline": false,
+  "constexpr": false,
   "dll_export": false,
   "args": [ { "name": "x", "type": "int", "default": "" } ]
 }

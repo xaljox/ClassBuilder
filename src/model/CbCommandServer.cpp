@@ -30,6 +30,7 @@
 #include <functional>
 #include <regex>
 #include "CbZstdStream.h"
+#include "CbCbzFile.h"     // Cb_ReadCbz / Cb_WriteCbz
 #include "SourceLogInterface.h"
 #include "ParseLogInterface.h"
 #ifdef _WIN32
@@ -245,6 +246,7 @@ namespace
         j["const"]       = (bool)pMethod->GetConst();
         j["pure"]        = (bool)pMethod->GetPure();
         j["inline"]      = (bool)pMethod->GetInline();
+        j["constexpr"]   = (bool)pMethod->GetConstexpr();
         j["dll_export"]  = (bool)pMethod->GetDllExport();
 
         json args = json::array();
@@ -274,6 +276,7 @@ namespace
         j["type"]           = ToStd(pMember->GetTypeName());
         j["access"]         = AccessName(pMember->GetAccess());
         j["static"]         = (bool)pMember->GetStatic();
+        j["constexpr"]      = (bool)pMember->GetConstexpr();
         j["serialize"]      = (bool)pMember->GetSerialize();
         j["initialization"] = ToStd(pMember->GetInitialization());
         j["note"]           = ToStd(pMember->GetNote());
@@ -304,20 +307,22 @@ namespace
 
     // Resolve a Method by either {id:N} (preferred for overloads) or
     // {name:"X"}. Sets `error` and returns NULL on miss / bad params.
-    // Same rule as the Method dialog's Inline check box: only an implemented,
-    // non-pure, non-deleted method of a Class (an extern class has no
-    // definitions). Returns the refusal, or nullptr when inline is allowed.
-    const char* InlineRefusal(Method* pMethod)
+    // Same rule as the Method dialog's Inline / Constexpr check boxes: only an
+    // implemented, non-pure, non-deleted method of a Class (an extern class has
+    // no definitions). `what` is "inline" or "constexpr". Returns the refusal,
+    // or an empty string when the flag is allowed.
+    std::string DefinitionFlagRefusal(Method* pMethod, const char* what)
     {
+        const std::string w(what);
         if (!pMethod->GetBaseClass()->IsClass())
-            return "only a method of a class (not an extern class) can be inline";
+            return "only a method of a class (not an extern class) can be " + w;
         if (pMethod->GetPure())
-            return "a pure method cannot be inline";
+            return "a pure method cannot be " + w;
         if (pMethod->GetDelete())
-            return "a deleted (= delete) method cannot be inline";
+            return "a deleted (= delete) method cannot be " + w;
         if (!pMethod->GetImplement())
-            return "a method that is not implemented cannot be inline";
-        return nullptr;
+            return "a method that is not implemented cannot be " + w;
+        return std::string();
     }
 
     // add_constructor `init`: a comma list "_a(0), Base(x, y)" is laid out like
@@ -390,6 +395,145 @@ namespace
             first = false;
         }
         return out;
+    }
+
+    // A method `body` is the //@CODE region INSIDE the braces CB writes itself.
+    // When the caller sent the whole definition block -- the body is one
+    // `{ ... }` from its first to its last non-blank character -- drop those
+    // outer braces (and the line breaks right inside them) so they don't end up
+    // doubled. Counts braces outside string / char literals and comments, so
+    // "{ a } { b }" (two blocks) is left alone. Returns true when stripped.
+    bool StripOuterBraces(std::string& body)
+    {
+        const size_t b = body.find_first_not_of(" \t\r\n");
+        const size_t e = body.find_last_not_of(" \t\r\n");
+        if (b == std::string::npos || body[b] != '{' || body[e] != '}')
+            return false;
+        int depth = 0;
+        char quote = 0;
+        for (size_t i = b; i <= e; ++i)
+        {
+            const char c = body[i];
+            if (quote)
+            {
+                if (c == '\\') ++i;
+                else if (c == quote) quote = 0;
+                continue;
+            }
+            if (c == '"' || c == '\'') { quote = c; continue; }
+            if (c == '/' && i + 1 <= e && body[i + 1] == '/')
+            {   // line comment: skip to the end of the line
+                while (i <= e && body[i] != '\n') ++i;
+                continue;
+            }
+            if (c == '/' && i + 1 <= e && body[i + 1] == '*')
+            {
+                const size_t end = body.find("*/", i + 2);
+                if (end == std::string::npos || end > e) return false;
+                i = end + 1;
+                continue;
+            }
+            if (c == '{') ++depth;
+            else if (c == '}' && --depth == 0 && i != e)
+                return false;               // the first block closes early
+        }
+        if (depth != 0)
+            return false;
+        std::string inner = body.substr(b + 1, e - b - 1);
+        if (inner.compare(0, 2, "\r\n") == 0)      inner.erase(0, 2);
+        else if (!inner.empty() && inner[0] == '\n') inner.erase(0, 1);
+        const size_t last = inner.find_last_not_of(" \t");
+        inner.erase(last == std::string::npos ? 0 : last + 1);   // trailing indent before '}'
+        if (!inner.empty() && inner.back() != '\n')
+            inner += "\r\n";
+        body = inner;
+        return true;
+    }
+
+    // A static constexpr member's initializer sits IN the class declaration,
+    // where the class is still incomplete: calling a method of the same class
+    // there does not compile (keep `const T` with the value in the .cpp for
+    // that). Returns the first such method named as `Name(` in the
+    // initialization, or empty.
+    std::string SameClassCallInInit(Member* pMember)
+    {
+        const std::string init = ToStd(pMember->GetInitialization());
+        BaseClass::MethodIterator iMethod(pMember->GetBaseClass());
+        while (++iMethod)
+        {
+            const std::string name = ToStd(iMethod->GetName());
+            if (name.empty())
+                continue;
+            for (size_t at = init.find(name); at != std::string::npos;
+                 at = init.find(name, at + 1))
+            {
+                const bool startOk = at == 0 ||
+                    !(isalnum((unsigned char)init[at - 1]) || init[at - 1] == '_');
+                size_t after = at + name.size();
+                while (after < init.size() && init[after] == ' ')
+                    ++after;
+                if (startOk && after < init.size() && init[after] == '(')
+                    return name;
+            }
+        }
+        return std::string();
+    }
+
+    // Sets response["warning"] for a static constexpr member whose
+    // initialization is missing or calls a method of its own class.
+    void WarnConstexprMemberInit(Member* pMember, json& response)
+    {
+        if (!pMember->GetStatic() || !pMember->GetConstexpr())
+            return;
+        if (pMember->GetInitialization().IsEmpty())
+        {
+            response["warning"] =
+                "a static constexpr member needs an initialization "
+                "(set_member_initialization) -- the class declaration "
+                "has no value otherwise and will not compile";
+            return;
+        }
+        const std::string call = SameClassCallInInit(pMember);
+        if (!call.empty())
+            response["warning"] =
+                "the initialization calls " + call + "() of the same class: in "
+                "the class declaration the class is still incomplete, so this "
+                "does not compile. Use a const static member (value in the .cpp) "
+                "instead; a constexpr " + call + "() still makes it a constant "
+                "initialization";
+    }
+
+    // The highest N of every `if (N <= _objectVersion)` read gate in the model's
+    // Serialize / SerializeRelations bodies (-1 when there is none) -- the scan
+    // of the Project Settings dialog's Compact Version button.
+    int HighestSerializeGate(DataModelDoc& dmd)
+    {
+        int maxUsed = -1;
+        DataModelDoc::GtiIterator iGti(&dmd);
+        while (++iGti)
+        {
+            if (!iGti->IsMethod())
+                continue;
+            Method* pMethod = (Method*)iGti.operator->();
+            const CbString& name = pMethod->GetName();
+            if (name != "Serialize" && name != "SerializeRelations")
+                continue;
+            const std::string code = ToStd(pMethod->GetCode());
+            const std::string needle = "<= _objectVersion";
+            for (size_t hit = code.find(needle); hit != std::string::npos;
+                 hit = code.find(needle, hit + needle.size()))
+            {
+                size_t j = hit;
+                while (j > 0 && code[j - 1] == ' ')
+                    --j;
+                size_t end = j;
+                while (j > 0 && isdigit((unsigned char)code[j - 1]))
+                    --j;
+                if (j < end)
+                    maxUsed = std::max(maxUsed, atoi(code.substr(j, end - j).c_str()));
+            }
+        }
+        return maxUsed;
     }
 
     Method* ResolveMethod(BaseClass* pBC, const json& params, std::string& error)
@@ -4442,6 +4586,11 @@ static void RegisterBuiltinCommands()
                 wantSetter = (s != "none");
             }
 
+            // constexpr exists for static data members only (Member dialog rule).
+            const bool isConstexpr = params.value("constexpr", false);
+            if (isConstexpr && !params.value("static", false))
+            { error = "only a static member can be constexpr"; return; }
+
             dmd.MarkLastUndo();
 
             Member* pMember = new Member(pBC, pType);
@@ -4449,6 +4598,7 @@ static void RegisterBuiltinCommands()
             pMember->SetName(CbString(name.c_str()));
             pMember->SetAccess(acc);
             pMember->SetStatic   (params.value("static",    false) ? 1 : 0);
+            pMember->SetConstexpr(isConstexpr);
             pMember->SetSerialize(params.value("serialize", true)  ? 1 : 0);
             if (params.contains("initialization"))
                 pMember->SetInitialization(
@@ -4473,6 +4623,7 @@ static void RegisterBuiltinCommands()
             pMember->Add();
 
             response = ToJsonFull(pMember);
+            WarnConstexprMemberInit(pMember, response);
         });
 
     // delete_member({class, name}) — removes a member from a class.
@@ -4615,6 +4766,8 @@ static void RegisterBuiltinCommands()
             pDoc->GetDataModelDoc().MarkLastUndo();
             pMember->SaveState();
             pMember->SetStatic(value ? 1 : 0);
+            if (!value)
+                pMember->SetConstexpr(false);   // static members only (dialog rule)
             // Mirror the dialog: keep getter/setter static-flag in sync; a
             // static getter is never const, a non-static one always is.
             if (GetMemberMethod* pGet = pMember->GetGetMemberMethod())
@@ -4632,6 +4785,39 @@ static void RegisterBuiltinCommands()
             }
             pMember->Update();
             response = ToJsonFull(pMember);
+        });
+
+    // set_member_constexpr({class, name, value:bool}) -- the Member dialog's
+    // Constexpr check box: `static constexpr T _x = <initialization>;` in the
+    // class, no definition in the .cpp. Static members only. Warns (does not
+    // refuse) when the member has no initialization yet: a static constexpr
+    // member must be given its value in the class.
+    CbCommandServer::Register("set_member_constexpr",
+        [](const json& params, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            std::string className = params.value("class", std::string());
+            std::string name      = params.value("name",  std::string());
+            if (className.empty() || name.empty())
+            { error = "missing 'class' or 'name'"; return; }
+            if (!params.contains("value")) { error = "missing 'value'"; return; }
+            bool value = params["value"].get<bool>();
+
+            BaseClass* pBC = pDoc->GetDataModelDoc().FindBaseClass(
+                                                CbString(className.c_str()));
+            if (!pBC) { error = "no such class"; return; }
+            Member* pMember = pBC->FindMember(CbString(name.c_str()));
+            if (!pMember) { error = "no such member"; return; }
+            if (value && !pMember->GetStatic())
+            { error = "only a static member can be constexpr"; return; }
+
+            pDoc->GetDataModelDoc().MarkLastUndo();
+            pMember->SaveState();
+            pMember->SetConstexpr(value);
+            pMember->Update();
+            response = ToJsonFull(pMember);
+            WarnConstexprMemberInit(pMember, response);
         });
 
     // set_member_serialize({class, name, value:bool}) — controls whether
@@ -4687,6 +4873,7 @@ static void RegisterBuiltinCommands()
             pMember->SetInitialization(CbString(value.c_str()));
             pMember->Update();
             response = ToJsonFull(pMember);
+            WarnConstexprMemberInit(pMember, response);
         });
 
     // reinit_constructor({class, init=true, code=false}) -- regenerate a class's
@@ -5063,12 +5250,17 @@ static void RegisterBuiltinCommands()
                     if (params.value(flag, false))
                     { error = std::string("a static method cannot be ") + flag; return; }
             }
-            // ... and inline needs a class and a definition (see InlineRefusal).
+            // ... and inline needs a class and a definition (see DefinitionFlagRefusal).
             const bool isInline = params.value("inline", false);
             if (isInline && !pBC->IsClass())
             { error = "only a method of a class (not an extern class) can be inline"; return; }
             if (isInline && params.value("pure", false))
             { error = "a pure method cannot be inline"; return; }
+            const bool isConstexpr = params.value("constexpr", false);
+            if (isConstexpr && !pBC->IsClass())
+            { error = "only a method of a class (not an extern class) can be constexpr"; return; }
+            if (isConstexpr && params.value("pure", false))
+            { error = "a pure method cannot be constexpr"; return; }
 
             Method* pMethod = new Method(pBC, pRet);
             ApplyTypeModifiers(pMethod, ptRet);
@@ -5086,9 +5278,15 @@ static void RegisterBuiltinCommands()
             pMethod->SetConst  (params.value("const",   false) ? 1 : 0);
             pMethod->SetPure   (params.value("pure",    false) ? 1 : 0);
             pMethod->SetInline (isInline);
+            pMethod->SetConstexpr(isConstexpr);
 
+            bool bracesStripped = false;
             if (params.contains("body"))
-                pMethod->SetCode(CbString(params["body"].get<std::string>().c_str()));
+            {
+                std::string body = params["body"].get<std::string>();
+                bracesStripped = StripOuterBraces(body);
+                pMethod->SetCode(CbString(body.c_str()));
+            }
 
             // Arguments — created before Add so Method::Add picks them up
             // via its ArgumentIterator pass.
@@ -5120,6 +5318,9 @@ static void RegisterBuiltinCommands()
             pBC->NotifyAddMethod(pMethod);
 
             response = ToJson(pMethod);
+            if (bracesStripped)
+                response["note"] = "the body's outer { } were removed: CB writes "
+                                   "the method's braces itself";
         });
 
     // set_method_body({class, name | id, body}) — replaces the //@CODE_NNNN
@@ -5148,11 +5349,15 @@ static void RegisterBuiltinCommands()
             if (!pMethod) { error = "method not found"; return; }
 
             std::string body = params.value("body", std::string());
+            const bool bracesStripped = StripOuterBraces(body);
             pMethod->SaveState();
             pMethod->SetCode(CbString(body.c_str()));
             pMethod->Update();
 
             response = ToJson(pMethod);
+            if (bracesStripped)
+                response["note"] = "the body's outer { } were removed: CB writes "
+                                   "the method's braces itself";
 
             // Warn (don't block) when a constructor/destructor body is
             // replaced and the new body has lost the auto-stub include
@@ -5317,11 +5522,48 @@ static void RegisterBuiltinCommands()
             Method* pMethod = ResolveMethod(pBC, params, error);
             if (!pMethod) return;
             if (value)
-                if (const char* refusal = InlineRefusal(pMethod))
-                { error = refusal; return; }
+            {
+                const std::string refusal = DefinitionFlagRefusal(pMethod, "inline");
+                if (!refusal.empty()) { error = refusal; return; }
+            }
             pDoc->GetDataModelDoc().MarkLastUndo();
             pMethod->SaveState();
             pMethod->SetInline(value);
+            pMethod->Update();
+            response = ToJson(pMethod);
+        });
+
+    // set_method_constexpr({class, id|name, value:bool}) -- the Method dialog's
+    // Constexpr check box. constexpr is implicitly inline: on the next
+    // write_source the definition goes into the header's CB_INLINES section
+    // (keeping the separate Inline flag as it is). Same refusals as inline.
+    CbCommandServer::Register("set_method_constexpr",
+        [](const json& params, json& response, std::string& error)
+        {
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            std::string className = params.value("class", std::string());
+            if (className.empty()) { error = "missing 'class'"; return; }
+            if (!params.contains("value")) { error = "missing 'value'"; return; }
+            bool value = params["value"].get<bool>();
+            BaseClass* pBC = pDoc->GetDataModelDoc().FindBaseClass(
+                                                CbString(className.c_str()));
+            if (!pBC) { error = "no such class"; return; }
+            Method* pMethod = ResolveMethod(pBC, params, error);
+            if (!pMethod) return;
+            if (value)
+            {
+                std::string refusal = DefinitionFlagRefusal(pMethod, "constexpr");
+                // The constructor / destructor declaration text is built
+                // elsewhere and does not carry constexpr yet: the definition
+                // alone would not compile.
+                if (refusal.empty() && (pMethod->IsConstructor() || pMethod->IsDestructor()))
+                    refusal = "constexpr constructors / destructors are not supported yet";
+                if (!refusal.empty()) { error = refusal; return; }
+            }
+            pDoc->GetDataModelDoc().MarkLastUndo();
+            pMethod->SaveState();
+            pMethod->SetConstexpr(value);
             pMethod->Update();
             response = ToJson(pMethod);
         });
@@ -6563,6 +6805,66 @@ static void RegisterBuiltinCommands()
             if (!log.errorMsgs.empty())   response["error_messages"]   = log.errorMsgs;
         });
 
+    // get_version({}) -- the active project's version (Project Settings) and
+    // what Compact Version would make of it: highest_gate is the highest
+    // `N <= _objectVersion` read gate in the model's Serialize bodies (null when
+    // none), proposed = highest_gate + 1. A field added now gets
+    // InitialVersion = version + 1, read behind that gate once the version has
+    // grown to it (write_source twice). For ClassBuilder's own model the gate
+    // of a new field must stay <= kCbzFormatVersion (CbCbzFile.h).
+    CbCommandServer::Register("get_version",
+        [](const json& params, json& response, std::string& error)
+        {
+            (void)params;
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            DataModelDoc& dmd = pDoc->GetDataModelDoc();
+            const int gate = HighestSerializeGate(dmd);
+            response["version"]      = dmd.GetVersion();
+            response["highest_gate"] = gate < 0 ? json(nullptr) : json(gate);
+            response["proposed"]     = gate < 0 ? json(nullptr) : json(gate + 1);
+        });
+
+    // compact_version({}) -- the Compact Version button: when the version is
+    // above highest_gate + 1, set it to that and clamp every object's
+    // InitialVersion above it down to it, so the version-gate logic stays
+    // consistent. Replies {changed, version, previous, highest_gate, clamped}.
+    CbCommandServer::Register("compact_version",
+        [](const json& params, json& response, std::string& error)
+        {
+            (void)params;
+            CClassBuilderDoc* pDoc = GetActiveDoc();
+            if (!pDoc) { error = "no active document"; return; }
+            DataModelDoc& dmd = pDoc->GetDataModelDoc();
+            const int gate = HighestSerializeGate(dmd);
+            if (gate < 0)
+            { error = "no version-gated reads in any Serialize / SerializeRelations body"; return; }
+            const int previous = dmd.GetVersion();
+            const int proposed = gate + 1;
+            response["previous"]     = previous;
+            response["highest_gate"] = gate;
+            if (proposed >= previous)
+            {
+                response["changed"] = false;
+                response["version"] = previous;
+                response["clamped"] = 0;
+                return;
+            }
+            int clamped = 0;
+            DataModelDoc::GtiIterator iGti(&dmd);
+            while (++iGti)
+                if (iGti->GetInitialVersion() > proposed)
+                {
+                    iGti->SetInitialVersion(proposed);
+                    ++clamped;
+                }
+            dmd.SetVersion(proposed);
+            pDoc->SetModifiedFlag(1);
+            response["changed"] = true;
+            response["version"] = proposed;
+            response["clamped"] = clamped;
+        });
+
     // -- CBZ round-trip commands -------------------------------------------
 
     // save_cb({path}) — writes the active document to `path` via the
@@ -6582,12 +6884,9 @@ static void RegisterBuiltinCommands()
 
             try
             {
-                CbZstdOutBuf zbuf(os);
-                std::ostream zos(&zbuf);
-                CbArchive ar(zos);
-                pDoc->GetDataModelDoc().Serialize(ar);
+                const long long bytes = Cb_WriteCbz(pDoc->GetDataModelDoc(), os);
                 response["path"]            = path;
-                response["bytes_logical"]   = ar.GetTotalLength();
+                response["bytes_logical"]   = bytes;
             }
             catch (...)
             {
@@ -6621,48 +6920,47 @@ static void RegisterBuiltinCommands()
             std::ifstream is(path.c_str(), std::ios::binary);
             if (!is) { error = "could not open '" + path + "' for reading"; return; }
 
-            // Hold the archive in scope outside the try so the catch handlers
-            // can read its diagnostic state.
+            // The read info outlives the try so the catch handlers can report
+            // its diagnostic state.
             pDoc->DeleteContents();
-            CbZstdInBuf zbuf(is);
-            std::istream zis(&zbuf);
-            CbArchive ar(zis);
+            CbCbzReadInfo info;
             try
             {
-                pDoc->GetDataModelDoc().Serialize(ar);
+                Cb_ReadCbz(pDoc->GetDataModelDoc(), is, info);
                 pDoc->SetPathName(CbString(path.c_str()), 0 /*addToMru*/);
                 pDoc->SetModifiedFlag(0);
                 pDoc->NotifyStructureChanged();
                 response["title"]          = ToStd(pDoc->GetTitle());
                 response["path"]           = ToStd(pDoc->GetPathName());
-                response["bytes_logical"]  = ar.GetTotalLength();
-                response["objects_loaded"] = ar._objectsLoaded;
+                response["bytes_logical"]  = info.bytes;
+                response["objects_loaded"] = info.objects;
+                response["format"]         = info.format;
             }
             catch (int code)
             {
                 std::ostringstream oss;
                 oss << "CbArchive::Read short read (code " << code << ")"
-                    << " | last class loaded: " << ToStd(ar._lastLoadedClass)
-                    << " | objects so far: " << ar._objectsLoaded
-                    << " | byte offset: " << ar.GetTotalLength();
+                    << " | last class loaded: " << info.lastClass
+                    << " | objects so far: " << info.objects
+                    << " | byte offset: " << info.bytes;
                 error = oss.str();
             }
             catch (std::exception& e)
             {
                 std::ostringstream oss;
                 oss << "std::exception: " << e.what()
-                    << " | last class loaded: " << ToStd(ar._lastLoadedClass)
-                    << " | objects so far: " << ar._objectsLoaded
-                    << " | byte offset: " << ar.GetTotalLength();
+                    << " | last class loaded: " << info.lastClass
+                    << " | objects so far: " << info.objects
+                    << " | byte offset: " << info.bytes;
                 error = oss.str();
             }
             catch (...)
             {
                 std::ostringstream oss;
                 oss << "unknown exception during CbArchive deserialize"
-                    << " | last class loaded: " << ToStd(ar._lastLoadedClass)
-                    << " | objects so far: " << ar._objectsLoaded
-                    << " | byte offset: " << ar.GetTotalLength();
+                    << " | last class loaded: " << info.lastClass
+                    << " | objects so far: " << info.objects
+                    << " | byte offset: " << info.bytes;
                 error = oss.str();
             }
         });

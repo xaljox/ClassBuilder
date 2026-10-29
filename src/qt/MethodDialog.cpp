@@ -99,6 +99,7 @@ MethodDialog::MethodDialog(Method* pMethod, QWidget* parent)
     _ui->checkPure->setChecked(_pMethod->GetPure());
     _ui->checkVirtual->setChecked(_pMethod->GetVirtual());
     _ui->checkInline->setChecked(_pMethod->GetInline());
+    _ui->checkConstexpr->setChecked(_pMethod->GetConstexpr());
     _ui->checkPointerPointer->setChecked(
         _pMethod->GetPointerPointer());
     _ui->checkConstPointer->setChecked(_pMethod->GetConstPointer());
@@ -234,6 +235,8 @@ void MethodDialog::onPure()
         _ui->checkImplement->setChecked(false);
         _ui->checkInline->setChecked(false);
         _ui->checkInline->setEnabled(false);
+        _ui->checkConstexpr->setChecked(false);
+        _ui->checkConstexpr->setEnabled(false);
     }
     else if (_pMethod->GetBaseClass()->IsClass() &&
              !_ui->checkDelete->isChecked())
@@ -243,6 +246,8 @@ void MethodDialog::onPure()
             _pMethod->GetImplement() || _pMethod->GetPure());
         _ui->checkInline->setEnabled(true);
         _ui->checkInline->setChecked(_pMethod->GetInline());
+        _ui->checkConstexpr->setEnabled(true);
+        _ui->checkConstexpr->setChecked(_pMethod->GetConstexpr());
     }
 }
 
@@ -318,11 +323,15 @@ void MethodDialog::onImplement()
     {
         _ui->checkInline->setEnabled(true);
         _ui->checkInline->setChecked(_pMethod->GetInline());
+        _ui->checkConstexpr->setEnabled(true);
+        _ui->checkConstexpr->setChecked(_pMethod->GetConstexpr());
     }
     else
     {
         _ui->checkInline->setChecked(false);
         _ui->checkInline->setEnabled(false);
+        _ui->checkConstexpr->setChecked(false);
+        _ui->checkConstexpr->setEnabled(false);
     }
 }
 
@@ -412,6 +421,7 @@ bool MethodDialog::applyFieldChanges()
     const bool pure         = _ui->checkPure->isChecked();
     const bool isVirtual    = _ui->checkVirtual->isChecked();
     const bool isInline     = _ui->checkInline->isChecked();
+    const bool isConstexpr  = _ui->checkConstexpr->isChecked();
     const bool pointerPtr   = _ui->checkPointerPointer->isChecked();
     const bool constPointer = _ui->checkConstPointer->isChecked();
     const bool dllExport    = _ui->checkDllExport->isChecked();
@@ -429,6 +439,7 @@ bool MethodDialog::applyFieldChanges()
         constMethod == (_pMethod->GetConst()) &&
         dllExport == (_pMethod->GetDllExport()) &&
         isInline == _pMethod->GetInline() &&
+        isConstexpr == _pMethod->GetConstexpr() &&
         name == toQ(_pMethod->GetName()) &&
         note == toQ(_pMethod->GetNote()) &&
         pointer == (_pMethod->GetPointer()) &&
@@ -481,6 +492,7 @@ bool MethodDialog::applyFieldChanges()
     _pMethod->SetConst(constMethod);
     _pMethod->SetDllExport(dllExport);
     _pMethod->SetInline(isInline);
+    _pMethod->SetConstexpr(isConstexpr);
     _pMethod->SetName(toCb(name));
     _pMethod->SetNote(toCb(note));
     _pMethod->SetPointer(pointer);

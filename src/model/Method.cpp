@@ -7,6 +7,10 @@
 * Purpose:       Method implementations of class 'Method'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* October 29, 2026 12:11 
+*     Added method 'SetConstexpr'
+*     Added method 'GetConstexpr'
+*     Added member '_constexpr'
 *
 * Copyright 2026, Jimmy Venema
 * Licensed under the MIT License (see the LICENSE file).
@@ -52,6 +56,7 @@ Method::Method(BaseClass* pBaseClass, Type* pType) //@INIT_800
     , _declare(pBaseClass->IsClass())
     , _implement(pBaseClass->IsClass())
     , _delete(false)
+    , _constexpr(false)
 {//@CODE_800
     ConstructorInclude(pBaseClass);
 
@@ -83,6 +88,7 @@ Method::Method(BaseClass* pBaseClass, Method* pMethod) //@INIT_803
     , _declare(pMethod->_declare)
     , _implement(pMethod->_implement)
     , _delete(false)
+    , _constexpr(pMethod->_constexpr)
 {//@CODE_803
     // Rename while the name already exists
     if (pMethod->_virtual && !pMethod->IsDestructor())
@@ -138,6 +144,7 @@ Method::Method(Method* pOld) //@INIT_1572
     _callingConvention = pOld->_callingConvention;
     _declare = pOld->_declare;
     _implement = pOld->_implement;
+    _constexpr = pOld->_constexpr;
     
     // Put in your own code
 }//@CODE_1572
@@ -162,6 +169,7 @@ Method::Method(BaseClass* pBaseClass, Type* pType, Method* pMethod) //@INIT_7566
     , _declare(pMethod->_declare)
     , _implement(pMethod->_implement)
     , _delete(false)
+    , _constexpr(pMethod->_constexpr)
 {//@CODE_7566
     // Rename while the name already exists
     if (pMethod->_virtual && !pMethod->IsDestructor())
@@ -210,6 +218,7 @@ Method::Method() //@INIT_165
     , _declare(false)
     , _implement(false)
     , _delete(false)
+    , _constexpr(false)
 {//@CODE_165
     SerializeConstructorInclude();
 
@@ -407,6 +416,7 @@ Method& Method::CopyValuesFrom(Method& rMethod)
     _declare = rMethod._declare;
     _implement = rMethod._implement;
     _delete = rMethod._delete;
+    _constexpr = rMethod._constexpr;
     
     return *this;
 }//@CODE_1600
@@ -778,6 +788,10 @@ const CbString Method::GetInterfaceCpp()
 
     if (GetDataModelDoc()->GetDataModel()->GetModifiers() && GetDllExport())
         str += "AFX_EXT_CLASS ";
+
+    // constexpr on the definition too (the header's inline section).
+    if (GetConstexpr())
+        str += "constexpr ";
 
     str += GetTypeName();
 
@@ -1569,14 +1583,14 @@ void Method::SetIcon()
 	{
 		if (GetUntouched())
 		{
-			if (GetInline() && !IsConstructor() && !IsDestructor())
+			if ((GetInline() || GetConstexpr()) && !IsConstructor() && !IsDestructor())
 			{
 				Gti::SetIcon(ICON_PUBLIC_EMPTY_INLINE_METHOD + _access);
 				return;
 			}
 			offset += EMPTY_OFFSET;
 		}
-		else if (GetInline())
+		else if (GetInline() || GetConstexpr())
 		{
 			offset += INLINE_OFFSET;
 		}
@@ -1600,6 +1614,9 @@ void Method::SetItemText()
 
     if (GetVirtual())
         itemText += "virtual ";
+
+    if (GetConstexpr())
+        itemText += "constexpr ";
 
     if (GetDllExport())
         itemText += "AFX_EXT_CLASS ";
@@ -2013,6 +2030,7 @@ void Method::Serialize(CbArchive& archive)
         archive << _declare;
         archive << _implement;
         archive << _delete;
+        archive << _constexpr;
     }
     else
     {
@@ -2034,6 +2052,10 @@ void Method::Serialize(CbArchive& archive)
         if (2 <= _objectVersion)
         {
             archive >> _delete;
+        }
+        if (4 <= _objectVersion)
+        {
+            archive >> _constexpr;
         }
     }
 }

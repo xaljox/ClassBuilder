@@ -63,7 +63,7 @@ Anything outside those markers is regenerated and your edit is lost. In particul
 
 ## Serialization
 
-The serialization runtime is **`CbArchive`** ([serialize/CbSerialize.h](serialize/CbSerialize.h), [serialize/CbSerialize.cpp](serialize/CbSerialize.cpp)) — MFC-free, with explicit class registration via `CB_DECLARE_SERIAL` / `CB_IMPLEMENT_SERIAL`. Wire format v1 has no per-version gates: every field always written, single version check on read. `.cbz` files are a raw Zstd frame ([serialize/CbZstdStream.h](serialize/CbZstdStream.h)) around the CbArchive byte stream.
+The serialization runtime is **`CbArchive`** ([serialize/CbSerialize.h](serialize/CbSerialize.h), [serialize/CbSerialize.cpp](serialize/CbSerialize.cpp)) — MFC-free, with explicit class registration via `CB_DECLARE_SERIAL` / `CB_IMPLEMENT_SERIAL`. Wire format v1 has no per-version gates: every field always written, single version check on read. `.cbz` files are a raw Zstd frame ([serialize/CbZstdStream.h](serialize/CbZstdStream.h)) around the CbArchive byte stream. Since format 4 the stream starts with a small **format header** ([src/model/CbCbzFile.h](src/model/CbCbzFile.h)): the read gates of CB's own classes compare with the file's *format* version, kept apart from the *project* version (`DataModelDoc::_version`, which grows with every source write). Files without the header read as format ≤ 3. A new field in CB's own model needs `kCbzFormatVersion` raised to its gate (see `get_version` / `compact_version` in the command API).
 
 `CbObject` is the polymorphic root — a **bare class** (no `: public CObject`). DataModelDoc and other classes inherit from it directly; the framework integration lives in `CClassBuilderDoc` (which contains a `DataModelDoc` member, not is one).
 
@@ -73,7 +73,7 @@ Single inheritance is enforced for any class with `Serialize` enabled. The `Seri
 
 ## Pipe API
 
-`ClassBuilder` runs a JSON-over-TCP server on `127.0.0.1:51777` (`CB_CMD_PORT` to override; loopback only, all three platforms) ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/COMMAND_API.md](tools/COMMAND_API.md); `list_commands` on a running build is the authoritative list (162 registered). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The command API is also the intended way to drive port-related model migrations without modifying CB itself.
+`ClassBuilder` runs a JSON-over-TCP server on `127.0.0.1:51777` (`CB_CMD_PORT` to override; loopback only, all three platforms) ([src/model/CbCommandServer.cpp](src/model/CbCommandServer.cpp)). One JSON request per line, one reply per line. Reference and command list: [tools/COMMAND_API.md](tools/COMMAND_API.md); `list_commands` on a running build is the authoritative list (166 registered). Helper PowerShell scripts in [tools/](tools/) drive bulk model edits, audit serialize/relations parity, run round-trip tests, etc. The command API is also the intended way to drive port-related model migrations without modifying CB itself.
 
 ## Conventions
 

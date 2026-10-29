@@ -1743,8 +1743,8 @@ void Class::WriteCppFile(SourceLogInterface* pDialog, bool unconditional)
         MethodIterator iMethod(this);
         while (!write && ++iMethod)
         {
-            if (!iMethod->GetInline() && iMethod->GetImplement() &&
-                !iMethod->GetDelete())
+            if (!iMethod->GetInline() && !iMethod->GetConstexpr() &&
+                iMethod->GetImplement() && !iMethod->GetDelete())
             {
                 write = true;
             }
@@ -1864,6 +1864,8 @@ void Class::WriteCppFileBody(CbStringBuilder& str)
     MemberIterator member(this, &Member::GetStatic);
     while (++member)
     {
+        if (member->GetConstexpr())
+            continue;   // static constexpr: defined in the class declaration
         str += member->GetStartContextImplementation();
         str += templateDeclaration;
         str += member->GetTypeName() + GetName() + "::" 
@@ -1898,7 +1900,7 @@ void Class::WriteCppFileBody(CbStringBuilder& str)
     while (++method)
     {
         if (method->GetImplement() && !method->GetInline() &&
-            !method->GetDelete())
+            !method->GetConstexpr() && !method->GetDelete())
         {
             if (firstFixedMethod && method->IsFixed())
             {
@@ -2184,7 +2186,13 @@ void Class::WriteHFileBody(CbStringBuilder& str)
     while (++privateMember)
     {
         str += privateMember->GetStartContextDeclaration();
-        str += GetIndent() + privateMember->GetItemText() + ";" NL;
+        str += GetIndent() + privateMember->GetItemText();
+        // A static constexpr member gets its value in the class (C++17:
+        // implicitly inline, no definition in the .cpp).
+        if (privateMember->GetStatic() && privateMember->GetConstexpr() &&
+            !privateMember->GetInitialization().IsEmpty())
+            str += " = " + privateMember->GetInitialization();
+        str += ";" NL;
         str += privateMember->GetEndContextDeclaration();
     }
     
@@ -2197,7 +2205,13 @@ void Class::WriteHFileBody(CbStringBuilder& str)
     while (++protectedMember)
     {
         str += protectedMember->GetStartContextDeclaration();
-        str += GetIndent() + protectedMember->GetItemText() + ";" NL;
+        str += GetIndent() + protectedMember->GetItemText();
+        // A static constexpr member gets its value in the class (C++17:
+        // implicitly inline, no definition in the .cpp).
+        if (protectedMember->GetStatic() && protectedMember->GetConstexpr() &&
+            !protectedMember->GetInitialization().IsEmpty())
+            str += " = " + protectedMember->GetInitialization();
+        str += ";" NL;
         str += protectedMember->GetEndContextDeclaration();
     }
     
@@ -2213,7 +2227,13 @@ void Class::WriteHFileBody(CbStringBuilder& str)
     while (++publicMember)
     {
         str += publicMember->GetStartContextDeclaration();
-        str += GetIndent() + publicMember->GetItemText() + ";" NL;
+        str += GetIndent() + publicMember->GetItemText();
+        // A static constexpr member gets its value in the class (C++17:
+        // implicitly inline, no definition in the .cpp).
+        if (publicMember->GetStatic() && publicMember->GetConstexpr() &&
+            !publicMember->GetInitialization().IsEmpty())
+            str += " = " + publicMember->GetInitialization();
+        str += ";" NL;
         str += publicMember->GetEndContextDeclaration();
     }
     
@@ -2299,6 +2319,8 @@ void Class::WriteHFileBody(CbStringBuilder& str)
         MemberIterator member(this, &Member::GetStatic);
         while (++member)
         {
+            if (member->GetConstexpr())
+                continue;   // defined in the class declaration
             str += member->GetStartContextImplementation();
             str += templateDeclaration;
             str += member->GetTypeName() + GetName() + "::" 
@@ -2327,7 +2349,9 @@ void Class::WriteHFileBody(CbStringBuilder& str)
     Class::MethodIterator method(this, &Method::IsNonMacroMethod);
     while (++method)
     {
-        if ((templateInHeader || method->GetInline()) && method->GetImplement() &&
+        // constexpr is implicitly inline: its definition belongs in the header.
+        if ((templateInHeader || method->GetInline() || method->GetConstexpr()) &&
+            method->GetImplement() &&
             !method->GetDelete())
         {
             if (!method->GetNote().IsEmpty()) //!! Comment this line out for empty Note

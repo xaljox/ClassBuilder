@@ -720,6 +720,14 @@ void DataModelDoc::SerializeMembersOnly(CbArchive& archive)
     _membersOnly = true;
     Serialize(archive);
     _membersOnly = false;
+
+    // Loading sets the SHARED DataModelDocObject::_objectVersion to the
+    // snapshot's _version -- the project version, not a format. Left there,
+    // every later undo / redo snapshot of an object read its gated fields
+    // against it (a field newer than the project version would be skipped:
+    // misaligned). These snapshots are always current; read everything.
+    if (archive.IsLoading())
+        DataModelDocObject::_objectVersion = INT_MAX;
 }//@CODE_37878
 
 

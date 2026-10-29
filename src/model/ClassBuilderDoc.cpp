@@ -23,6 +23,7 @@
 #include <fstream>
 #include <string>
 #include "CbZstdStream.h"
+#include "CbCbzFile.h"     // Cb_ReadCbz / Cb_WriteCbz: the .cbz layout + format header
 
 namespace {
     // RAII bracket for CMainFrame::s_loadInProgress. Construct at the top
@@ -47,13 +48,12 @@ namespace {
         return ext == "cbz";
     }
 
-    // The .cbz format level this build writes. A NEW project starts at this
-    // DataModelDoc::_version, because every field is always stored but the read
-    // side gates newer fields on the file's version. Keep it at the highest such
-    // gate: 2 = Method::_delete (Method.cpp read gate), 3 = DataModel::_crlf is a
-    // real choice (OnOpenDocument forces CRLF below 3). A fresh doc left at the
-    // ctor default 1 and saved before its first source write would reopen
-    // misaligned ("file is corrupt") and lose an LF choice.
+    // The project version a NEW project starts at. Before the .cbz format
+    // header (CbCbzFile.h, format 4) the read gates compared against this
+    // project version, so it had to cover the highest gate: 2 = Method::_delete,
+    // 3 = DataModel::_crlf is a real choice. A header file carries the format
+    // separately, so this no longer decides what is read; kept at 3 so a new
+    // project's change log numbering stays as it was.
     const int kCurrentFormatVersion = 3;
 }
 
@@ -342,21 +342,18 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
     }
     try
     {
-        CbZstdInBuf zbuf(is);
-        std::istream zis(&zbuf);
-        CbArchive ar(zis);
         m_loadStarted = true;
-        m_impl->dataModelDoc.Serialize(ar);
+        CbCbzReadInfo info;
+        Cb_ReadCbz(m_impl->dataModelDoc, is, info);
         // Line-ending default for pre-v3 .cbz. _crlf reuses the dead _mfcSerialize
         // slot, so an old file's byte is the stale MFC value, not a real CRLF/LF
-        // choice -- and every pre-v3 project emitted CRLF, so force it. Must run
-        // BEFORE the INT_MAX saturation below (which destroys the file version).
-        if (m_impl->dataModelDoc._objectVersion < 3)
+        // choice -- and every pre-v3 project emitted CRLF, so force it. On the
+        // FORMAT the file was read as: this used to test DataModelDoc's own
+        // _objectVersion, a static nothing sets -- 0 on the first open of a
+        // session, so the first file opened always lost an LF choice.
+        // (Cb_ReadCbz already saturated the gate static for undo / redo.)
+        if (info.format < 3)
             m_impl->dataModelDoc.GetDataModel()->SetCrlf(true);
-        // Saturate _objectVersion so the undo/redo evolution gates treat
-        // a freshly loaded document as current. (The legacy CBD->CBZ
-        // version-migration fixups live in ClassBuilderStatic.exe.)
-        m_impl->dataModelDoc._objectVersion = INT_MAX;
         // The icon index is a serialized cache; recompute it so an icon-scheme
         // change (e.g. light tint = virtual, 2026-07-12) reaches models saved
         // under the old scheme. Only methods have a state-dependent icon.
@@ -369,12 +366,14 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
     }
     catch (int code)
     {
-        // The read set the SHARED static to this file's version; every other
-        // open document reads its undo snapshots with it. Restore "current".
-        m_impl->dataModelDoc._objectVersion = INT_MAX;
+        // (Cb_ReadCbz restored the shared gate static before rethrowing.)
         Cb_EndWaitCursor();
         char buf[768];
-        if (code == CB_ARCHIVE_BAD_STREAM)
+        if (code == CB_CBZ_NEWER_FORMAT)
+            sprintf_s(buf, "Cannot open '%s'.\n\nIt was saved by a newer "
+                "ClassBuilder (a newer file format than this build reads). "
+                "Update ClassBuilder to open it.", path);
+        else if (code == CB_ARCHIVE_BAD_STREAM)
             sprintf_s(buf, "Cannot open '%s'.\n\nThe file is corrupt, or was "
                 "written by an incompatible ClassBuilder version (its serialized "
                 "layout does not match this build).", path);
@@ -385,7 +384,6 @@ int CClassBuilderDoc::OnOpenDocument(const char* path)
     }
     catch (...)
     {
-        m_impl->dataModelDoc._objectVersion = INT_MAX;   // see catch (int)
         Cb_EndWaitCursor();
         std::string msg = std::string("CbArchive load failed for '") + path +
                           "' (unknown exception).";
@@ -466,12 +464,7 @@ int CClassBuilderDoc::OnSaveDocument(const char* pathIn)
         if (!os) return 0;
         try
         {
-            CbZstdOutBuf zbuf(os);
-            std::ostream zos(&zbuf);
-            CbArchive ar(zos);
-            m_impl->dataModelDoc.Serialize(ar);
-            // ar / zos / zbuf destructors run in reverse order; zbuf's
-            // destructor calls ZSTD_e_end and writes the compressed tail.
+            Cb_WriteCbz(m_impl->dataModelDoc, os);
         }
         catch (...)
         {
@@ -492,10 +485,7 @@ int CClassBuilderDoc::WriteRecoveryCbz(const char* path)
     if (!os) return 0;
     try
     {
-        CbZstdOutBuf zbuf(os);
-        std::ostream zos(&zbuf);
-        CbArchive ar(zos);
-        m_impl->dataModelDoc.Serialize(ar);
+        Cb_WriteCbz(m_impl->dataModelDoc, os);
     }
     catch (...)
     {

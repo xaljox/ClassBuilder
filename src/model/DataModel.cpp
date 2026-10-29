@@ -2628,8 +2628,8 @@ void DataModel::WriteHFile(CbStringBuilder& str, int& startDateTime,
         Class::MethodIterator iMethod(iClass, &Method::IsNonMacroMethod);
         while (!mustInclude && ++iMethod)
         {
-            if (iMethod->GetInline() && iMethod->GetImplement() &&
-                !iMethod->GetDelete())
+            if ((iMethod->GetInline() || iMethod->GetConstexpr()) &&
+                iMethod->GetImplement() && !iMethod->GetDelete())
             {
                 mustInclude = true;
             }

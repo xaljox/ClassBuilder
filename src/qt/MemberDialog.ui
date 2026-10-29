@@ -171,6 +171,16 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="checkConstexpr">
+          <property name="toolTip">
+           <string>Emit the static member as constexpr: its initial value goes into the class declaration. Static members only</string>
+          </property>
+          <property name="text">
+           <string>Conste&amp;xpr</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QRadioButton" name="radioAccessPublic">
           <property name="text">
            <string>Public</string>

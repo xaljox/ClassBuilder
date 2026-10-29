@@ -85,6 +85,7 @@ MemberDialog::MemberDialog(Member* pMember, QWidget* parent)
     _ui->checkReference->setChecked(_pMember->GetReference());
     _ui->checkDelete->setChecked(_pMember->GetDelete());
     _ui->checkStatic->setChecked(_pMember->GetStatic());
+    _ui->checkConstexpr->setChecked(_pMember->GetConstexpr());
     _ui->checkSerialize->setChecked(_pMember->GetSerialize());
     _ui->checkPointerPointer->setChecked(
         _pMember->GetPointerPointer());
@@ -159,6 +160,7 @@ MemberDialog::MemberDialog(Member* pMember, QWidget* parent)
     handleConst();
     handleMutable();
     handleStatic();
+    handleConstexpr();
     handleTemplate();
 
     Class* pClass = dynamic_cast<Class*>(_pMember->GetBaseClass());
@@ -283,6 +285,7 @@ void MemberDialog::onStatic()
     handleInitialization();
     handleMutable();
     handleBitField();
+    handleConstexpr();
 }
 
 void MemberDialog::onBitField()
@@ -437,6 +440,15 @@ void MemberDialog::handleStatic()
     {
         _ui->checkStatic->setEnabled(true);
     }
+}
+
+// constexpr exists for static data members only.
+void MemberDialog::handleConstexpr()
+{
+    const bool isStatic = _ui->checkStatic->isChecked();
+    _ui->checkConstexpr->setEnabled(isStatic);
+    if (!isStatic)
+        _ui->checkConstexpr->setChecked(false);
 }
 
 void MemberDialog::handleMutable()
@@ -623,6 +635,7 @@ bool MemberDialog::applyFieldChanges()
     const bool isConst      = _ui->checkConst->isChecked();
     const bool constPointer = _ui->checkConstPointer->isChecked();
     const bool isMutable    = _ui->checkMutable->isChecked();
+    const bool isConstexpr  = isStatic && _ui->checkConstexpr->isChecked();
     const bool del          = _ui->checkDelete->isChecked();
     const int  access       = _ui->radioAccessProtected->isChecked()
                                 ? PROTECTED
@@ -673,6 +686,7 @@ bool MemberDialog::applyFieldChanges()
     if (_pMember->GetStatic() != isStatic ||
         _pMember->GetConst() != isConst ||
         _pMember->GetMutable() != isMutable ||
+        _pMember->GetConstexpr() != isConstexpr ||
         _pMember->GetPointer() != pointer ||
         _pMember->GetPointerPointer() != pointerPtr ||
         _pMember->GetConstPointer() != constPointer ||
@@ -688,6 +702,7 @@ bool MemberDialog::applyFieldChanges()
         _pMember->SetStatic(isStatic);
         _pMember->SetConst(isConst);
         _pMember->SetMutable(isMutable);
+        _pMember->SetConstexpr(isConstexpr);
         _pMember->SetPointer(pointer);
         _pMember->SetPointerPointer(pointerPtr);
         _pMember->SetConstPointer(constPointer);

@@ -7,6 +7,10 @@
 * Purpose:       Declaration of class 'Member'
 *
 * Modifications: @INSERT_MODIFICATIONS(* )
+* October 29, 2026 12:11 
+*     Added method 'SetConstexpr'
+*     Added method 'GetConstexpr'
+*     Added member '_constexpr'
 *
 * Copyright 2026, Jimmy Venema
 * Licensed under the MIT License (see the LICENSE file).
@@ -47,6 +51,7 @@ private:
     bool _bitField;
     unsigned int _bitFieldSize;
     bool _mutable;
+    bool _constexpr;
 
 protected:
 
@@ -113,6 +118,8 @@ public:
     void SetBitField(bool bitField);
     unsigned int GetBitFieldSize() const;
     void SetBitFieldSize(unsigned int bitFieldSize);
+    bool GetConstexpr() const;
+    void SetConstexpr(bool val);
     bool GetDelete() const;
     void SetDelete(bool val);
     const CbString& GetInitialization();
@@ -174,6 +181,26 @@ inline void Member::SetBitFieldSize(unsigned int bitFieldSize)
 {//@CODE_7535
     _bitFieldSize = bitFieldSize;
 }//@CODE_7535
+
+
+
+/*@NOTE_41513
+Returns the value of member '_constexpr'.
+*/
+inline bool Member::GetConstexpr() const
+{//@CODE_41513
+    return _constexpr;
+}//@CODE_41513
+
+
+
+/*@NOTE_41514
+Set the value of member '_constexpr' to 'val'.
+*/
+inline void Member::SetConstexpr(bool val)
+{//@CODE_41514
+    _constexpr = val;
+}//@CODE_41514
 
 
 

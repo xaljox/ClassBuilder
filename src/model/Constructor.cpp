@@ -282,6 +282,20 @@ void Constructor::InitInit()
 {//@CODE_966
     _init.Empty();
 
+    // Only pass on names this constructor really has as an argument. The GUI
+    // (CreateArguments) seeds one per base / member constructor argument and
+    // per member, but a constructor made without them (add_constructor
+    // seed_args:false) or with one deleted must not reference a missing name:
+    // such an argument is left out, and a member gets value-initialized `_x()`.
+    auto hasArgument = [this](const CbString& name)
+    {
+        Method::ArgumentIterator argument(this);
+        while (++argument)
+            if (argument->GetName() == name)
+                return true;
+        return false;
+    };
+
     Class* pClass = dynamic_cast<Class*>(GetBaseClass());
     if (pClass)
     {
@@ -302,27 +316,32 @@ void Constructor::InitInit()
                     _init += GetIndent() + ", ";
 
                 _init += inherit->GetBaseClass()->Type::GetName() + inherit->GetTemplate() + "(";
+                CbString args;
                 Method::ArgumentIterator argument(constructor);
                 while (++argument)
                 {
                     Argument* pArgument = pClass->GetConstructorIncludeMethod()->
                                           GetFirstArgument();
                     Class* pDocument = pClass->GetDataModel()->GetDocument();
+                    CbString arg;
                     if (pDocument && argument->GetType() == pDocument && 
                         pArgument && pArgument->GetType() != pDocument)
                     {
-                        _init += pArgument->GetName() + "->Get";
-                        _init += pDocument->GetFirstFromRelation()->GetFromName();
-                        _init += "()";
+                        if (hasArgument(pArgument->GetName()))
+                        {
+                            arg = pArgument->GetName() + "->Get";
+                            arg += pDocument->GetFirstFromRelation()->GetFromName();
+                            arg += "()";
+                        }
                     }
-                    else
+                    else if (hasArgument(argument->GetName()))
                     {
-                        _init += argument->GetName();
+                        arg = argument->GetName();
                     }
-                    if (!argument.IsLast())
-                        _init += ", ";
+                    if (!arg.IsEmpty())
+                        args += (args.IsEmpty() ? "" : ", ") + arg;
                 }
-                _init += ")" NL;
+                _init += args + ")" NL;
             }
         }
 
@@ -350,13 +369,12 @@ void Constructor::InitInit()
                             &Method::IsNormalConstructor);
                         if (++constructor)
                         {
+                            CbString args;
                             Method::ArgumentIterator argument(constructor);
                             while (++argument)
-                            {
-                                _init += argument->GetName();
-                                if (!argument.IsLast())
-                                    _init += ", ";
-                            }
+                                if (hasArgument(argument->GetName()))
+                                    args += (args.IsEmpty() ? "" : ", ") + argument->GetName();
+                            _init += args;
                         }
                          _init += ")" NL;
                     }
@@ -367,9 +385,13 @@ void Constructor::InitInit()
                         {
                             _init += pMemberArgument->GetName() + ")" NL;
                         }
-                        else
+                        else if (hasArgument(member->GetName()))
                         {
                             _init += member->GetName() + ")" NL;
+                        }
+                        else
+                        {
+                            _init += ")" NL;    // no argument for it: value-initialize
                         }
                     }
                 }

@@ -36,6 +36,7 @@ private:
     void handleConst();
     void handleMutable();
     void handleStatic();
+    void handleConstexpr();
     void handleTemplate();
 
     void onSelchangeType();
