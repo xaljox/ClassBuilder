@@ -333,6 +333,30 @@ void CheckCode()
     }
 }
 
+// Collapse every run of white space (blanks, tabs, line breaks) into one blank
+// and drop it at both ends. WrapArguments breaks a long signature after a
+// ", " and indents the next line to the '(' -- and the header's inline
+// definitions wrap "inline " + interface, so they break at other points than
+// the plain interface. Comparing the collapsed texts ignores that layout.
+static CbString CollapseSpace(const CbString& text)
+{
+    CbString out;
+    bool space = false;
+    for (const char* p = text.c_str(); *p; ++p)
+    {
+        if (isspace((unsigned char)*p))
+        {
+            space = !out.IsEmpty();
+            continue;
+        }
+        if (space)
+            out += " ";
+        space = false;
+        out += CbString(*p);
+    }
+    return out;
+}
+
 void CheckInterface()
 {
     Method* pMethod = g_pClass->FindMethodWithId(g_id);
@@ -352,7 +376,7 @@ void CheckInterface()
 		ref.TrimLeft();
 		ref.TrimRight();
 
-		if (str.Find(ref) == -1)
+		if (CollapseSpace(str).Find(CollapseSpace(ref)) == -1)
 		{
 			CbString text;
 			text.Format("    Warning interface of method '%s' has changed", pMethod->GetName().c_str());
