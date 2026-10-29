@@ -61,6 +61,16 @@ ExternClassDialog::ExternClassDialog(ExternClass* pExternClass,
         }
     }
     _ui->checkSuppress->setEnabled(enableSuppress);
+    // Say WHY in the tooltip -- a disabled box still shows it. The rule was
+    // only visible in this code before (Dammen64 report, 2026-10-29).
+    _ui->checkSuppress->setToolTip(enableSuppress
+        ? QStringLiteral("Do not emit a forward declaration (class %1;) for this "
+                         "extern class, e.g. when a header you include already "
+                         "declares it.").arg(toQ(_pExternClass->GetName()))
+        : QStringLiteral("Only available when the class has no base classes and "
+                         "is used only through pointers or references (and at "
+                         "least once): then a forward declaration is all it "
+                         "needs, so it can be suppressed."));
 
     connect(_ui->checkTemplate, &QCheckBox::toggled,
             this, [this] { onTemplateToggled(); });
