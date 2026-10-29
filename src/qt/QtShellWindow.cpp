@@ -118,12 +118,30 @@ public:
         // Pin via a temporary MINIMUM size: resizeDocks corrections proved
         // able to refuse shrinks but not to re-grow; a minimum makes the
         // relayout cascade unable to shrink the dock in the first place.
-        _oldMin = dock->minimumSize();
-        dock->setMinimumSize(QSize(w, h).expandedTo(_oldMin));
+        //
+        // Keepers can OVERLAP on one dock (two editor tabs closed within the
+        // 700 ms). The dock's own minimum is therefore recorded ONCE, on the
+        // dock, and only the last keeper to finish restores it. Each keeper
+        // remembering "the minimum before me" let the later one restore the
+        // earlier one's PIN -- leaving the dock permanently ~editor-wide, so
+        // the split could no longer move toward it (JV 2026-10-29).
+        if (!dock->property(kOrigMinProp).isValid())
+            dock->setProperty(kOrigMinProp, dock->minimumSize());
+        dock->setProperty(kKeepersProp, dock->property(kKeepersProp).toInt() + 1);
+        const QSize origMin = dock->property(kOrigMinProp).toSize();
+        dock->setMinimumSize(QSize(w, h).expandedTo(origMin));
         apply();
         QTimer::singleShot(700, this, [this] {
             if (_dock)
-                _dock->setMinimumSize(_oldMin);
+            {
+                const int left = _dock->property(kKeepersProp).toInt() - 1;
+                _dock->setProperty(kKeepersProp, left > 0 ? QVariant(left) : QVariant());
+                if (left <= 0)
+                {
+                    _dock->setMinimumSize(_dock->property(kOrigMinProp).toSize());
+                    _dock->setProperty(kOrigMinProp, QVariant());
+                }
+            }
             deleteLater();
         });
     }
@@ -154,11 +172,13 @@ private:
         _applying = false;
     }
 
+    static constexpr const char* kOrigMinProp = "cbKeeperOrigMin";   // QSize
+    static constexpr const char* kKeepersProp = "cbKeeperCount";     // int
+
     QMainWindow*           _mw;
     QPointer<QDockWidget>  _dock;
     const int              _w;
     const int              _h;
-    QSize                  _oldMin;
     bool                   _applying = false;
 };
 
