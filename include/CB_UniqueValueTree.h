@@ -160,23 +160,23 @@ public:\
     _count##NameTo = 0;
 
 #define EXIT_UNIQUEVALUETREE_ACTIVE(ClassFrom, NameFrom, ClassTo, NameTo) \
-    { ClassTo* head = GetFirst##NameTo();\
-      { ClassTo* item = head;\
-        while (item)\
-        { ClassTo* next = GetNext##NameTo(item);\
-          item->_parent##NameFrom = next;\
-          item = next;\
-        }\
-      }\
-      ClassFrom::NameTo##Iterator::CheckAll(this);\
+    { ClassFrom::NameTo##Iterator::CheckAll(this);\
+      ClassTo* item = _first##NameTo;\
       _first##NameTo = (ClassTo*)0;\
       _count##NameTo = 0;\
-      for (ClassTo* item = head; item; )\
-      { ClassTo* next = (ClassTo*)item->_parent##NameFrom;\
-        item->_ref##NameFrom = (ClassFrom*)0;\
-        item->_parent##NameFrom = (ClassTo*)0;\
-        item->_left##NameFrom = (ClassTo*)0;\
-        item->_right##NameFrom = (ClassTo*)0;\
+      /* Unlink each child on the way down; clear an item once it has */\
+      /* no children left and climb back through its intact _parent.  */\
+      while (item)\
+      { ClassTo* next;\
+        if ((next = item->_left##NameFrom) != (ClassTo*)0)\
+            item->_left##NameFrom = (ClassTo*)0;\
+        else if ((next = item->_right##NameFrom) != (ClassTo*)0)\
+            item->_right##NameFrom = (ClassTo*)0;\
+        else\
+        { next = item->_parent##NameFrom;\
+          item->_ref##NameFrom = (ClassFrom*)0;\
+          item->_parent##NameFrom = (ClassTo*)0;\
+        }\
         item = next;\
       }\
     }
@@ -301,7 +301,8 @@ int ClassFrom::Get##NameTo##Count() const\
     if (_first##NameTo)\
     {\
         ClassTo* current = _first##NameTo;\
-        unsigned long bit = 0x1;\
+        unsigned long long bit = 0x1;\
+        static_assert(sizeof(item->member) <= sizeof(bit), "value tree key wider than 64 bits");\
         while (1)\
         {\
             assert(current->member != item->member);\
@@ -417,23 +418,23 @@ int ClassFrom::Get##NameTo##Count() const\
 
 #define METHOD_UNIQUEVALUETREE_REMOVEALL(ClassFrom, NameFrom, ClassTo, NameTo) \
     assert(this);\
-    { ClassTo* head = GetFirst##NameTo();\
-      { ClassTo* item = head;\
-        while (item)\
-        { ClassTo* next = GetNext##NameTo(item);\
-          item->_parent##NameFrom = next;\
-          item = next;\
-        }\
-      }\
-      ClassFrom::NameTo##Iterator::CheckAll(this);\
+    { ClassFrom::NameTo##Iterator::CheckAll(this);\
+      ClassTo* item = _first##NameTo;\
       _first##NameTo = (ClassTo*)0;\
       _count##NameTo = 0;\
-      for (ClassTo* item = head; item; )\
-      { ClassTo* next = (ClassTo*)item->_parent##NameFrom;\
-        item->_ref##NameFrom = (ClassFrom*)0;\
-        item->_parent##NameFrom = (ClassTo*)0;\
-        item->_left##NameFrom = (ClassTo*)0;\
-        item->_right##NameFrom = (ClassTo*)0;\
+      /* Unlink each child on the way down; clear an item once it has */\
+      /* no children left and climb back through its intact _parent.  */\
+      while (item)\
+      { ClassTo* next;\
+        if ((next = item->_left##NameFrom) != (ClassTo*)0)\
+            item->_left##NameFrom = (ClassTo*)0;\
+        else if ((next = item->_right##NameFrom) != (ClassTo*)0)\
+            item->_right##NameFrom = (ClassTo*)0;\
+        else\
+        { next = item->_parent##NameFrom;\
+          item->_ref##NameFrom = (ClassFrom*)0;\
+          item->_parent##NameFrom = (ClassTo*)0;\
+        }\
         item = next;\
       }\
     }
@@ -612,7 +613,8 @@ int ClassFrom::Get##NameTo##Count() const\
 #define _BODY_VALUETREE_FIND(member, value, ClassFrom, NameFrom, ClassTo, NameTo) \
     ClassTo* result = 0;\
     { ClassTo* item = _first##NameTo;\
-      unsigned long bit = 0x1;\
+      unsigned long long bit = 0x1;\
+      static_assert(sizeof(item->member) <= sizeof(bit), "value tree key wider than 64 bits");\
       while (item)\
       {\
           if (item->member == value) { result = item; break; }\
